@@ -1,0 +1,15 @@
+vendor/*
+!vendor/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
+
+*.image
+*.changes
+*.sources
+*.log
+*.fuel
+*.ombu
+*.bak
+
+pharo-local/
+gt-local/

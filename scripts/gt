@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/.." && pwd)"
+launcher="${repo_root}/vendor/gt/bin/GlamorousToolkit"
+cli_launcher="${repo_root}/vendor/gt/bin/GlamorousToolkit-cli"
+image="${repo_root}/vendor/gt/GlamorousToolkit.image"
+
+if [[ ! -x "${launcher}" ]]; then
+    "${repo_root}/scripts/bootstrap-gt.sh"
+fi
+
+cd "${repo_root}"
+
+mkdir -p "${repo_root}/gt-local/home" "${repo_root}/gt-local/config" "${repo_root}/gt-local/cache"
+export HOME="${repo_root}/gt-local/home"
+export XDG_CONFIG_HOME="${repo_root}/gt-local/config"
+export XDG_CACHE_HOME="${repo_root}/gt-local/cache"
+
+if [[ "${1:-}" == "--headless" ]]; then
+    if [[ ! -x "${cli_launcher}" ]]; then
+        echo "GT CLI launcher not found at ${cli_launcher}." >&2
+        exit 1
+    fi
+    shift
+    exec "${cli_launcher}" "${image}" st "$@"
+fi
+
+exec "${launcher}" "$@"
