@@ -1,10 +1,11 @@
 Class {
-    #name : #BaselineOfKlibGenGt,
-    #superclass : #BaselineOf,
-    #category : #BaselineOfKlibGenGt
+	#name : 'BaselineOfKlibGenGt',
+	#superclass : 'BaselineOf',
+	#category : 'BaselineOfKlibGenGt',
+	#package : 'BaselineOfKlibGenGt'
 }
 
-{ #category : #baselines }
+{ #category : 'baselines' }
 BaselineOfKlibGenGt >> baseline: spec [
     <baseline>
 
@@ -25,7 +26,7 @@ BaselineOfKlibGenGt >> baseline: spec [
             group: 'CI' with: #( 'dev' ) ]
 ]
 
-{ #category : #'dependency analysis' }
+{ #category : 'dependency analysis' }
 BaselineOfKlibGenGt >> gtDependencyAnalysisPreloadedBaselines [
     "BaselineOfGToolkit is already present in the downloaded GT runtime. Including it here tells GT dependency analysis to treat the runtime baseline as preloaded instead of reporting it as a project dependency that should be fetched."
 

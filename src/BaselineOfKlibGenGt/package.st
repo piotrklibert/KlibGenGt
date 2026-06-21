@@ -1,1 +1,1 @@
-Package { #name : #BaselineOfKlibGenGt }
+Package { #name : 'BaselineOfKlibGenGt' }

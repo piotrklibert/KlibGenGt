@@ -1,15 +1,16 @@
 Class {
-    #name : #KlibGenGt,
-    #superclass : #Object,
-    #category : #'KlibGenGt-Core'
+	#name : 'KlibGenGt',
+	#superclass : 'Object',
+	#category : 'KlibGenGt-Core',
+	#package : 'KlibGenGt-Core'
 }
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 KlibGenGt class >> projectName [
     ^ 'KlibGenGt'
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 KlibGenGt class >> sampleGreeting [
     ^ 'Hello from ', self projectName
 ]

@@ -1,15 +1,16 @@
 Class {
-    #name : #KlibGenGtTest,
-    #superclass : #TestCase,
-    #category : #'KlibGenGt-Tests'
+	#name : 'KlibGenGtTest',
+	#superclass : 'TestCase',
+	#category : 'KlibGenGt-Tests',
+	#package : 'KlibGenGt-Tests'
 }
 
-{ #category : #tests }
+{ #category : 'tests' }
 KlibGenGtTest >> testProjectName [
     self assert: KlibGenGt projectName equals: 'KlibGenGt'
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 KlibGenGtTest >> testSampleGreeting [
     self assert: KlibGenGt sampleGreeting equals: 'Hello from KlibGenGt'
 ]

@@ -1,1 +1,1 @@
-Package { #name : #'KlibGenGt-Tests' }
+Package { #name : 'KlibGenGt-Tests' }
