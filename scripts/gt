@@ -3,20 +3,51 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
-launcher="${repo_root}/vendor/gt/bin/GlamorousToolkit"
-cli_launcher="${repo_root}/vendor/gt/bin/GlamorousToolkit-cli"
-image="${repo_root}/vendor/gt/GlamorousToolkit.image"
+runtime="${GT_RUNTIME:-download}"
+
+case "${runtime}" in
+    download)
+        runtime_dir="${repo_root}/vendor/gt"
+        bootstrap_command=("${repo_root}/scripts/bootstrap-gt.sh")
+        ;;
+    build-clean)
+        runtime_dir="${repo_root}/vendor/gt-build/workspaces/clean"
+        bootstrap_command=("${repo_root}/scripts/bootstrap-gt-source.sh" "clean")
+        ;;
+    build-patched)
+        runtime_dir="${repo_root}/vendor/gt-build/workspaces/patched"
+        bootstrap_command=("${repo_root}/scripts/bootstrap-gt-source.sh" "patched")
+        ;;
+    *)
+        echo "Unknown GT_RUNTIME '${runtime}'. Use: download, build-clean, or build-patched." >&2
+        exit 2
+        ;;
+esac
+
+launcher="${runtime_dir}/bin/GlamorousToolkit"
+cli_launcher="${runtime_dir}/bin/GlamorousToolkit-cli"
+image="${runtime_dir}/GlamorousToolkit.image"
+
+if [[ "${runtime}" == "download" || ! -x "${launcher}" ]]; then
+    "${bootstrap_command[@]}"
+fi
 
 if [[ ! -x "${launcher}" ]]; then
-    "${repo_root}/scripts/bootstrap-gt.sh"
+    echo "GT launcher not found at ${launcher} after bootstrap." >&2
+    exit 1
+fi
+
+if [[ ! -f "${image}" ]]; then
+    echo "GT image not found at ${image}." >&2
+    exit 1
 fi
 
 cd "${repo_root}"
 
-mkdir -p "${repo_root}/gt-local/home" "${repo_root}/gt-local/config" "${repo_root}/gt-local/cache"
-export HOME="${repo_root}/gt-local/home"
-export XDG_CONFIG_HOME="${repo_root}/gt-local/config"
-export XDG_CACHE_HOME="${repo_root}/gt-local/cache"
+mkdir -p "${repo_root}/gt-local/${runtime}/home" "${repo_root}/gt-local/${runtime}/config" "${repo_root}/gt-local/${runtime}/cache"
+export HOME="${repo_root}/gt-local/${runtime}/home"
+export XDG_CONFIG_HOME="${repo_root}/gt-local/${runtime}/config"
+export XDG_CACHE_HOME="${repo_root}/gt-local/${runtime}/cache"
 
 if [[ "${1:-}" == "--headless" ]]; then
     if [[ ! -x "${cli_launcher}" ]]; then
@@ -27,4 +58,9 @@ if [[ "${1:-}" == "--headless" ]]; then
     exec "${cli_launcher}" "${image}" st "$@"
 fi
 
-exec "${launcher}" "$@"
+if [[ ! -x "${cli_launcher}" ]]; then
+    echo "GT CLI launcher not found at ${cli_launcher}." >&2
+    exit 1
+fi
+
+exec "${cli_launcher}" --interactive "${image}" st "${repo_root}/scripts/ensure-project-loaded.st"

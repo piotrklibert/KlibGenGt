@@ -1,10 +1,11 @@
-| sourceDirectory testPackage suite result failures errors exitCode |
+| gitDirectory repositoryUrl testPackage suite result failures errors exitCode |
 
-sourceDirectory := FileSystem workingDirectory / 'src'.
+gitDirectory := FileSystem workingDirectory / 'export' / '.git'.
+repositoryUrl := 'gitlocal://' , gitDirectory fullName , ':master/src'.
 
 Metacello new
     baseline: 'KlibGenGt';
-    repository: 'tonel://' , sourceDirectory fullName;
+    repository: repositoryUrl;
     load: 'CI'.
 
 testPackage := RPackageOrganizer default packageNamed: 'KlibGenGt-Tests'.

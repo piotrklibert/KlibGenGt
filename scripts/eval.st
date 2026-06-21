@@ -1,10 +1,11 @@
-| sourceDirectory expression result |
+| gitDirectory repositoryUrl expression result |
 
-sourceDirectory := FileSystem workingDirectory / 'src'.
+gitDirectory := FileSystem workingDirectory / 'export' / '.git'.
+repositoryUrl := 'gitlocal://' , gitDirectory fullName , ':master/src'.
 
 Metacello new
     baseline: 'KlibGenGt';
-    repository: 'tonel://' , sourceDirectory fullName;
+    repository: repositoryUrl;
     load: 'CI'.
 
 expression := Smalltalk os environment

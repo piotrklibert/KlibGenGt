@@ -9,9 +9,9 @@ Metacello new
     load: 'CI'.
 
 Stdio stdout
-    nextPutAll: 'KlibGenGt loaded from ';
+    nextPutAll: 'KlibGenGt loaded into GUI image from ';
     nextPutAll: repositoryUrl;
     lf;
     flush.
 
-Smalltalk exit: 0
+BlSpace userScale: 1.25.

@@ -10,6 +10,12 @@ artifacts/*
 *.fuel
 *.ombu
 *.bak
+*.py[co]
+**/__pycache__/
 
 pharo-local/
 gt-local/
+private/
+tmp/
+export/
+legacy/klibert_pl/

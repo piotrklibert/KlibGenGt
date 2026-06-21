@@ -1,0 +1,14 @@
+.git
+.jj
+artifacts
+gt-local
+pharo-local
+private
+tmp
+vendor
+*.changes
+*.fuel
+*.image
+*.log
+*.ombu
+*.sources

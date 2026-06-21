@@ -8,16 +8,24 @@ vendor_dir="${repo_root}/vendor"
 runtime_dir="${vendor_dir}/gt"
 archive="${vendor_dir}/gt.zip"
 launcher="${runtime_dir}/bin/GlamorousToolkit"
+version_marker="${runtime_dir}/.klibgen-gt-version"
+version_file="${repo_root}/.tool-versions-or-lock/gt-version"
 url_file="${repo_root}/.tool-versions-or-lock/gt-linux-x86_64.url"
 sha_file="${repo_root}/.tool-versions-or-lock/gt-linux-x86_64.sha256"
 
-if [[ -x "${launcher}" ]]; then
+version="$(tr -d '[:space:]' < "${version_file}")"
+runtime_id="${version}:gui-interactive-loader-v1"
+url="$(tr -d '[:space:]' < "${url_file}")"
+checksum="$(tr -d '[:space:]' < "${sha_file}")"
+
+if [[ -x "${launcher}" && -f "${version_marker}" && "$(tr -d '[:space:]' < "${version_marker}")" == "${runtime_id}" ]]; then
     echo "Glamorous Toolkit runtime already exists at ${runtime_dir}."
     exit 0
 fi
 
-url="$(tr -d '[:space:]' < "${url_file}")"
-checksum="$(tr -d '[:space:]' < "${sha_file}")"
+if [[ -x "${launcher}" ]]; then
+    echo "Existing GT runtime does not match pinned version ${version}; reinstalling ${runtime_dir}."
+fi
 
 if [[ -z "${url}" || "${url}" == *PLACEHOLDER* || ! "${url}" =~ ^https?:// ]]; then
     echo "GT download URL is missing or still a placeholder in ${url_file}." >&2
@@ -57,4 +65,5 @@ else
     fi
 fi
 
+printf '%s\n' "${runtime_id}" > "${version_marker}"
 echo "Glamorous Toolkit runtime is ready at ${runtime_dir}."

@@ -1,10 +1,11 @@
-| sourceDirectory projectClass |
+| gitDirectory repositoryUrl projectClass |
 
-sourceDirectory := FileSystem workingDirectory / 'src'.
+gitDirectory := FileSystem workingDirectory / 'export' / '.git'.
+repositoryUrl := 'gitlocal://' , gitDirectory fullName , ':master/src'.
 
 Metacello new
     baseline: 'KlibGenGt';
-    repository: 'tonel://' , sourceDirectory fullName;
+    repository: repositoryUrl;
     load: 'CI'.
 
 projectClass := Smalltalk
@@ -25,7 +26,7 @@ projectClass := Smalltalk
         Smalltalk exit: 1 ].
 
 Stdio stdout
-    nextPutAll: 'Smoke check passed: KlibGenGt loaded from local src.';
+    nextPutAll: 'Smoke check passed: KlibGenGt loaded from export Git repository.';
     lf;
     flush.
 
