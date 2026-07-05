@@ -30,6 +30,9 @@ load:
 test:
     ./scripts/gt --headless ./scripts/test.st
 
+test-fresh: push-src-to-export bootstrap
+    ./scripts/test-fresh.sh
+
 smoke:
     ./scripts/gt --headless ./scripts/smoke.st
 
