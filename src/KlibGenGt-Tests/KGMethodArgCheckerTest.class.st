@@ -1,3 +1,11 @@
+"
+SUnit coverage for the method argument checker example.
+
+- Slots
+  - none
+- Public API
+  - none; test selectors are invoked by SUnit and document expected checker behavior.
+"
 Class {
 	#name : 'KGMethodArgCheckerTest',
 	#superclass : 'TestCase',

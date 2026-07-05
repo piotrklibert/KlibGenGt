@@ -1,3 +1,13 @@
+"
+Scratchpad examples used to exercise project dependencies from GT.
+
+- Slots
+  - none
+- Public API
+  - {{gtMethod:KGScratchPadScripts>>#example1}} - Build a nested dictionary from the GT book table of contents.
+  - {{gtMethod:KGScratchPadScripts>>#example2}} - Run the method argument checker example.
+  - {{gtMethod:KGScratchPadScripts>>#sampleGreeting}} - Return the project smoke-test greeting.
+"
 Class {
 	#name : 'KGScratchPadScripts',
 	#superclass : 'Object',
@@ -8,6 +18,7 @@ Class {
 { #category : 'examples' }
 KGScratchPadScripts >> example1 [
 	<gtExample>
+	<return: #Dictionary>
 	| database tocPage extractChildren extractTitle normalizeLinkTitle |
 	database := LeStorageExamples new gtBook.
 	tocPage := database tableOfContents.
@@ -43,12 +54,14 @@ KGScratchPadScripts >> example1 [
 { #category : 'examples' }
 KGScratchPadScripts >> example2 [
 	<gtExample>
+	<return: #Dictionary>
 	^KGMethodArgChecker new run.
 ]
 
 { #category : 'examples' }
 KGScratchPadScripts >> sampleGreeting [
     <gtExample>
+	<return: #String>
 
     ^ KlibGenGt sampleGreeting
 ]
