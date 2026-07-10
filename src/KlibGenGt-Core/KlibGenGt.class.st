@@ -31,12 +31,23 @@ KlibGenGt package map:
   - {{gtClass:KGScratchPadScripts}} - Scratchpad entry points for exploratory project scripts.
 - Environment
   - {{gtClass:KGCheckTypePragmas}} - Validates documentation type expressions in class comments and pragmas.
+- Kotlin
+  - {{gtClass:KGKotlinFile}} - Root AST node for one parsed Kotlin source file.
+  - {{gtClass:KGKotlinImport}} - AST node for one Kotlin import directive.
+  - {{gtClass:KGKotlinDeclaration}} - Abstract base for Kotlin declaration AST nodes.
+  - {{gtClass:KGKotlinTypeDeclaration}} - AST node for a Kotlin class, interface, or object declaration.
+  - {{gtClass:KGKotlinFunctionDeclaration}} - AST node for a Kotlin function or extension function declaration.
+  - {{gtClass:KGKotlinTypeAliasDeclaration}} - AST node for a Kotlin type alias declaration.
+  - {{gtClass:KGKotlinParameter}} - AST node for a Kotlin function or constructor parameter.
+  - {{gtClass:KGKotlinGrammar}} - PetitParser2 entry grammar for Kotlin source text.
+  - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
 - Tests
   - {{gtClass:KlibGenGtTest}} - Basic project smoke tests.
   - {{gtClass:KGMethodArgCheckerTest}} - Tests for the method argument checker example.
   - {{gtClass:KGHtmlParserTest}} - Tests for the simplified HTML and legacy code-block parsers.
   - {{gtClass:KGLegacyPostTransformerTest}} - Tests for the legacy post transformation rules.
   - {{gtClass:KGCheckTypePragmasTest}} - Tests for the documentation type checker.
+  - {{gtClass:KGKotlinParserTest}} - Tests for the Kotlin sample parser and fixture comparison.
 "
 Class {
 	#name : 'KlibGenGt',

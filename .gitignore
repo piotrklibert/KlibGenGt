@@ -18,5 +18,8 @@ gt-local/
 private/
 tmp/
 export/
-data/
+data/*
+!data/kotlin-samples/
+data/kotlin-samples/*
+!data/kotlin-samples/defined-types.fixture.json
 legacy/klibert_pl/

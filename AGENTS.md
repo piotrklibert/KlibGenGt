@@ -36,6 +36,13 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
   and legacy non-HTML constructs such as `--kod=...` belong in subclasses like
   `KGLegacyPostParser`.
 
+- Kotlin parsing work lives in `KlibGenGt-Kotlin`. Keep the parser sample-driven:
+  update `data/kotlin-samples/defined-types.fixture.json` from the committed
+  `data/kotlin-samples/*.kt` files, add focused SUnit examples first, then make
+  `KGKotlinParserTest>>#testSampleFilesMatchFixture` pass from a fresh image.
+  The parser should extract declarations and skip function/property bodies
+  structurally instead of parsing Kotlin expressions.
+
 - Whenever adding, renaming, or removing classes in `KlibGenGt-*` packages,
   update the class comment of `KlibGenGt`. Keep it as a nested unordered list
   where every class item starts with `- {{gtClass:ClassName}}` so class names

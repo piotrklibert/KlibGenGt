@@ -16,16 +16,19 @@ BaselineOfKlibGenGt >> baseline: spec [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Environment' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
+            package: 'KlibGenGt-Kotlin' with: [
+                spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Tests' with: [
-                spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-Examples' 'KlibGenGt-Environment' ) ].
+                spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-Examples' 'KlibGenGt-Environment' 'KlibGenGt-Kotlin' ) ].
 
         spec
             group: 'Core' with: #( 'KlibGenGt-Core' );
             group: 'Examples' with: #( 'KlibGenGt-Examples' );
             group: 'Environment' with: #( 'KlibGenGt-Environment' );
+            group: 'Kotlin' with: #( 'KlibGenGt-Kotlin' );
             group: 'Tests' with: #( 'KlibGenGt-Tests' );
             group: 'default' with: #( 'Core' 'Examples' );
-            group: 'dev' with: #( 'Core' 'Examples' 'Environment' 'Tests' );
+            group: 'dev' with: #( 'Core' 'Examples' 'Environment' 'Kotlin' 'Tests' );
             group: 'CI' with: #( 'dev' ) ]
 ]
 

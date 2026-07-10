@@ -1,0 +1,220 @@
+{
+  "BlogPost.kt": {
+    "package": "pl.klibert.klibgen.core",
+    "imports": [
+      { "path": "arrow.optics.optics", "wildcard": false, "alias": null },
+      { "path": "kotlinx.collections.immutable.PersistentList", "wildcard": false, "alias": null },
+      { "path": "kotlinx.collections.immutable.persistentListOf", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.SerialName", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.Serializable", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.json.Json", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.json.JsonElement", "wildcard": false, "alias": null }
+    ],
+    "declarations": [
+      {
+        "declarationKind": "type",
+        "kind": "class",
+        "name": "BlogPost",
+        "modifiers": [ "data" ],
+        "annotations": [ "Serializable", "optics" ],
+        "typeParameters": "",
+        "parameters": [
+          { "name": "schemaVersion", "type": "Int", "property": "val" },
+          { "name": "slug", "type": "String", "property": "val" },
+          { "name": "metadata", "type": "PostMetadata", "property": "val" },
+          { "name": "nodes", "type": "PersistentList<PostNode>", "property": "val" }
+        ],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "type", "kind": "object", "name": "companion", "modifiers": [ "companion" ], "annotations": [], "typeParameters": "", "parameters": [], "supertypes": [], "declarations": [] }
+        ]
+      },
+      {
+        "declarationKind": "type",
+        "kind": "class",
+        "name": "PostMetadata",
+        "modifiers": [ "data" ],
+        "annotations": [ "Serializable", "optics" ],
+        "typeParameters": "",
+        "parameters": [
+          { "name": "title", "type": "String", "property": "val" },
+          { "name": "publication", "type": "PublicationState", "property": "val" },
+          { "name": "author", "type": "Author?", "property": "val" },
+          { "name": "summary", "type": "String?", "property": "val" },
+          { "name": "canonicalUrl", "type": "String?", "property": "val" },
+          { "name": "tags", "type": "PersistentList<String>", "property": "val" },
+          { "name": "legacyIds", "type": "PersistentList<String>", "property": "val" }
+        ],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "type", "kind": "object", "name": "companion", "modifiers": [ "companion" ], "annotations": [], "typeParameters": "", "parameters": [], "supertypes": [], "declarations": [] }
+        ]
+      },
+      {
+        "declarationKind": "type",
+        "kind": "class",
+        "name": "Author",
+        "modifiers": [ "data" ],
+        "annotations": [ "Serializable", "optics" ],
+        "typeParameters": "",
+        "parameters": [
+          { "name": "name", "type": "String", "property": "val" },
+          { "name": "email", "type": "String?", "property": "val" },
+          { "name": "url", "type": "String?", "property": "val" }
+        ],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "type", "kind": "object", "name": "companion", "modifiers": [ "companion" ], "annotations": [], "typeParameters": "", "parameters": [], "supertypes": [], "declarations": [] }
+        ]
+      },
+      {
+        "declarationKind": "type",
+        "kind": "interface",
+        "name": "PublicationState",
+        "modifiers": [ "sealed" ],
+        "annotations": [ "Serializable" ],
+        "typeParameters": "",
+        "parameters": [],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "type", "kind": "object", "name": "Draft", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"draft\")" ], "typeParameters": "", "parameters": [], "supertypes": [ "PublicationState" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "Published", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"published\")" ], "typeParameters": "", "parameters": [ { "name": "publishedAt", "type": "String", "property": "val" }, { "name": "updatedAt", "type": "String?", "property": "val" } ], "supertypes": [ "PublicationState" ], "declarations": [] }
+        ]
+      },
+      {
+        "declarationKind": "type",
+        "kind": "class",
+        "name": "HtmlAttribute",
+        "modifiers": [ "data" ],
+        "annotations": [ "Serializable", "optics" ],
+        "typeParameters": "",
+        "parameters": [
+          { "name": "name", "type": "String", "property": "val" },
+          { "name": "value", "type": "String", "property": "val" }
+        ],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "type", "kind": "object", "name": "companion", "modifiers": [ "companion" ], "annotations": [], "typeParameters": "", "parameters": [], "supertypes": [], "declarations": [] }
+        ]
+      },
+      {
+        "declarationKind": "type",
+        "kind": "interface",
+        "name": "PostNode",
+        "modifiers": [ "sealed" ],
+        "annotations": [ "Serializable" ],
+        "typeParameters": "",
+        "parameters": [],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "type", "kind": "class", "name": "RawSource", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"raw_source\")" ], "typeParameters": "", "parameters": [ { "name": "format", "type": "String", "property": "val" }, { "name": "source", "type": "String", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "DomFragment", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"dom_fragment\")" ], "typeParameters": "", "parameters": [ { "name": "tagName", "type": "String", "property": "val" }, { "name": "attributes", "type": "PersistentList<HtmlAttribute>", "property": "val" }, { "name": "children", "type": "PersistentList<PostNode>", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "MyImage", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"my_img\")" ], "typeParameters": "", "parameters": [ { "name": "src", "type": "String", "property": "val" }, { "name": "alt", "type": "String", "property": "val" }, { "name": "caption", "type": "String?", "property": "val" }, { "name": "attributes", "type": "PersistentList<HtmlAttribute>", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "FootnoteReference", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"footnote_ref\")" ], "typeParameters": "", "parameters": [ { "name": "id", "type": "String", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "FootnoteDefinition", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"footnote_def\")" ], "typeParameters": "", "parameters": [ { "name": "id", "type": "String", "property": "val" }, { "name": "content", "type": "PersistentList<PostNode>", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "Heading", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"heading\")" ], "typeParameters": "", "parameters": [ { "name": "level", "type": "Int", "property": "val" }, { "name": "id", "type": "String?", "property": "val" }, { "name": "content", "type": "PersistentList<PostNode>", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "Section", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"section\")" ], "typeParameters": "", "parameters": [ { "name": "heading", "type": "Heading?", "property": "val" }, { "name": "content", "type": "PersistentList<PostNode>", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "Text", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"text\")" ], "typeParameters": "", "parameters": [ { "name": "value", "type": "String", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] },
+          { "declarationKind": "type", "kind": "class", "name": "UnknownLegacyNode", "modifiers": [ "data" ], "annotations": [ "Serializable", "SerialName(\"unknown_legacy\")" ], "typeParameters": "", "parameters": [ { "name": "name", "type": "String", "property": "val" }, { "name": "payload", "type": "JsonElement?", "property": "val" } ], "supertypes": [ "PostNode" ], "declarations": [] }
+        ]
+      },
+      {
+        "declarationKind": "type",
+        "kind": "object",
+        "name": "BlogPostJson",
+        "modifiers": [],
+        "annotations": [],
+        "typeParameters": "",
+        "parameters": [],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "function", "name": "encode", "receiver": null, "modifiers": [], "annotations": [], "parameters": [ { "name": "post", "type": "BlogPost", "property": null } ], "returnType": "String" },
+          { "declarationKind": "function", "name": "decode", "receiver": null, "modifiers": [], "annotations": [], "parameters": [ { "name": "source", "type": "String", "property": null } ], "returnType": "BlogPost" }
+        ]
+      }
+    ]
+  },
+  "CoreSmoke.kt": {
+    "package": "pl.klibert.klibgen.core",
+    "imports": [],
+    "declarations": [
+      { "declarationKind": "function", "name": "main", "receiver": null, "modifiers": [], "annotations": [], "parameters": [], "returnType": "" }
+    ]
+  },
+  "GraalPythonSmoke.kt": {
+    "package": "pl.klibert.klibgen.core",
+    "imports": [
+      { "path": "org.graalvm.polyglot.Context", "wildcard": false, "alias": null }
+    ],
+    "declarations": [
+      {
+        "declarationKind": "type",
+        "kind": "object",
+        "name": "GraalPythonSmoke",
+        "modifiers": [],
+        "annotations": [],
+        "typeParameters": "",
+        "parameters": [],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "function", "name": "evaluateIntExpression", "receiver": null, "modifiers": [], "annotations": [], "parameters": [ { "name": "source", "type": "String", "property": null } ], "returnType": "Int" }
+        ]
+      }
+    ]
+  },
+  "PersistentListSerializers.kt": {
+    "package": "pl.klibert.klibgen.core",
+    "imports": [
+      { "path": "kotlinx.collections.immutable.PersistentList", "wildcard": false, "alias": null },
+      { "path": "kotlinx.collections.immutable.toPersistentList", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.KSerializer", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.builtins.ListSerializer", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.descriptors.SerialDescriptor", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.encoding.Decoder", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.encoding.Encoder", "wildcard": false, "alias": null },
+      { "path": "kotlinx.serialization.serializer", "wildcard": false, "alias": null }
+    ],
+    "declarations": [
+      {
+        "declarationKind": "type",
+        "kind": "class",
+        "name": "PersistentListSerializer",
+        "modifiers": [ "open" ],
+        "annotations": [],
+        "typeParameters": "<T>",
+        "parameters": [
+          { "name": "elementSerializer", "type": "KSerializer<T>", "property": null }
+        ],
+        "supertypes": [ "KSerializer<PersistentList<T>>" ],
+        "declarations": [
+          { "declarationKind": "function", "name": "serialize", "receiver": null, "modifiers": [ "override" ], "annotations": [], "parameters": [ { "name": "encoder", "type": "Encoder", "property": null }, { "name": "value", "type": "PersistentList<T>", "property": null } ], "returnType": "" },
+          { "declarationKind": "function", "name": "deserialize", "receiver": null, "modifiers": [ "override" ], "annotations": [], "parameters": [ { "name": "decoder", "type": "Decoder", "property": null } ], "returnType": "PersistentList<T>" }
+        ]
+      },
+      { "declarationKind": "type", "kind": "object", "name": "StringListSerializer", "modifiers": [], "annotations": [], "typeParameters": "", "parameters": [], "supertypes": [ "PersistentListSerializer<String>" ], "declarations": [] },
+      { "declarationKind": "type", "kind": "object", "name": "HtmlAttributeListSerializer", "modifiers": [], "annotations": [], "typeParameters": "", "parameters": [], "supertypes": [ "PersistentListSerializer<HtmlAttribute>" ], "declarations": [] },
+      { "declarationKind": "type", "kind": "object", "name": "PostNodeListSerializer", "modifiers": [], "annotations": [], "typeParameters": "", "parameters": [], "supertypes": [ "PersistentListSerializer<PostNode>" ], "declarations": [] }
+    ]
+  },
+  "SampleBlogPosts.kt": {
+    "package": "pl.klibert.klibgen.core",
+    "imports": [
+      { "path": "kotlinx.collections.immutable.persistentListOf", "wildcard": false, "alias": null }
+    ],
+    "declarations": [
+      {
+        "declarationKind": "type",
+        "kind": "object",
+        "name": "SampleBlogPosts",
+        "modifiers": [],
+        "annotations": [],
+        "typeParameters": "",
+        "parameters": [],
+        "supertypes": [],
+        "declarations": [
+          { "declarationKind": "function", "name": "representative", "receiver": null, "modifiers": [], "annotations": [], "parameters": [], "returnType": "BlogPost" }
+        ]
+      }
+    ]
+  }
+}
