@@ -31,6 +31,8 @@ KlibGenGt package map:
   - {{gtClass:KGScratchPadScripts}} - Scratchpad entry points for exploratory project scripts.
 - Environment
   - {{gtClass:KGCheckTypePragmas}} - Validates documentation type expressions in class comments and pragmas.
+- DB
+  - {{gtClass:KGSQLite3Examples}} - Provides staged diagnostics and examples for SQLite3 library operations.
 - Kotlin
   - {{gtClass:KGKotlinFile}} - Root AST node for one parsed Kotlin source file.
   - {{gtClass:KGKotlinImport}} - AST node for one Kotlin import directive.
@@ -47,6 +49,7 @@ KlibGenGt package map:
   - {{gtClass:KGHtmlParserTest}} - Tests for the simplified HTML and legacy code-block parsers.
   - {{gtClass:KGLegacyPostTransformerTest}} - Tests for the legacy post transformation rules.
   - {{gtClass:KGCheckTypePragmasTest}} - Tests for the documentation type checker.
+  - {{gtClass:KGSQLite3ExamplesTest}} - Exercises SQLite3 diagnostics and round trips through the project baseline.
   - {{gtClass:KGKotlinParserTest}} - Tests for the Kotlin sample parser and fixture comparison.
 "
 Class {

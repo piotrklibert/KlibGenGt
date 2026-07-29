@@ -24,8 +24,38 @@ KGCheckTypePragmasTest >> testRejectsLegacyReturnsPragma [
 	[
 		results := KGCheckTypePragmas new inClass: self class.
 		self assert: (results anySatisfy: [ :each |
-			(each at: #source) includesSubstring: 'kgLegacyReturnsProbe' ])
+			((each at: #source) includesSubstring: 'kgLegacyReturnsProbe')
+				and: [ (each at: #valid) not ] ])
 	] ensure: [ self class removeSelector: #kgLegacyReturnsProbe ]
+]
+
+{ #category : 'tests' }
+KGCheckTypePragmasTest >> testInPackageIncludesExtensionMethods [
+	| results |
+	results := KGCheckTypePragmas new inPackage: 'KlibGenGt-Core'.
+	self assert: (results anySatisfy: [ :each |
+		(each at: #source) includesSubstring: 'Object>>#kgInfo' ])
+]
+
+{ #category : 'tests' }
+KGCheckTypePragmasTest >> testProjectTypeAnnotationsAreValid [
+	| results invalid description |
+	results := KGCheckTypePragmas new inProject.
+	invalid := results reject: [ :each | each at: #valid ].
+	description := String streamContents: [ :stream |
+		stream nextPutAll: 'Invalid documentation type annotations:'; lf.
+		invalid do: [ :each |
+			stream
+				nextPutAll: (each at: #class) asString;
+				nextPutAll: ' | ';
+				nextPutAll: (each at: #source);
+				nextPutAll: ' | ';
+				nextPutAll: (each at: #type);
+				nextPutAll: ' | ';
+				nextPutAll: (each at: #message);
+				lf ] ].
+	self deny: results isEmpty.
+	self assert: invalid isEmpty description: description
 ]
 
 { #category : 'tests' }

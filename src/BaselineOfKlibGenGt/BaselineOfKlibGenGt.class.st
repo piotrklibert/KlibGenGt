@@ -11,7 +11,15 @@ BaselineOfKlibGenGt >> baseline: spec [
 
     spec for: #common do: [
         spec
+            baseline: 'SQLite3' with: [
+                spec
+                    repository: 'github://pharo-rdbms/Pharo-SQLite3:master/src';
+                    loads: 'Core' ].
+
+        spec
             package: 'KlibGenGt-Core';
+            package: 'KlibGenGt-DB' with: [
+                spec requires: #( 'KlibGenGt-Core' 'SQLite3' ) ];
             package: 'KlibGenGt-Examples' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Environment' with: [
@@ -19,16 +27,17 @@ BaselineOfKlibGenGt >> baseline: spec [
             package: 'KlibGenGt-Kotlin' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Tests' with: [
-                spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-Examples' 'KlibGenGt-Environment' 'KlibGenGt-Kotlin' ) ].
+                spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-DB' 'KlibGenGt-Examples' 'KlibGenGt-Environment' 'KlibGenGt-Kotlin' ) ].
 
         spec
             group: 'Core' with: #( 'KlibGenGt-Core' );
+            group: 'DB' with: #( 'KlibGenGt-DB' );
             group: 'Examples' with: #( 'KlibGenGt-Examples' );
             group: 'Environment' with: #( 'KlibGenGt-Environment' );
             group: 'Kotlin' with: #( 'KlibGenGt-Kotlin' );
             group: 'Tests' with: #( 'KlibGenGt-Tests' );
-            group: 'default' with: #( 'Core' 'Examples' );
-            group: 'dev' with: #( 'Core' 'Examples' 'Environment' 'Kotlin' 'Tests' );
+            group: 'default' with: #( 'Core' 'DB' 'Examples' );
+            group: 'dev' with: #( 'Core' 'DB' 'Examples' 'Environment' 'Kotlin' 'Tests' );
             group: 'CI' with: #( 'dev' ) ]
 ]
 

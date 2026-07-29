@@ -4,13 +4,15 @@ Validate KlibGenGt documentation type expressions in class comments and method p
 - Slots
   - none
 - Public API
-  - {{gtMethod:KGCheckTypePragmas>>#inClass:}} 
+  - {{gtMethod:KGCheckTypePragmas>>#inClass:}}
     Validate slot type comments and method type pragmas for one class.
-  - {{gtMethod:KGCheckTypePragmas>>#inPackage:}} 
-    Validate all defined classes in one package, excluding extension methods.
-  - {{gtMethod:KGCheckTypePragmas>>#validateTypeLiteral:}} 
+  - {{gtMethod:KGCheckTypePragmas>>#inPackage:}}
+    Validate all defined classes and extension methods in one package.
+  - {{gtMethod:KGCheckTypePragmas>>#inProject}}
+    Validate every loaded package whose name starts with `KlibGenGt-`.
+  - {{gtMethod:KGCheckTypePragmas>>#validateTypeLiteral:}}
     Validate a compiled pragma type literal.
-  - {{gtMethod:KGCheckTypePragmas>>#validateTypeString:}} 
+  - {{gtMethod:KGCheckTypePragmas>>#validateTypeString:}}
     Validate a slot type string from a class comment.
 "
 Class {
@@ -44,17 +46,33 @@ KGCheckTypePragmas >> inClass: aClass [
 KGCheckTypePragmas >> inPackage: aPackageOrName [
 	<arg: #aPackageOrName type: #(RPackage | String | Symbol)>
 	<return: #(OrderedCollection<Dictionary>)>
-	| package |
+	| package results |
 	package := aPackageOrName isString
 		ifTrue: [ RPackageOrganizer default packageNamed: aPackageOrName ]
 		ifFalse: [
 			aPackageOrName isSymbol
 				ifTrue: [ RPackageOrganizer default packageNamed: aPackageOrName asString ]
 				ifFalse: [ aPackageOrName ] ].
-	^ package definedClasses
+	results := package definedClasses
 		inject: OrderedCollection new
 		into: [ :results :class |
 			results addAll: (self inClass: class).
+			results ].
+	package extensionMethods do: [ :method |
+		self addMethodPragmaResultsFor: method in: method methodClass to: results ].
+	^ results
+]
+
+{ #category : 'checking' }
+KGCheckTypePragmas >> inProject [
+	<return: #(OrderedCollection<Dictionary>)>
+	| packages |
+	packages := RPackageOrganizer default packages select: [ :package |
+		package name asString beginsWith: 'KlibGenGt-' ].
+	^ packages
+		inject: OrderedCollection new
+		into: [ :results :package |
+			results addAll: (self inPackage: package).
 			results ]
 ]
 
@@ -158,7 +176,7 @@ KGCheckTypePragmas >> resultFor: aClass source: sourceString type: typeString va
 	<arg: #typeString type: #String>
 	<arg: #aBoolean type: #Boolean>
 	<arg: #messageString type: #String>
-	<return: #Dictionary>
+	<return: #(Dictionary<Symbol, Any>)>
 	^ OrderedDictionary new
 		at: #class put: aClass name;
 		at: #source put: sourceString;

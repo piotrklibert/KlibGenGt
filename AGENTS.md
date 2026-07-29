@@ -60,7 +60,11 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
   - `<return: Type>` for the return type
   - `<arg: #argumentName type: Type>` for each argument.
   These pragmas are documentation for now; keep them accurate enough for a
-  future gradual type checker.
+  future gradual type checker. The type system will be a mixture between
+  Gradualtalk and mypy. We will support `Any` as a dynamic type compatible with
+  all other types. `Nothing` will be a bottom type. `nil` literal can be used as
+  alias for `UndefinedObject`. We will also provide union types, and syntactic
+  sugar for nullable (`(T | nil)`) types. 
   
 - IMPORTANT: type syntax in both slot comments and method pragmas is literal
   symbol or literal array of the following form:
@@ -82,7 +86,15 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
   - `#(ArgType1, ArgType2, ... -> ReturnType)` - multi-argument block type
   - `#(ArgType* -> ReturnType)` - equvalent to:
     `#((ArgType -> ReturnType) | (-> ReturnType))` - good for use with #cull:
-  
+  - NOTES:
+    - a parametric type without a type parameter in angle brackets is equivalent
+      to that type parameterized by `Any`
+    - if you know a type of element in a collection, state it; prefer
+      `Array<String>` to plain `Array`
+    - in general, prefer explicit type parameters when possible to infer
+
+- Always run `just check-type-pragmas` to use `KGCheckTypePragmas` to check the
+  syntax of type annotations after adding or modifying them.
   
 - Lepiter docs go under `lepiter/`.
 

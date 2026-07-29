@@ -33,11 +33,14 @@ test:
 test-fresh: push-src-to-export bootstrap
     ./scripts/test-fresh.sh
 
+check-type-pragmas: push-src-to-export
+    ./scripts/gt --headless ./scripts/check-type-pragmas.st
+
 smoke:
     ./scripts/gt --headless ./scripts/smoke.st
 
 eval expr:
-    GT_EVAL='{{expr}}' ./scripts/gt --headless ./scripts/eval.st
+    GT_EVAL={{quote(expr)}} ./scripts/gt --headless ./scripts/eval.st
 
 clean-runtime:
     rm -rf vendor/gt vendor/gt.zip vendor/gt.unpack vendor/gt-build/workspaces pharo-local gt-local *.image *.changes *.sources *.log *.fuel *.ombu *.bak

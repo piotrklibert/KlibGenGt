@@ -3,9 +3,16 @@
 gitDirectory := FileSystem workingDirectory / 'export' / '.git'.
 repositoryUrl := 'gitlocal://' , gitDirectory fullName , ':master/src'.
 
+IceRepository registry
+    detect: [ :repository | repository location fullName = gitDirectory parent fullName ]
+    ifFound: [ :repository | IceRepository registry remove: repository ]
+    ifNone: [ ].
+
 Metacello new
     baseline: 'KlibGenGt';
     repository: repositoryUrl;
+    onConflictUseIncoming;
+    get;
     load: 'CI'.
 
 projectClass := Smalltalk
