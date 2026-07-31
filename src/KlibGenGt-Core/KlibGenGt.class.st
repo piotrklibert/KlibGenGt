@@ -43,6 +43,11 @@ KlibGenGt package map:
   - {{gtClass:KGKotlinParameter}} - AST node for a Kotlin function or constructor parameter.
   - {{gtClass:KGKotlinGrammar}} - PetitParser2 entry grammar for Kotlin source text.
   - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
+- Tools
+  - {{gtClass:KGToolRunner}} - Dispatches structured CLI requests and normalizes image-tool responses.
+  - {{gtClass:KGCodeSearchTool}} - Searches loaded code and returns exact class or method definitions.
+  - {{gtClass:KGLepiterTool}} - Searches loaded Lepiter databases and exports pages as Markdown.
+  - {{gtClass:KGEvaluationTool}} - Evaluates Smalltalk expressions with structured errors and optional profiling.
 - Tests
   - {{gtClass:KlibGenGtTest}} - Basic project smoke tests.
   - {{gtClass:KGMethodArgCheckerTest}} - Tests for the method argument checker example.
@@ -51,6 +56,7 @@ KlibGenGt package map:
   - {{gtClass:KGCheckTypePragmasTest}} - Tests for the documentation type checker.
   - {{gtClass:KGSQLite3ExamplesTest}} - Exercises SQLite3 diagnostics and round trips through the project baseline.
   - {{gtClass:KGKotlinParserTest}} - Tests for the Kotlin sample parser and fixture comparison.
+  - {{gtClass:KGToolsTest}} - Tests structured code search, Lepiter access, evaluation, and profiling.
 "
 Class {
 	#name : 'KlibGenGt',

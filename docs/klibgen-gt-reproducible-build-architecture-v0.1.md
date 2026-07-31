@@ -1,6 +1,6 @@
 # KlibGen-GT reproducible layered build architecture
 
-**Status:** Initial implementation specification  
+**Status:** V1 implemented; deferred items remain explicitly marked TODO  
 **Version:** 0.1  
 **Audience:** Human maintainers and coding agents implementing the first version  
 **Scope:** Source code, repositories, versioning, images, layer construction, rebuilds, development snapshots, and build isolation

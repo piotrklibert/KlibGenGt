@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] Manage project alternatives with JJ workspaces.
-- [ ] Manage GT/dependency alternatives with Git worktrees.
-- [ ] Isolate artifacts, runs, logs, ports, overrides, and host state by context.
-- [ ] Implement pins, `clean-runs`, and manifest-aware `gc`.
-- [ ] Exercise every V1 acceptance scenario and document final behavior.
+- [x] Manage project alternatives with JJ workspaces.
+- [x] Manage GT/dependency alternatives with Git worktrees.
+- [x] Isolate artifacts, runs, logs, ports, overrides, and host state by context.
+- [x] Implement pins, `clean-runs`, and manifest-aware `gc`.
+- [x] Exercise every V1 acceptance scenario and document final behavior.
 
 ## Acceptance
 

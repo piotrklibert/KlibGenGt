@@ -26,8 +26,10 @@ BaselineOfKlibGenGt >> baseline: spec [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Kotlin' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
+            package: 'KlibGenGt-Tools' with: [
+                spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Tests' with: [
-                spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-DB' 'KlibGenGt-Examples' 'KlibGenGt-Environment' 'KlibGenGt-Kotlin' ) ].
+                spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-DB' 'KlibGenGt-Examples' 'KlibGenGt-Environment' 'KlibGenGt-Kotlin' 'KlibGenGt-Tools' ) ].
 
         spec
             group: 'Core' with: #( 'KlibGenGt-Core' );
@@ -35,9 +37,10 @@ BaselineOfKlibGenGt >> baseline: spec [
             group: 'Examples' with: #( 'KlibGenGt-Examples' );
             group: 'Environment' with: #( 'KlibGenGt-Environment' );
             group: 'Kotlin' with: #( 'KlibGenGt-Kotlin' );
+            group: 'Tools' with: #( 'KlibGenGt-Tools' );
             group: 'Tests' with: #( 'KlibGenGt-Tests' );
-            group: 'default' with: #( 'Core' 'DB' 'Examples' );
-            group: 'dev' with: #( 'Core' 'DB' 'Examples' 'Environment' 'Kotlin' 'Tests' );
+            group: 'default' with: #( 'Core' 'DB' 'Examples' 'Tools' );
+            group: 'dev' with: #( 'Core' 'DB' 'Examples' 'Environment' 'Kotlin' 'Tools' 'Tests' );
             group: 'CI' with: #( 'dev' ) ]
 ]
 

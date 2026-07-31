@@ -1,280 +1,420 @@
 # KlibGen-gt
 
-KlibGen-gt is a Glamorous Toolkit / Pharo Smalltalk project scaffolded for
-reproducible, source-controlled development. Smalltalk code is kept in Tonel
-format under `src/`, while mutable Glamorous Toolkit runtimes live under
-`vendor/` and are ignored by version control.
+KlibGen-gt is a Glamorous Toolkit / Pharo project with a reproducible,
+source-controlled image build. Tonel files and build definitions are the source
+of truth. Images are generated artifacts, and interactive images are writable
+runs or explicitly saved snapshots.
 
-This project is another rewrite and as such, has to support multiple legacy
-formats (or at least provide a migration path) used in previous versions of the
-software.
+The build follows
+[`docs/klibgen-gt-reproducible-build-architecture-v0.1.md`](docs/klibgen-gt-reproducible-build-architecture-v0.1.md).
+The staged implementation record is under [`docs/todo/`](docs/todo/).
 
-The project is just starting out, and aims to test the capabilities of moldable
-development paradigm as espoused by GToolkit.
+## Quick Start
 
-## Files, Images, and State
+The host needs `bash`, `just`, `uv`, `jj`, `git`, `sha256sum`, and `unzip`.
+The Linux desktop commands additionally use `xprop`, `xdotool`, and
+ImageMagick's `import`; `just doctor` checks all of them.
+Start by checking the selected context and resolved inputs:
 
-There are three separate layers of project state. Keeping them distinct avoids
-most confusion between image state and versioned source state.
+```sh
+just doctor default
+just resolve default
+just status default
+```
+
+Build and test the CLI project image, or open the GUI profile:
+
+```sh
+just build l06 default
+just test default
+just gui
+```
+
+`just gui` arms the writable run image to open its default `GtWorld` during GUI
+startup, then starts it with the normal `GlamorousToolkit --image ...`
+executable. Only the Glamorous Toolkit application window is opened. The `gui`
+recipe takes no context argument; use `just gui-context <context>` when an
+explicit alternative GUI context is required.
+
+The host-side coordinator is the Python project declared by `pyproject.toml`
+and locked by `uv.lock`. Every Python-backed recipe uses `uv run`, which creates
+or updates the ignored `.venv` before invoking the installed `klibgen-build`
+entry point. The `justfile` keeps uv's cache under ignored `tmp/uv-cache`.
+Process execution is implemented with Plumbum; add or update Python dependencies
+with `uv add`/`uv lock`, not with an unmanaged `pip install`.
+
+## Authoritative and Generated State
 
 | Path | Role | Versioned? |
 | --- | --- | --- |
-| `src/` | Canonical Tonel source for KlibGenGt and its baseline. | Yes, by the outer JuJutsu repository. |
-| `lepiter/`, `data/`, `docs/` | Tracked documentation, fixtures, and other non-image project data. | Yes, subject to `.gitignore`. |
-| `export/` | Iceberg-facing nested Git repository. Metacello loads its committed `master/src`, not `src/` directly and not an uncommitted export working tree. | No in the outer repository; it has its own ignored `.git/`. |
-| `vendor/gt/` | Unpacked downloaded GT runtime, including `GlamorousToolkit.image`, launchers, changes files, and runtime-local Iceberg clones. | No. |
-| `vendor/gt.zip` | Verified downloaded GT archive. It is also the seed used by `just test-fresh`. | No. |
-| `vendor/gt-build/sources/{clean,patched}/` | Local GT source checkouts and patch branches used for source builds. | No; deliberately preserved across `just clean-runtime`. |
-| `vendor/gt-build/workspaces/{clean,patched}/` | Complete source-built runtimes and their images. | No. |
-| `gt-local/<runtime>/` | Separate `HOME`, XDG config, and XDG cache directories used while running each selected runtime. | No. |
-| `artifacts/fresh-test/` | Runtime unpacked from `vendor/gt.zip` for the latest `just test-fresh` invocation. Replaced on every fresh test. | No. |
-| `tmp/` | Project-local temporary files and longer `just eval` snippets. | No. |
+| `src/` | Authoritative Tonel source and project baseline. | Yes, in the outer JJ repository. |
+| `python/klibgen_build/` | Installable host-side build coordinator used through `uv run`. | Yes. |
+| `build/layers/` | Stable L01-L07 definitions, scripts, contracts, and resources. | Yes. |
+| `build/contexts/` | Committed build selections such as `default`, `gui`, and `patched`. | Yes. |
+| `build/locks/` | Exact archive checksums and Git commit locks. | Yes. |
+| `lepiter/`, `data/`, `docs/` | Documentation, fixtures, and architecture records. | Yes. |
+| `export/` | Legacy/default-context Iceberg Git bridge used by compatibility commands. | No; it is a separate ignored Git repository. |
+| `vendor/gt*` | Downloaded runtime and local GT sources/workspaces. | No. |
+| `.klibgen/artifacts/` | Immutable canonical layer artifacts, keyed by platform, context, layer, and build key. | No. |
+| `.klibgen/runs/` | Writable per-command or GUI image copies and their isolated host state. | No. |
+| `.klibgen/snapshots/` | Immutable, resumable, non-canonical L06-tmp images. | No. |
+| `.klibgen/contexts/`, `.klibgen/workspaces/`, `.klibgen/worktrees/` | Generated context definitions and their JJ/Git working areas. | No. |
+| `artifacts/fresh-layered/` | Completely separate state root used by `just test-fresh`. | No. |
+| `tmp/` | Project-local temporary snippets and validation files. | No. |
 
-Images, changes files, logs, caches, downloads, and generated artifacts are
-disposable. Project code must be recoverable from `src/`; an image is never the
-source of truth.
+The outer repository uses JuJutsu. Do not use Git commands against its root.
+Git is used for deliberately nested repositories and upstream Git worktrees.
 
-## Source Synchronization
+## Layer Graph
 
-The outer repository and the Iceberg repository intentionally use different
-version-control systems:
+The canonical chain is:
 
 ```text
-outer JJ repository:  src/
-                         |
-                just push-src-to-export
-                         v
-ignored nested Git:   export/src/ -> commit on export/master
-                         |
-              gitlocal://.../export/.git:master/src
-                         v
-selected GT image:    classes loaded into the running image
+L01 runtime
+  -> L02 clean GT base image
+  -> L03 GT patch selection
+  -> L04 locked project dependencies
+  -> L05 CLI or GUI setup
+  -> L06 exact JJ project source
+  -> L07 DEV distribution
+
+L06 -> L06-tmp resumable snapshot (never an L07 parent)
 ```
 
-`just push-src-to-export` uses `rsync --delete` to make `export/src/` match
-`src/`, stages the result, and creates a `Sync src to export` commit when there
-are changes. The commit is required because `gitlocal://` reads committed Git
-contents. Before pushing, make sure `export/` does not contain GUI/Iceberg work
-that still needs to be pulled; pushing can overwrite it.
+Each layer key includes its definition, selected context data, parent key, lock
+data, platform, relevant source identity, and coordinator implementation. A
+matching successful artifact is reused. A changed ancestor key makes every
+descendant stale. Publication is locked and atomic; failed attempts stay under
+`.klibgen/tmp/attempt-*` with logs and a failed manifest, while an earlier
+successful artifact remains unchanged.
 
-After editing through GT and committing/file-out through Iceberg, copy the
-result back with:
+`just status-json <context>` reports expected keys, current artifact paths,
+available stale artifacts, runs, and snapshots. The human form is
+`just status <context>`.
+
+## How Project Code Is Loaded
+
+The normal layered workflow does not load the shared `export/` checkout.
+For L06 the coordinator:
+
+1. Lets JJ snapshot the selected workspace revision.
+2. Records its exact commit ID, change ID, workspace, changed paths, mutability,
+   and conflicts.
+3. Materializes `src/` from that exact commit into an isolated generated Git
+   bridge.
+4. Commits the bridge because Metacello `gitlocal://` reads committed Git data.
+5. Loads the baseline `CI` group and runs the L06 contract in a copied image.
+6. Removes the build bridge and publishes the image plus source mapping and
+   manifest as an immutable artifact.
+
+L04 loads Pharo-SQLite3 first from the locked upstream commit or from the
+context's explicit Git worktree override. L06 then loads KlibGenGt. Network
+access is needed when a locked source is not already cached by the runtime.
+
+Any command that executes Smalltalk creates a writable run copy of canonical
+L06. It gets its own image, generated bridge, `HOME`, XDG config/cache, logs,
+and temporary directory. Successful headless runs are removed; failed runs and
+GUI runs are retained for inspection.
+
+## Creating and Selecting Images
+
+Canonical images are created only when a requested layer is missing or stale:
 
 ```sh
-just pull-export-to-src
+just build l02 default
+just build l06 default
+just build l06 gui
+just build l07 default
 ```
 
-This uses `rsync --delete` in the opposite direction. Review and commit the
-result with `jj`. It does not create an outer JJ commit.
+Downstream commands build their required ancestors automatically. `just
+rebuild l06 default` performs a new isolated attempt for the same logical key;
+it does not overwrite an already published artifact.
 
-For direct filesystem development, the normal loop is:
+The context selects the runtime, GT patch, dependency override, setup profile,
+project workspace, and distribution profile. Common committed contexts are:
 
-```sh
-# Edit files under src/ and tests under src/*-Tests.
-just push-src-to-export
-just test
-```
+| Context | Selection |
+| --- | --- |
+| `default` | Downloaded GT, baseline L03, locked SQLite, CLI L05/L06, DEV L07. |
+| `gui` | Default inputs with GUI L05/L06. |
+| `source-clean` | Locally source-built clean GT with CLI project layers. |
+| `patched`, `patched-gui` | Local GT source build plus the declared headless WebView patch. |
+| `sqlite-local` | Explicit local Pharo-SQLite3 Git worktree override. |
+| `agentic` | Reserved AGENTIC profile; currently rejects execution. |
+| `release` | Reserved RELEASE profile; currently rejects packaging because production constraints are not implemented. |
 
-`just check-type-pragmas` and `just test-fresh` already depend on
-`push-src-to-export`. `just gui`, `just load`, `just test`, `just smoke`, and
-`just eval` do not push automatically; they load the current committed export
-revision.
+Select a context with the last recipe argument, for example `just test
+patched`. `GT_RUNTIME=build-clean` and `GT_RUNTIME=build-patched` remain
+compatibility selectors for `load`, `test`, `smoke`, `eval`, and `gui`; new
+automation should name the context directly.
 
-## Project Loading
-
-Every GUI or headless project-loading script uses the same sequence:
-
-1. Locate `export/.git` and construct
-   `gitlocal://<absolute-export-.git>:master/src`.
-2. Remove a stale Iceberg registration for that local export path, if present.
-3. Run Metacello `get` and then load the baseline's `CI` group, resolving
-   repository conflicts in favor of incoming committed contents.
-4. Let Metacello/Iceberg clone or update declared dependencies such as
-   Pharo-SQLite3. A network connection can therefore be required during load.
-
-The `CI` group currently includes all development packages and tests. Loading
-places those classes in the running image process. It does not copy from
-`src/`, and it does not make uncommitted `export/src/` changes visible.
-
-Headless commands load the project into memory, perform their action, and exit;
-they do not intentionally snapshot the selected runtime image. In particular,
-`just load` validates that the project and dependencies load, then quits. It
-does not create a new preloaded project image.
-
-`just gui` runs the same load before opening the interactive GT UI. Interactive
-image state can be changed or explicitly saved, but remains ignored and
-disposable. Persist project code through Iceberg and pull it back to `src/`.
-
-## Runtime Images
-
-The pinned runtime metadata lives in `.tool-versions-or-lock/`:
-
-- `gt-version`, `gt-linux-x86_64.url`, and `gt-linux-x86_64.sha256` select and
-  verify the downloaded Linux x86_64 archive.
-- `gt-installer-version`, `gt-installer-linux-x86_64.url`, and
-  `gt-installer-linux-x86_64.sha256` pin the installer used for source builds.
-
-Three runtime selectors are supported:
-
-| `GT_RUNTIME` | Image | How it is created |
-| --- | --- | --- |
-| `download` (default) | `vendor/gt/GlamorousToolkit.image` | `just bootstrap` or `just bootstrap-download` downloads, verifies, and unpacks the pinned archive. A matching version-and-loader marker allows reuse; a mismatch reinstalls it. |
-| `build-clean` | `vendor/gt-build/workspaces/clean/GlamorousToolkit.image` | `just bootstrap-build-clean` uses the pinned GT installer and local clean GT source checkouts. |
-| `build-patched` | `vendor/gt-build/workspaces/patched/GlamorousToolkit.image` | `just bootstrap-build-patched` seeds patched sources from clean sources when needed, applies local patches, builds, patches the image, and snapshots it. |
-
-Select a runtime per command:
-
-```sh
-GT_RUNTIME=download just gui
-GT_RUNTIME=build-clean just test
-GT_RUNTIME=build-patched just smoke
-GT_RUNTIME=build-patched just eval "1 + 2"
-```
-
-`scripts/gt` automatically bootstraps a selected runtime when its launcher or
-image is missing. An unknown selector fails with the allowed values. Each
-selector gets independent config/cache state under `gt-local/<runtime>/`.
-
-Source builds use the installer's current upstream source-build flow. Set
-`GT_SOURCE_VERSION` only when creating a source workspace and an explicit
-upstream version is needed:
-
-```sh
-GT_SOURCE_VERSION=<supported-version> just bootstrap-build-clean
-```
-
-An already complete workspace is reused, so changing `GT_SOURCE_VERSION` alone
-does not rebuild it. `fetch-gt-sources-clean` and `fetch-gt-sources-patched`
-only fetch all nested GT Git repositories; they do not merge, switch branches,
-or rebuild the runtime.
-
-The patched runtime changes WebView startup so GTK initialization is skipped in
-headless mode. This removes the known `Failed to initialize GTK` warning from
-that runtime's headless commands.
+The pinned downloaded runtime is installed by `just bootstrap`. Local source
+runtimes are prepared by `just bootstrap-build-clean` and
+`just bootstrap-build-patched`.
 
 ## Recreating Images
 
-To remove disposable runtime state and rebuild from the pinned inputs:
+Use a separate state root for a clean reconstruction without disturbing normal
+artifacts or named contexts:
 
 ```sh
-just clean-runtime
-just bootstrap
+KLIBGEN_STATE_ROOT=artifacts/rebuild-check just build l07 default
 ```
 
-`clean-runtime` removes the downloaded runtime and archive, both source-built
-workspaces, per-runtime `gt-local/` state, root-level Pharo artifacts, and the
-contents of `artifacts/`. It preserves `src/`, `export/`, the outer repository,
-`vendor/gt-build/sources/`, and the downloaded GT installer.
+The build starts at L01 and reconstructs every required image. `just
+test-fresh` is the standard final gate: it deletes `artifacts/fresh-layered/`,
+builds L01-L06 there from pinned inputs and the exact JJ source revision, and
+runs the project suite in an isolated run image.
 
-Recreate source-built images afterward with:
+`just clean-runtime` is a legacy acquisition cleanup. It removes downloaded or
+source-built runtime workspaces and legacy `artifacts/` contents, but it does
+not manage `.klibgen/` named contexts. Use `just clean-runs <context>` for
+stopped runs and `just gc` for unreferenced canonical artifacts and old failed
+attempts.
+
+## GUI Runs and Snapshots
 
 ```sh
-just bootstrap-build-clean
-just bootstrap-build-patched
+just gui
 ```
 
-`just test-fresh` is different from selecting a runtime. It always:
+This creates `.klibgen/runs/gui/<run-id>/`, binds Iceberg to that run's
+generated bridge, installs an image-local GUI startup action, snapshots that
+preparation, and launches the GUI sibling of the CLI runtime as
+`GlamorousToolkit --image <run-image>`. Headless layer snapshots can retain a
+GT world whose Morphic host no longer has a native window, so the startup action
+opens a fresh default GT world and closes that stale serialized world. This
+happens early enough to suppress Morphic's fallback world. Closing that fresh
+world quits the disposable image, allowing the foreground `just gui` command to
+return normally. Bundled `gt-extra`
+documentation is part of L02, and the host's `~/Documents/lepiter` is copied
+into the disposable run HOME so the normal GT home opens with the GT Book and a
+writable, isolated copy of the local knowledge base. Saving the image
+changes only the run copy. The run metadata records both preparation and GUI
+commands, its PID, arguments, logs, resources, L06 parent, and exact JJ source
+identity.
 
-1. Pushes `src/` to committed `export/master`.
-2. Ensures the downloaded runtime/archive exists through `just bootstrap`.
-3. Deletes and recreates `artifacts/fresh-test/`.
-4. Unpacks a new runtime from `vendor/gt.zip`.
-5. Uses isolated home/config/cache directories under `artifacts/fresh-test/`.
-6. Loads the project and dependencies and runs the SUnit suite.
+After the GUI process stops:
 
-`GT_RUNTIME` does not affect `just test-fresh`; it always tests the downloaded
-archive in a disposable directory. The extracted directory remains for
-inspection after the run but is deleted at the start of the next fresh test.
+```sh
+just snapshot <run-id>
+just resume <snapshot-id>
+just discard <run-or-snapshot-id>
+```
+
+`snapshot` creates an immutable L06-tmp bundle and records its image checksum,
+parent L06 key, JJ commit/change IDs, timestamps, and bridge changes. `resume`
+creates a new writable run from it. Snapshots are never considered by the L07
+builder.
+
+Promote only explicit packages from a run or snapshot:
+
+```sh
+just promote <run-or-snapshot-id> KlibGenGt-Core default
+just promote <id> KlibGenGt-Core,KlibGenGt-Tests default
+```
+
+Promotion refuses a package with no bridge changes and refuses to overwrite a
+package that changed in the authoritative JJ workspace since the run was
+created. V1 promotion targets the root JJ workspace and `KlibGenGt-*` packages.
+Review the resulting JJ working-copy change and rebuild L06 normally.
+
+## Alternative Contexts
+
+Create a generated context with a real JJ workspace:
+
+```sh
+just context-create issue-142 @ default
+just doctor issue-142
+just build l06 issue-142
+```
+
+Attach an upstream Git worktree at an exact revision:
+
+```sh
+just worktree-add issue-142 sqlite3 /path/to/Pharo-SQLite3 <commit>
+just worktree-add issue-142 gt /path/to/gtoolkit <commit>
+```
+
+The worktree is detached and context-local. Its exact commit, dirty paths, and
+dirty content digest affect the layer key. Remove clean worktrees and the JJ
+workspace explicitly:
+
+```sh
+just worktree-remove issue-142 sqlite3
+just context-remove issue-142
+```
+
+Context removal refuses active runs, snapshots, and attached worktrees. Builds,
+runs, host state, logs, locks, and worktrees are separated by context. Artifact
+publication also uses per-context/per-key file locks.
+
+Pin a current artifact before retention cleanup when it must remain available:
+
+```sh
+just pin default l07 demo-build
+just gc
+just unpin demo-build
+```
+
+GC preserves artifacts selected by current contexts, snapshot parents, and
+explicit pins.
 
 ## Commands
 
-All common operations go through `just`:
-
 | Command | Effect |
 | --- | --- |
-| `just bootstrap` | Alias for `bootstrap-download`. |
-| `just bootstrap-download` | Ensure the pinned downloaded runtime is installed in `vendor/gt`. |
-| `just bootstrap-build-clean` | Build/reuse the clean source runtime. |
-| `just bootstrap-build-patched` | Build/reuse the patched source runtime. |
-| `just fetch-gt-sources-clean` | Fetch every nested Git repository in the clean GT sources. |
-| `just fetch-gt-sources-patched` | Fetch every nested Git repository in the patched GT sources. |
-| `just push-src-to-export` | Mirror `src/` to `export/src/` and commit the nested Git repository. |
-| `just pull-export-to-src` | Mirror the export working tree back to `src/`. |
-| `just gui` | Load `CI` from committed export and launch interactive GT. |
-| `just load` | Load `CI` headlessly and exit. |
-| `just test` | Load `CI` in the selected existing runtime, run `KlibGenGt-Tests`, and exit nonzero on failure. Does not push first. |
-| `just test-fresh` | Push, unpack a fresh downloaded runtime, load, and test. |
-| `just check-type-pragmas` | Push, load, run `KGCheckTypePragmas`, and exit nonzero on invalid annotations. |
-| `just smoke` | Load and verify the project anchor class/name. |
-| `just eval "..."` | Load `CI`, compile one Smalltalk do-it, print its result with `printString`, and exit. |
-| `just clean-runtime` | Delete disposable images, workspaces, caches, and artifacts as described above. |
+| `just doctor [context]` | Validate tools, state root, JJ workspace, and configured Git worktrees. |
+| `just resolve [context]` | Verify committed immutable locks; `resolve-update` explicitly updates movable resolutions. |
+| `just status [context]` | Explain current, stale, and missing layers plus runs and snapshots. |
+| `just build <layer> [context]` | Build/reuse the requested canonical layer and its ancestors. |
+| `just load [context]` | Build and validate canonical L06 without making a persistent run. |
+| `just test [context]` | Run `KlibGenGt-Tests` in an isolated L06 run. |
+| `just test-fresh [context]` | Rebuild in the disposable fresh state root and run tests. |
+| `just check-type-pragmas [context]` | Run `KGCheckTypePragmas` in an isolated run. |
+| `just smoke [context]` | Verify the loaded project anchor and identity. |
+| `just eval "..." [profile] [context]` | Evaluate one Smalltalk do-it in an isolated CLI run. |
+| `just windows [title-regex]` | List visible managed windows with IDs, PIDs, geometry, titles, and process commands. |
+| `just screenshot [title-regex]` | Capture one matching window under ignored `tmp/screenshots/`. |
+| `just code-search`, `code-class`, `code-method` | Search loaded code or dump exact class and method definitions. |
+| `just lepiter-search`, `lepiter-export` | Search loaded Lepiter databases or export a page as Markdown. |
+| `just profile "<shell command>"` | Run a shell command with elapsed and child CPU timing. |
+| `just gui` | Create a GUI-context run and open Glamorous Toolkit. |
+| `just gui-context <context>` | Open an explicit alternative GUI context. |
+| `just build l07 default` | Produce the self-contained DEV launcher/image bundle and checksums. |
+| `just snapshot`, `resume`, `discard`, `promote` | Manage non-canonical development state and selected source changes. |
+| `just context-*`, `worktree-*` | Manage generated JJ workspaces and Git overrides. |
+| `just clean-runs`, `pin`, `unpin`, `gc` | Manage retention without mutating canonical artifacts. |
 
-## `just eval`
+## Host and Image Tools
 
-`just eval` loads the complete `CI` group before compiling the supplied code,
-so project and dependency classes are available. The code is passed through the
-`GT_EVAL` environment variable to `Smalltalk compiler evaluate:`. The returned
-object is printed using `printString`. Compiler errors and runtime exceptions
-make the command fail and print a Pharo stack.
+The installed Python CLI is the complete interface; the `just` recipes above
+are shortcuts for common calls. Host tools use a backend-neutral Python API.
+The current backend supports Linux X11/XWayland sessions and reports a clear
+error when `$DISPLAY` is unavailable.
 
-The expression must be exactly one shell argument. This works:
+```sh
+uv run klibgen-build host windows list --json | jq '.data.windows[]'
+uv run klibgen-build host windows wait --for present \
+  --title-regex '^Glamorous Toolkit$' --timeout 15
+uv run klibgen-build host windows screenshot \
+  --title-regex '^Glamorous Toolkit$'
+uv run klibgen-build host processes list --command-regex GlamorousToolkit
+uv run klibgen-build host profile -- sleep 0.1
+```
+
+The direct `host profile -- COMMAND ...` form preserves an exact argument
+vector. The convenience recipe accepts one quoted shell command, for example
+`just profile "sleep 0.1"`.
+
+Window selectors can combine `--id`, `--pid`, `--title-regex`, and
+`--command-regex`. List and wait commands may return several clients; focus,
+screenshot, and close require exactly one match and report candidates when a
+selector is ambiguous. The X11 backend starts from the window manager's client
+list, avoiding duplicate frame/decorator windows. Close activates the real
+client, sends `Alt+F4`, and waits for it to disappear. Process termination is
+available as `host processes terminate`, but requires an explicit `--pid`;
+`--force` permits `SIGKILL` only after the graceful timeout.
+
+Screenshots default to `tmp/screenshots/<timestamp>-<window-id>.png`; pass
+`--output` to choose another path. Host profiling uses a monotonic wall clock
+and POSIX child resource counters. It currently reports wall, user CPU, system
+CPU, and exit status, not allocation or per-thread data. Without `--json`, the
+child inherits stdout/stderr and the timing summary goes to stderr. With
+`--json`, decoded child output and metrics are returned in one document.
+
+Image tools create the same disposable L06 CLI runs as tests and eval. Python
+passes a JSON request through the environment; `KGToolRunner` dispatches it in
+`KlibGenGt-Tools`, and `STONJSON` writes exactly one UTF-8 JSON response. This
+is JSON, a STON-supported representation, rather than general STON syntax, so
+it is directly consumable by `jq`. Successful runs are deleted. Failed runs
+are retained and their path is included in the error response.
+
+```sh
+uv run klibgen-build image code search KlibGenGt --kind all --json \
+  | jq '.data.results[]'
+uv run klibgen-build image code class KlibGenGt
+uv run klibgen-build image code method KlibGenGt projectName --side class
+uv run klibgen-build image lepiter search 'Class definition' --in text --json
+uv run klibgen-build image lepiter export --uid PAGE_UID
+uv run klibgen-build image eval --profile '10000 factorial digitSum' --json
+```
+
+Code search covers classes and methods and supports `--package` and `--limit`.
+Class and method dump commands emit only Tonel definition/source text unless
+`--json` is requested. Lepiter search covers every database loaded in the run
+by default, including the copied local database and the GT Book. Repeat
+`--database NAME` to restrict it. Results carry the database name, page UID,
+title, and preview. Export accepts exactly one `--uid` or exact `--title` and
+emits only Markdown in text mode; ambiguous titles fail with candidate UIDs.
+
+Image eval also accepts `--file PATH` or `--stdin` instead of a positional
+expression. Structured failures include the compile/runtime category,
+exception class, message, bounded Smalltalk stack, and retained run path.
+`--profile` uses `AndreasSystemProfiler` and adds its elapsed time, sample
+count, and expandable text report.
+
+## `just eval` Escaping
+
+`just eval` builds/loads CLI L06 and uses `GT_EVAL` only between the recipe and
+the Python coordinator. Python JSON-encodes the already parsed expression for
+the image bridge; no shell reparses it. The image evaluates it with `Smalltalk
+compiler evaluate:` and prints the result with `printString`. Compiler errors
+and runtime exceptions fail with the structured diagnostics described above.
+
+The expression must reach `just` as exactly one shell argument:
 
 ```sh
 just eval "1 + 2"
-```
-
-This does not, because the shell gives `just` three arguments and `just` starts
-interpreting the extra words as recipe names:
-
-```sh
-just eval 1 + 2
-```
-
-The recipe uses `just`'s `quote()` function, so single quotes and newlines that
-reach `just` are safely preserved when `GT_EVAL` is assigned. Normal Smalltalk
-string literals therefore work without recipe-specific escaping:
-
-```sh
 just eval "'hello world'"
 just eval "'can''t' size"
 just eval "Dictionary new at: #answer put: 42; yourself"
 just eval "| value | value := 40. value + 2"
 ```
 
-The caller's shell still processes the argument before `just` sees it. With
-double-quoted shell arguments, escape shell-sensitive `$`, backticks, command
-substitution, backslashes where applicable, and literal double quotes. For
-example, Smalltalk's character literal `$A` must escape the dollar from the
-shell:
+This is invalid because the shell supplies three arguments:
+
+```sh
+just eval 1 + 2
+```
+
+The recipe applies `just`'s `quote()` to the already parsed argument, so quotes
+and newlines that reach `just` are preserved. The caller's shell still expands
+double-quoted `$`, backticks, command substitutions, backslashes, and double
+quotes. Escape Smalltalk character literals in a double-quoted shell argument:
 
 ```sh
 just eval "'A' first = \$A"
 ```
 
 Shell single quotes protect `$` and backticks but cannot directly contain a
-single quote, which makes them inconvenient for Smalltalk strings. Bash and zsh
-ANSI-C quoting is useful for a short multiline do-it:
+single quote. Bash/zsh ANSI-C quoting is convenient for short multiline code:
 
 ```sh
 just eval $'| value |\nvalue := \'hello\'.\nvalue size'
 ```
 
-For longer or quote-heavy code, put the do-it in ignored `tmp/` and pass its
-contents as one double-quoted command-substitution result:
+For long or quote-heavy code, use an ignored file under `tmp/` and pass its
+contents as one argument:
 
 ```sh
 just eval "$(cat ./tmp/eval.st)"
 ```
 
-Command substitution removes trailing newlines, which does not affect a normal
-do-it. The file must contain code accepted by `Smalltalk compiler evaluate:`,
-not a Tonel class definition or an arbitrary `.st` file-in. Temporary class or
-method changes made by an eval exist only in that headless process unless the
-code explicitly writes them elsewhere; filesystem/database/network side
-effects naturally persist.
+Command substitution removes trailing newlines. The file must contain one
+do-it accepted by `Smalltalk compiler evaluate:`, not a Tonel definition or a
+general `.st` file-in. Image mutations disappear with the successful run;
+external filesystem, database, or network side effects naturally persist.
 
-## Versioning
+## Legacy Export Compatibility
 
-The outer project uses JuJutsu (`jj`). Do not run Git commands against the
-project root. Git is used only inside deliberately nested repositories such as
-`export/` and Iceberg dependency checkouts.
+`just push-src-to-export` and `just pull-export-to-src` remain
+default-context compatibility wrappers for direct use of the shared ignored
+`export/` Iceberg repository. `push` mirrors `src/` into `export/src/` and
+commits it because `gitlocal://` ignores an uncommitted working tree. `pull`
+mirrors the export working tree back into authoritative `src/`.
+
+The layered `build`, `test`, `eval`, and `gui` commands do not depend on this
+shared bridge. They generate an exact-revision bridge per build or run, which
+prevents one context from loading another context's source.

@@ -12,6 +12,8 @@ artifacts/*
 *.bak
 *.py[co]
 **/__pycache__/
+.venv/
+*.egg-info/
 
 pharo-local/
 gt-local/

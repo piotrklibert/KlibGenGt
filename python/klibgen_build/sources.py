@@ -3,11 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
-import subprocess
 from pathlib import Path
 from typing import Any
 
 from .core import BuildPaths, read_json
+from .processes import run_command
 
 
 SQLITE_SOURCE = "https://github.com/pharo-rdbms/Pharo-SQLite3.git"
@@ -18,11 +18,8 @@ def _pin(paths: BuildPaths, name: str) -> str:
 
 
 def resolve_git_head(source: str, branch: str) -> str:
-    result = subprocess.run(
+    result = run_command(
         ["git", "ls-remote", source, f"refs/heads/{branch}"],
-        check=True,
-        capture_output=True,
-        text=True,
     )
     line = result.stdout.strip().splitlines()
     if len(line) != 1:
@@ -33,20 +30,27 @@ def resolve_git_head(source: str, branch: str) -> str:
     return commit
 
 
-def jj_identity(paths: BuildPaths, revision: str = "@") -> dict[str, Any]:
-    result = subprocess.run(
-        ["jj", "-R", str(paths.root), "log", "-r", revision, "--no-graph", "-T", "json(self)"],
-        check=True,
-        capture_output=True,
-        text=True,
+def project_workspace(paths: BuildPaths, workspace: str) -> Path:
+    path = Path(workspace)
+    return path if path.is_absolute() else (paths.root / path).resolve()
+
+
+def jj_identity(paths: BuildPaths, revision: str = "@", workspace: str = ".") -> dict[str, Any]:
+    repository = project_workspace(paths, workspace)
+    result = run_command(
+        ["jj", "-R", str(repository), "log", "-r", revision, "--no-graph", "-T", "json(self)"],
     )
     value = json.loads(result.stdout)
-    summary = subprocess.run(
-        ["jj", "-R", str(paths.root), "diff", "--summary", "-r", revision],
-        check=True,
-        capture_output=True,
-        text=True,
+    summary = run_command(
+        ["jj", "-R", str(repository), "diff", "--summary", "-r", revision],
     )
+    conflicts_result = run_command(
+        ["jj", "-R", str(repository), "resolve", "--list", "-r", revision],
+        check=False,
+    )
+    if conflicts_result.returncode not in {0, 2} or (conflicts_result.returncode == 2 and "No conflicts found" not in conflicts_result.stderr):
+        raise RuntimeError(conflicts_result.stderr.strip())
+    conflicts = conflicts_result.stdout.splitlines()
     return {
         "vcs": "jj",
         "revision": revision,
@@ -55,6 +59,8 @@ def jj_identity(paths: BuildPaths, revision: str = "@") -> dict[str, Any]:
         "parents": value["parents"],
         "bookmarks": value.get("bookmarks", []),
         "mutable": revision == "@",
+        "workspace": workspace,
+        "conflicts": [line for line in conflicts if line],
         "changedPaths": [line for line in summary.stdout.splitlines() if line],
     }
 

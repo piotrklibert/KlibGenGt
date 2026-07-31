@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "klibgen-build"
+version = "0.1.0"
+description = "Host-side build coordinator for KlibGen-GT"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "plumbum>=1.10.0,<2",
+]
+
+[project.scripts]
+klibgen-build = "klibgen_build.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+packages = ["klibgen_build"]

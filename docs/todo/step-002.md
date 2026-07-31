@@ -2,7 +2,7 @@
 
 ## TODO
 
-- [x] Add a Python-stdlib coordinator behind `just`.
+- [x] Add the uv-managed Python coordinator behind `just`.
 - [x] Add context, lock, manifest, and summary schemas under `build/`.
 - [x] Add the committed default context and seven stable layer definitions.
 - [x] Add ignored `.klibgen/` state layout.

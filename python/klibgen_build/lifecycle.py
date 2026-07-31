@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
@@ -10,6 +9,7 @@ from typing import Any
 from .artifacts import copy_reflink, set_tree_writable, sha256_file
 from .core import BuildPaths, load_context
 from .runs import process_is_alive, utc_now
+from .processes import run_command
 
 
 def _find_record(root: Path, record_id: str, metadata_name: str) -> Path:
@@ -31,9 +31,8 @@ def _bridge_changes(run_path: Path, metadata: dict[str, Any]) -> list[str]:
     bridge = run_path / "export"
     if not (bridge / ".git").exists():
         return []
-    result = subprocess.run(
+    result = run_command(
         ["git", "-C", str(bridge), "diff", "--name-only", metadata["generatedBridgeCommit"], "--", "src"],
-        check=True, capture_output=True, text=True,
     )
     return [line for line in result.stdout.splitlines() if line]
 
@@ -104,13 +103,21 @@ def resume_snapshot(paths: BuildPaths, snapshot_id: str) -> dict[str, Any]:
     return metadata | {"runPath": str(run_path), "operation": "resume"}
 
 
-def discard_run(paths: BuildPaths, run_id: str) -> dict[str, Any]:
-    run_path = find_run(paths, run_id)
-    metadata = json.loads((run_path / "run.json").read_text(encoding="utf-8"))
-    if process_is_alive(metadata.get("pid")):
-        raise ValueError(f"run {run_id} is still active")
-    shutil.rmtree(run_path)
-    return {"schemaVersion": 1, "operation": "discard", "runId": run_id, "discarded": True}
+def discard_run(paths: BuildPaths, record_id: str) -> dict[str, Any]:
+    try:
+        record_path = find_run(paths, record_id)
+        metadata = json.loads((record_path / "run.json").read_text(encoding="utf-8"))
+        if process_is_alive(metadata.get("pid")):
+            raise ValueError(f"run {record_id} is still active")
+        kind = "run"
+    except ValueError as error:
+        if "still active" in str(error):
+            raise
+        record_path = find_snapshot(paths, record_id)
+        kind = "snapshot"
+    set_tree_writable(record_path, True)
+    shutil.rmtree(record_path)
+    return {"schemaVersion": 1, "operation": "discard", "recordId": record_id, "recordKind": kind, "discarded": True}
 
 
 def promote_packages(paths: BuildPaths, source_id: str, packages: list[str], destination_context: str) -> dict[str, Any]:
@@ -140,16 +147,16 @@ def promote_packages(paths: BuildPaths, source_id: str, packages: list[str], des
         destination = paths.root / "src" / package
         if not source.is_dir():
             raise ValueError(f"selected package is absent from bridge: {package}")
-        changed = subprocess.run(
+        changed = run_command(
             ["git", "-C", str(bridge), "diff", "--quiet", source_metadata["generatedBridgeCommit"], "--", f"src/{package}"],
+            check=False,
         ).returncode
         if changed == 0:
             raise ValueError(f"selected bridge package has no changes: {package}")
         if changed != 1:
             raise RuntimeError(f"could not compare bridge package {package}")
-        conflict = subprocess.run(
+        conflict = run_command(
             ["jj", "-R", str(paths.root), "diff", "--from", baseline, "--to", context["project"]["revision"], "--", f"src/{package}"],
-            check=True, capture_output=True, text=True,
         ).stdout
         if conflict.strip():
             raise ValueError(f"authoritative package changed since run creation: {package}")

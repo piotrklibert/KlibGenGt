@@ -5,7 +5,6 @@ import fcntl
 import json
 import os
 import shutil
-import subprocess
 import uuid
 import zipfile
 from datetime import datetime, timezone
@@ -16,6 +15,7 @@ from contextlib import contextmanager
 from .core import BuildPaths, canonical_json, digest_json, load_context, load_layers, platform_id, read_json
 from .sources import jj_identity
 from .bridge import materialize_jj_source
+from .processes import run_command
 
 
 def sha256_file(path: Path) -> str:
@@ -26,8 +26,16 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_tree(path: Path) -> str:
+    digest = hashlib.sha256()
+    for file in sorted(item for item in path.rglob("*") if item.is_file()):
+        digest.update(file.relative_to(path).as_posix().encode("utf-8"))
+        digest.update(bytes.fromhex(sha256_file(file)))
+    return digest.hexdigest()
+
+
 def implementation_digest(paths: BuildPaths) -> str:
-    files = sorted((paths.root / "build" / "klibgen_build").glob("*.py"))
+    files = sorted((paths.root / "python" / "klibgen_build").glob("*.py"))
     files += sorted((paths.root / "build" / "layers").glob("l*/layer.json"))
     files += sorted((paths.root / "build" / "layers").glob("l*/tests/*"))
     files += sorted((paths.root / "scripts").glob("patch-gt-*"))
@@ -43,7 +51,7 @@ def layer_key(paths: BuildPaths, context: dict[str, Any], definition: dict[str, 
         if override:
             source_state = git_worktree_state((paths.root / override["worktree"]).resolve())
     if definition["layerId"] in {"L06", "L07"}:
-        source_state = jj_identity(paths, context["project"]["revision"])
+        source_state = jj_identity(paths, context["project"]["revision"], context["project"]["workspace"])
     return digest_json({
         "schemaVersion": 1,
         "layer": definition,
@@ -71,17 +79,17 @@ def graph(paths: BuildPaths, context_id: str) -> list[dict[str, Any]]:
 def runtime_source(paths: BuildPaths, context: dict[str, Any]) -> Path:
     variant = context["layers"]["L01"]["variant"]
     if variant == "downloaded":
-        subprocess.run([str(paths.root / "scripts" / "bootstrap-gt.sh")], check=True)
+        run_command([paths.root / "scripts" / "bootstrap-gt.sh"])
         return paths.root / "vendor" / "gt"
     if variant == "local-build":
-        subprocess.run([str(paths.root / "scripts" / "bootstrap-gt-source.sh"), "clean"], check=True)
+        run_command([paths.root / "scripts" / "bootstrap-gt-source.sh", "clean"])
         return paths.root / "vendor" / "gt-build" / "workspaces" / "clean"
     raise ValueError(f"unsupported L01 variant {variant!r}")
 
 
 def copy_reflink(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["cp", "-a", "--reflink=auto", str(source), str(destination)], check=True)
+    run_command(["cp", "-a", "--reflink=auto", source, destination])
 
 
 @contextmanager
@@ -108,9 +116,15 @@ def materialize_clean_image(paths: BuildPaths, context: dict[str, Any], runtime:
         archive = paths.root / "vendor" / "gt.zip"
         with zipfile.ZipFile(archive) as source:
             members = [name for name in source.namelist() if not name.endswith("/")]
-            wanted = [name for name in members if Path(name).name in {"GlamorousToolkit.image", "GlamorousToolkit.changes"} or name.endswith(".sources")]
+            wanted = [
+                name for name in members
+                if Path(name).name in {"GlamorousToolkit.image", "GlamorousToolkit.changes"}
+                or name.endswith(".sources")
+                or name.startswith("gt-extra/")
+            ]
             for name in wanted:
-                target = destination / Path(name).name
+                target = destination / (name if name.startswith("gt-extra/") else Path(name).name)
+                target.parent.mkdir(parents=True, exist_ok=True)
                 with source.open(name) as input_stream, target.open("wb") as output_stream:
                     shutil.copyfileobj(input_stream, output_stream, length=1024 * 1024)
         if not (destination / "GlamorousToolkit.image").is_file():
@@ -120,6 +134,8 @@ def materialize_clean_image(paths: BuildPaths, context: dict[str, Any], runtime:
     copy_reflink(runtime / "GlamorousToolkit.changes", destination / "GlamorousToolkit.changes")
     sources = next(runtime.glob("*.sources"))
     copy_reflink(sources, destination / sources.name)
+    if (runtime / "gt-extra").is_dir():
+        copy_reflink(runtime / "gt-extra", destination / "gt-extra")
 
 
 def _manifest(layer: dict[str, Any], context_id: str, key: str, parent: dict[str, Any] | None,
@@ -153,6 +169,15 @@ def _publish(attempt: Path, artifact: Path, manifest: dict[str, Any]) -> Path:
     os.replace(attempt, artifact)
     set_tree_writable(artifact, False)
     return artifact
+
+
+def _fail_build(attempt: Path, node: dict[str, Any], context_id: str, parent: dict[str, Any] | None,
+                message: str, log: str) -> None:
+    manifest = _manifest(node["definition"], context_id, node["buildKey"], parent, [], [], [{"name": "build", "status": "failed", "log": log}])
+    manifest["status"] = "failed"
+    manifest["failure"] = message
+    (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    raise RuntimeError(f"{message}; retained attempt: {attempt}")
 
 
 def build_base(paths: BuildPaths, context_id: str, target: str, force: bool = False) -> Path:
@@ -198,12 +223,15 @@ def build_base(paths: BuildPaths, context_id: str, target: str, force: bool = Fa
                 command = [str(selected[0]["artifact"] / "runtime/bin/GlamorousToolkit-cli"), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)]
                 environment = os.environ.copy()
                 environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache")})
-                process = subprocess.run(command, env=environment, capture_output=True, text=True)
+                process = run_command(command, check=False, env=environment)
                 (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
                 if process.returncode:
-                    raise RuntimeError(f"L02 contract failed; retained attempt: {attempt}")
+                    _fail_build(attempt, node, context_id, selected[0], "L02 contract failed", "contract.log")
                 shutil.rmtree(home)
-                outputs = [{"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}]
+                outputs = [
+                    {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")},
+                    {"path": "image/gt-extra", "sha256": sha256_tree(attempt / "image/gt-extra")},
+                ]
                 tests = [{"name": "l02-contract", "status": "passed", "log": "contract.log"}]
             parent = selected[index - 1] if index else None
             manifest = _manifest(node["definition"], context_id, node["buildKey"], parent,
@@ -221,9 +249,16 @@ def build_base(paths: BuildPaths, context_id: str, target: str, force: bool = Fa
 
 
 def git_worktree_state(path: Path) -> dict[str, Any]:
-    commit = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-    status = subprocess.run(["git", "-C", str(path), "status", "--porcelain"], check=True, capture_output=True, text=True).stdout.splitlines()
-    return {"vcs": "git", "worktree": str(path), "commit": commit, "dirty": bool(status), "changedPaths": status}
+    commit = run_command(["git", "-C", path, "rev-parse", "HEAD"]).stdout.strip()
+    status = run_command(["git", "-C", path, "status", "--porcelain"]).stdout.splitlines()
+    digest = hashlib.sha256()
+    for entry in status:
+        digest.update(entry.encode("utf-8"))
+        relative = entry[3:].split(" -> ")[-1]
+        changed = path / relative
+        if changed.is_file():
+            digest.update(changed.read_bytes())
+    return {"vcs": "git", "worktree": str(path), "commit": commit, "dirty": bool(status), "changedPaths": status, "dirtyContentSha256": digest.hexdigest() if status else None}
 
 
 def build_l03(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
@@ -256,16 +291,16 @@ def build_l03(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache")})
         if variant == "klibgen":
             patch = paths.root / "scripts" / "patch-gt-headless-webview.st"
-            process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(patch)], env=environment, capture_output=True, text=True)
+            process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", patch], check=False, env=environment)
             (attempt / "patch.log").write_text(process.stdout + process.stderr, encoding="utf-8")
             if process.returncode:
-                raise RuntimeError(f"L03 patch failed; retained attempt: {attempt}")
+                _fail_build(attempt, node, context_id, graph(paths, context_id)[1], "L03 patch failed", "patch.log")
         contract = paths.root / "build/layers/l03-gt-patched/tests/contract.st"
         environment["KLIBGEN_EXPECT_GT_PATCH"] = "true" if variant == "klibgen" else "false"
-        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", contract], check=False, env=environment)
         (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L03 contract failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, graph(paths, context_id)[1], "L03 contract failed", "contract.log")
         shutil.rmtree(home)
         output = {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}
         parent_node = graph(paths, context_id)[1]
@@ -335,15 +370,15 @@ def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         environment = os.environ.copy()
         environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache"), "KLIBGEN_SQLITE_REPOSITORY": repository})
         loader = paths.root / "build/layers/l04-project-deps/scripts/load.st"
-        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(loader)], env=environment, capture_output=True, text=True)
+        process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", loader], check=False, env=environment)
         (attempt / "load.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L04 dependency load failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, nodes[2], "L04 dependency load failed", "load.log")
         contract = paths.root / "build/layers/l04-project-deps/tests/contract.st"
-        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", contract], check=False, env=environment)
         (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L04 contract failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, nodes[2], "L04 contract failed", "contract.log")
         shutil.rmtree(home)
         output = {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}
         manifest = _manifest(node["definition"], context_id, node["buildKey"], nodes[2],
@@ -398,15 +433,15 @@ def build_l05(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
             "KLIBGEN_MANIFESTS_FILE": str(metadata_file), "KLIBGEN_MANIFESTS_DIGEST": manifests_digest, "KLIBGEN_PROFILE": profile,
         })
         setup = paths.root / "build/layers/l05-project-setup/scripts/install-metadata.st"
-        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(setup)], env=environment, capture_output=True, text=True)
+        process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", setup], check=False, env=environment)
         (attempt / "setup.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L05 setup failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, nodes[3], "L05 setup failed", "setup.log")
         contract = paths.root / "build/layers/l05-project-setup/tests/contract.st"
-        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", contract], check=False, env=environment)
         (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L05 contract failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, nodes[3], "L05 contract failed", "contract.log")
         shutil.rmtree(home)
         output = {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}
         manifest = _manifest(node["definition"], context_id, node["buildKey"], nodes[3],
@@ -442,7 +477,10 @@ def build_l06(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         attempt.mkdir(parents=True)
         copy_reflink(parent_artifact / "image", attempt / "image")
         set_tree_writable(attempt, True)
-        identity = jj_identity(paths, context["project"]["revision"])
+        identity = jj_identity(paths, context["project"]["revision"], context["project"]["workspace"])
+        if identity["conflicts"]:
+            (attempt / "source-conflicts.log").write_text("\n".join(identity["conflicts"]) + "\n", encoding="utf-8")
+            _fail_build(attempt, node, context_id, nodes[4], "L06 project source has unresolved conflicts", "source-conflicts.log")
         bridge = attempt / "export"
         bridge_commit = materialize_jj_source(paths, identity, bridge)
         runtime_artifact = nodes[0]["artifact"]
@@ -456,15 +494,15 @@ def build_l06(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
             "KLIBGEN_EXPORT_GIT": str(bridge / ".git"), "KLIBGEN_PROFILE": profile,
         })
         loader = paths.root / "build/layers/l06-project-dev/scripts/load.st"
-        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(loader)], env=environment, capture_output=True, text=True)
+        process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", loader], check=False, env=environment)
         (attempt / "load.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L06 project load failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, nodes[4], "L06 project load failed", "load.log")
         contract = paths.root / "build/layers/l06-project-dev/tests/contract.st"
-        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", contract], check=False, env=environment)
         (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L06 contract failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, nodes[4], "L06 contract failed", "contract.log")
         shutil.rmtree(home)
         shutil.rmtree(bridge)
         (attempt / "source-mapping.json").write_text(json.dumps({
@@ -547,10 +585,10 @@ def build_l07(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         for name in ("", "config", "cache"):
             (test_home / name).mkdir(parents=True, exist_ok=True)
         environment.update({"HOME": str(test_home), "XDG_CONFIG_HOME": str(test_home / "config"), "XDG_CACHE_HOME": str(test_home / "cache")})
-        process = subprocess.run([str(launcher), "st", str(smoke)], cwd=smoke_cwd, env=environment, capture_output=True, text=True)
+        process = run_command([launcher, "st", smoke], check=False, cwd=smoke_cwd, env=environment)
         (attempt / "startup-smoke.log").write_text(process.stdout + process.stderr, encoding="utf-8")
         if process.returncode:
-            raise RuntimeError(f"L07 startup smoke failed; retained attempt: {attempt}")
+            _fail_build(attempt, node, context_id, nodes[5], "L07 startup smoke failed", "startup-smoke.log")
         shutil.rmtree(test_home)
         checksum_entries = []
         for path in sorted(item for item in bundle.rglob("*") if item.is_file()):

@@ -1,49 +1,75 @@
+export UV_CACHE_DIR := justfile_directory() / "tmp/uv-cache"
+
 bootstrap: bootstrap-download
 
 doctor context="default":
-    python3 -m build.klibgen_build doctor {{quote(context)}}
+    uv run klibgen-build doctor {{quote(context)}}
 
 doctor-json context="default":
-    python3 -m build.klibgen_build doctor {{quote(context)}} --json
+    uv run klibgen-build doctor {{quote(context)}} --json
 
 status context="default":
-    python3 -m build.klibgen_build status {{quote(context)}}
+    uv run klibgen-build status {{quote(context)}}
 
 status-json context="default":
-    python3 -m build.klibgen_build status {{quote(context)}} --json
+    uv run klibgen-build status {{quote(context)}} --json
 
 resolve context="default":
-    python3 -m build.klibgen_build resolve {{quote(context)}}
+    uv run klibgen-build resolve {{quote(context)}}
 
 resolve-update context="default":
-    python3 -m build.klibgen_build resolve {{quote(context)}} --update
+    uv run klibgen-build resolve {{quote(context)}} --update
 
 build target="l02" context="default":
-    python3 -m build.klibgen_build build {{quote(target)}} {{quote(context)}}
+    uv run klibgen-build build {{quote(target)}} {{quote(context)}}
 
 rebuild target="l02" context="default":
-    python3 -m build.klibgen_build build {{quote(target)}} {{quote(context)}} --force
+    uv run klibgen-build build {{quote(target)}} {{quote(context)}} --force
 
 run profile="base" context="default":
-    python3 -m build.klibgen_build run {{quote(profile)}} {{quote(context)}}
+    uv run klibgen-build run {{quote(profile)}} {{quote(context)}}
 
 clean-runs context="default":
-    python3 -m build.klibgen_build clean-runs {{quote(context)}}
+    uv run klibgen-build clean-runs {{quote(context)}}
 
 snapshot run_id:
-    python3 -m build.klibgen_build snapshot {{quote(run_id)}}
+    uv run klibgen-build snapshot {{quote(run_id)}}
 
 resume snapshot_id:
-    python3 -m build.klibgen_build resume {{quote(snapshot_id)}}
+    uv run klibgen-build resume {{quote(snapshot_id)}}
 
-discard run_id:
-    python3 -m build.klibgen_build discard {{quote(run_id)}}
+discard run_or_snapshot_id:
+    uv run klibgen-build discard {{quote(run_or_snapshot_id)}}
 
 promote source_id packages context="default":
-    python3 -m build.klibgen_build promote {{quote(source_id)}} {{quote(packages)}} {{quote(context)}}
+    uv run klibgen-build promote {{quote(source_id)}} {{quote(packages)}} {{quote(context)}}
+
+context-list:
+    uv run klibgen-build context-list
+
+context-create context revision="@" template="default":
+    uv run klibgen-build context-create {{quote(context)}} {{quote(revision)}} {{quote(template)}}
+
+context-remove context:
+    uv run klibgen-build context-remove {{quote(context)}}
+
+worktree-add context role repository revision="HEAD":
+    uv run klibgen-build worktree-add {{quote(context)}} {{quote(role)}} {{quote(repository)}} {{quote(revision)}}
+
+worktree-remove context role:
+    uv run klibgen-build worktree-remove {{quote(context)}} {{quote(role)}}
+
+pin context layer name="":
+    uv run klibgen-build pin {{quote(context)}} {{quote(layer)}} {{quote(name)}}
+
+unpin name:
+    uv run klibgen-build unpin {{quote(name)}}
+
+gc:
+    uv run klibgen-build gc
 
 test-build-tools:
-    python3 -m unittest discover -s build/tests -v
+    uv run python -m unittest discover -s build/tests -v
 
 check: test-build-tools doctor test
 
@@ -68,26 +94,55 @@ push-src-to-export:
 pull-export-to-src:
     ./scripts/pull-export-to-src.sh
 
-gui context="gui":
-    python3 -m build.klibgen_build launch gui {{quote(context)}}
+gui:
+    uv run klibgen-build launch gui gui
+
+gui-context context:
+    uv run klibgen-build launch gui {{quote(context)}}
 
 load context="default":
-    python3 -m build.klibgen_build load {{quote(context)}}
+    uv run klibgen-build load {{quote(context)}}
 
 test context="default":
-    python3 -m build.klibgen_build test {{quote(context)}}
+    uv run klibgen-build test {{quote(context)}}
 
 test-fresh context="default":
-    KLIBGEN_STATE_ROOT=artifacts/fresh-layered python3 -m build.klibgen_build test {{quote(context)}} --fresh
+    KLIBGEN_STATE_ROOT=artifacts/fresh-layered uv run klibgen-build test {{quote(context)}} --fresh
 
 check-type-pragmas context="default":
-    python3 -m build.klibgen_build check-type-pragmas {{quote(context)}}
+    uv run klibgen-build check-type-pragmas {{quote(context)}}
 
 smoke context="default":
-    python3 -m build.klibgen_build smoke {{quote(context)}}
+    uv run klibgen-build smoke {{quote(context)}}
 
 eval expr profile="cli" context="default":
-    GT_EVAL={{quote(expr)}} python3 -m build.klibgen_build eval {{quote(profile)}} {{quote(context)}}
+    GT_EVAL={{quote(expr)}} uv run klibgen-build eval {{quote(profile)}} {{quote(context)}}
+
+# List real managed desktop clients with PID, geometry, title, and command.
+windows title_regex=".*":
+    uv run klibgen-build host windows list --title-regex {{quote(title_regex)}}
+
+# Capture the one visible window matching the title into tmp/screenshots/.
+screenshot title_regex="^Glamorous Toolkit$":
+    uv run klibgen-build host windows screenshot --title-regex {{quote(title_regex)}}
+
+code-search query kind="all" context="default":
+    uv run klibgen-build image code search {{quote(query)}} --kind {{quote(kind)}} --context {{quote(context)}}
+
+code-class class_name context="default":
+    uv run klibgen-build image code class {{quote(class_name)}} --context {{quote(context)}}
+
+code-method class_name selector side="instance" context="default":
+    uv run klibgen-build image code method {{quote(class_name)}} {{quote(selector)}} --side {{quote(side)}} --context {{quote(context)}}
+
+lepiter-search query search_in="text" context="default":
+    uv run klibgen-build image lepiter search {{quote(query)}} --in {{quote(search_in)}} --context {{quote(context)}}
+
+lepiter-export uid context="default":
+    uv run klibgen-build image lepiter export --uid {{quote(uid)}} --context {{quote(context)}}
+
+profile command:
+    uv run klibgen-build host profile -- sh -c {{quote(command)}}
 
 clean-runtime:
     rm -rf vendor/gt vendor/gt.zip vendor/gt.unpack vendor/gt-build/workspaces pharo-local gt-local *.image *.changes *.sources *.log *.fuel *.ombu *.bak
