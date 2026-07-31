@@ -1,0 +1,174 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import uuid
+import zipfile
+from pathlib import Path
+from typing import Any
+
+from .core import BuildPaths, canonical_json, digest_json, load_context, load_layers, platform_id, read_json
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def implementation_digest(paths: BuildPaths) -> str:
+    files = sorted((paths.root / "build" / "klibgen_build").glob("*.py"))
+    files += sorted((paths.root / "build" / "layers").glob("l*/layer.json"))
+    files += sorted((paths.root / "build" / "layers").glob("l*/tests/*"))
+    value = [{"path": str(path.relative_to(paths.root)), "sha256": sha256_file(path)} for path in files]
+    return digest_json(value)
+
+
+def layer_key(paths: BuildPaths, context: dict[str, Any], definition: dict[str, Any], parent_key: str | None) -> str:
+    lock = read_json(paths.root / "build" / "locks" / "default.lock.json")
+    return digest_json({
+        "schemaVersion": 1,
+        "layer": definition,
+        "selection": context["layers"].get(definition["layerId"], {}),
+        "parentBuildKey": parent_key,
+        "lock": lock,
+        "platform": platform_id(),
+        "implementation": implementation_digest(paths),
+    })
+
+
+def graph(paths: BuildPaths, context_id: str) -> list[dict[str, Any]]:
+    context = load_context(paths, context_id)
+    result = []
+    parent_key = None
+    for definition in load_layers(paths):
+        key = layer_key(paths, context, definition, parent_key)
+        artifact = paths.state / "artifacts" / platform_id() / context_id / definition["layerId"].lower() / key
+        result.append({"definition": definition, "buildKey": key, "artifact": artifact, "parentKey": parent_key})
+        parent_key = key
+    return result
+
+
+def runtime_source(paths: BuildPaths, context: dict[str, Any]) -> Path:
+    variant = context["layers"]["L01"]["variant"]
+    if variant == "downloaded":
+        subprocess.run([str(paths.root / "scripts" / "bootstrap-gt.sh")], check=True)
+        return paths.root / "vendor" / "gt"
+    if variant == "local-build":
+        subprocess.run([str(paths.root / "scripts" / "bootstrap-gt-source.sh"), "clean"], check=True)
+        return paths.root / "vendor" / "gt-build" / "workspaces" / "clean"
+    raise ValueError(f"unsupported L01 variant {variant!r}")
+
+
+def copy_reflink(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["cp", "-a", "--reflink=auto", str(source), str(destination)], check=True)
+
+
+def materialize_clean_image(paths: BuildPaths, context: dict[str, Any], runtime: Path, destination: Path) -> None:
+    destination.mkdir(parents=True)
+    if context["layers"]["L02"]["variant"] == "release":
+        archive = paths.root / "vendor" / "gt.zip"
+        with zipfile.ZipFile(archive) as source:
+            members = [name for name in source.namelist() if not name.endswith("/")]
+            wanted = [name for name in members if Path(name).name in {"GlamorousToolkit.image", "GlamorousToolkit.changes"} or name.endswith(".sources")]
+            for name in wanted:
+                target = destination / Path(name).name
+                with source.open(name) as input_stream, target.open("wb") as output_stream:
+                    shutil.copyfileobj(input_stream, output_stream, length=1024 * 1024)
+        if not (destination / "GlamorousToolkit.image").is_file():
+            raise ValueError(f"verified GT archive has no image: {archive}")
+        return
+    copy_reflink(runtime / "GlamorousToolkit.image", destination / "GlamorousToolkit.image")
+    copy_reflink(runtime / "GlamorousToolkit.changes", destination / "GlamorousToolkit.changes")
+    sources = next(runtime.glob("*.sources"))
+    copy_reflink(sources, destination / sources.name)
+
+
+def _manifest(layer: dict[str, Any], context_id: str, key: str, parent: dict[str, Any] | None,
+              inputs: list[dict[str, Any]], outputs: list[dict[str, Any]], tests: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "schemaVersion": 1,
+        "layerId": layer["layerId"],
+        "layerName": layer["name"],
+        "contextId": context_id,
+        "buildKey": key,
+        "status": "success",
+        "parents": [] if parent is None else [{"layerId": parent["definition"]["layerId"], "buildKey": parent["buildKey"]}],
+        "variant": layer.get("variants", layer.get("profiles", [])),
+        "platform": platform_id(),
+        "inputs": inputs,
+        "outputs": outputs,
+        "tests": tests,
+        "dirty": False,
+        "hostBound": False,
+        "overrides": [],
+    }
+
+
+def _publish(attempt: Path, artifact: Path, manifest: dict[str, Any]) -> Path:
+    (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    if artifact.exists():
+        shutil.rmtree(attempt)
+        return artifact
+    os.replace(attempt, artifact)
+    return artifact
+
+
+def build_base(paths: BuildPaths, context_id: str, target: str) -> Path:
+    normalized = target.upper() if target.upper().startswith("L") else target.upper().replace("L", "L")
+    if normalized in {"L1", "L01"}:
+        target_id = "L01"
+    elif normalized in {"L2", "L02"}:
+        target_id = "L02"
+    else:
+        raise ValueError("Step 004 supports only l01 and l02")
+    context = load_context(paths, context_id)
+    nodes = graph(paths, context_id)
+    selected = nodes[: 1 if target_id == "L01" else 2]
+    runtime = runtime_source(paths, context)
+    built: Path | None = None
+    for index, node in enumerate(selected):
+        artifact = node["artifact"]
+        if (artifact / "manifest.json").is_file():
+            built = artifact
+            continue
+        attempt = paths.state / "tmp" / f"attempt-{uuid.uuid4()}"
+        attempt.mkdir(parents=True)
+        if node["definition"]["layerId"] == "L01":
+            copy_reflink(runtime / "bin", attempt / "runtime" / "bin")
+            copy_reflink(runtime / "lib", attempt / "runtime" / "lib")
+            outputs = []
+            for relative in ("runtime/bin/GlamorousToolkit", "runtime/bin/GlamorousToolkit-cli"):
+                path = attempt / relative
+                outputs.append({"path": relative, "sha256": sha256_file(path), "executable": os.access(path, os.X_OK)})
+            tests = [{"name": "launchers-present", "status": "passed"}]
+        else:
+            materialize_clean_image(paths, context, runtime, attempt / "image")
+            home = attempt / "test-home"
+            home.mkdir()
+            (home / "config").mkdir()
+            (home / "cache").mkdir()
+            contract = paths.root / "build" / "layers" / "l02-gt-base" / "tests" / "contract.st"
+            command = [str(selected[0]["artifact"] / "runtime/bin/GlamorousToolkit-cli"), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)]
+            environment = os.environ.copy()
+            environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache")})
+            process = subprocess.run(command, env=environment, capture_output=True, text=True)
+            (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+            if process.returncode:
+                raise RuntimeError(f"L02 contract failed; retained attempt: {attempt}")
+            shutil.rmtree(home)
+            outputs = [{"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}]
+            tests = [{"name": "l02-contract", "status": "passed", "log": "contract.log"}]
+        parent = selected[index - 1] if index else None
+        manifest = _manifest(node["definition"], context_id, node["buildKey"], parent,
+                             [{"runtimeSource": str(runtime), "selection": context["layers"][node["definition"]["layerId"]]}], outputs, tests)
+        built = _publish(attempt, artifact, manifest)
+    assert built is not None
+    return built

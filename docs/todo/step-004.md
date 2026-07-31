@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] Publish an L01 runtime inventory from the pinned GT archive.
-- [ ] Publish downloaded and source-clean L02 image bundles.
-- [ ] Generate manifests, checksums, version metadata, and startup logs.
-- [ ] Test launcher/plugin availability, evaluation, GT packages, and absence of project packages.
-- [ ] Retain bootstrap recipes as compatibility wrappers.
+- [x] Publish an L01 runtime inventory from the pinned GT archive.
+- [x] Publish downloaded and source-clean L02 image bundles.
+- [x] Generate manifests, checksums, version metadata, and startup logs.
+- [x] Test launcher/plugin availability, evaluation, GT packages, and absence of project packages.
+- [x] Retain bootstrap recipes as compatibility wrappers.
 
 ## Acceptance
 

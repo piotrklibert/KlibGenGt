@@ -18,6 +18,9 @@ resolve context="default":
 resolve-update context="default":
     python3 -m build.klibgen_build resolve {{quote(context)}} --update
 
+build target="l02" context="default":
+    python3 -m build.klibgen_build build {{quote(target)}} {{quote(context)}}
+
 test-build-tools:
     python3 -m unittest discover -s build/tests -v
 
