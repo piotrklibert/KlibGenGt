@@ -70,7 +70,7 @@ platform, a rebuilt artifact MUST satisfy the same layer contract and tests.
 
 The source of truth MUST be external to reusable images. It consists of:
 
-- Git repositories and worktrees;
+- version-controlled repositories and workspaces/worktrees;
 - committed Smalltalk source files;
 - build scripts;
 - layer configuration;
@@ -105,7 +105,7 @@ for every required ancestor.
 ### 3.5 Isolation
 
 Concurrent or alternative builds MUST NOT overwrite each other's canonical
-artifacts, writable images, logs, manifests, Git worktrees, ports, or temporary
+artifacts, writable images, logs, manifests, VCS work areas, ports, or temporary
 files.
 
 ### 3.6 Agent-friendly operation
@@ -164,7 +164,7 @@ builds.
 Branches, tags, release names, and URLs are useful human-facing selectors.
 Canonical build identity MUST use resolved immutable identifiers, such as:
 
-- Git commit IDs;
+- immutable VCS revision IDs, including JJ commit IDs and Git commit IDs;
 - archive checksums;
 - VM build identifiers;
 - image checksums;
@@ -784,14 +784,14 @@ AGENTIC MAY initially be a placeholder profile that fails with a clear
 
 ### Purpose
 
-Load the main KlibGen project source from a selected Git worktree into an image
+Load the main KlibGen project source from a selected JuJutsu workspace revision into an image
 prepared by L05.
 
 L06 is the main reproducible development layer.
 
 ### Source model
 
-The project worktree is authoritative. The image contains a loaded executable
+The project JJ workspace is authoritative. The image contains a loaded executable
 representation and development metadata.
 
 The worktree mapping MUST be explicit in the context and manifest. No build may
@@ -801,8 +801,8 @@ clone.
 ### Inputs
 
 - selected L05 profile artifact;
-- project Git worktree;
-- exact project commit or dirty tree digest;
+- project JJ workspace;
+- exact JJ commit ID, with change ID, workspace, bookmark, and mutability metadata;
 - project baseline/load scripts;
 - test configuration;
 - local source override data.
@@ -819,14 +819,14 @@ clone.
 
 ### Dirty worktree policy
 
-Development builds MAY use an uncommitted project worktree.
+Development builds MAY use a mutable JJ working-copy commit.
 
-When dirty source is used:
+When a mutable JJ working-copy revision is used:
 
-- the manifest MUST mark the build dirty;
-- the build key MUST include a digest of relevant tracked and untracked source;
-- the manifest MUST list changed/untracked paths;
-- rebuilding from the same worktree contents SHOULD select the same build key;
+- the manifest MUST mark the source mutable;
+- the build key MUST include the exact snapshotted JJ commit ID;
+- the manifest MUST record the change ID, workspace name, conflicts, and relevant changed paths;
+- rebuilding from the same committed tree contents SHOULD select the same build key;
 - RELEASE packaging MUST reject the artifact.
 
 The implementation SHOULD avoid hashing irrelevant files such as logs, editor
@@ -885,7 +885,7 @@ A snapshot MUST record:
 - the worktree and context used;
 - creation and last-save timestamps;
 - whether Smalltalk source is dirty relative to disk;
-- whether the associated Git worktree is dirty;
+- the associated JJ workspace revision and whether it remains mutable;
 - profile and runtime metadata;
 - snapshot image checksum.
 
@@ -988,20 +988,25 @@ implemented.
 - platform-specific installers;
 - release publication.
 
-## 10. Repository and worktree model
+## 10. Repository, workspace, and worktree model
 
 ## 10.1 Repository roles
 
-The system may use the following repositories:
+The system uses VCS adapters according to repository role:
 
-- the main KlibGen-GT project repository;
-- one or more GT fork repositories;
-- dependency repositories;
+- the main KlibGen-GT project is a colocated JuJutsu repository and MUST be
+  operated through `jj`, not direct root-level Git commands;
+- alternate main-project checkouts are JuJutsu workspaces created with
+  `jj workspace`;
+- the ignored `export/` repository is a generated Git bridge used by
+  Iceberg/Metacello and is not authoritative source;
+- GT fork and dependency repositories use Git worktrees where required by their
+  upstream tools;
 - VM/runtime repositories;
 - generated or packaging repositories, if introduced later.
 
-Every editable source input MUST have a declared repository role and context-local
-worktree.
+Every editable source input MUST declare its VCS kind, repository role, and
+context-local workspace or worktree.
 
 ## 10.2 No implicit current checkout
 
@@ -1010,32 +1015,38 @@ current branch.
 
 The source for each editable repository MUST be supplied as:
 
-- an explicit worktree path;
-- an exact commit;
-- an optional branch name for display and update operations;
-- dirty-state metadata.
+- an explicit JJ workspace or Git worktree path;
+- an exact JJ or Git commit ID;
+- optional change ID/bookmark or branch metadata for display and update operations;
+- mutable/dirty-state metadata appropriate to that VCS.
+
+For JuJutsu, the commit ID is canonical build identity. A change ID, workspace
+name, or bookmark is not sufficient because it can move. Before resolving `@`,
+the coordinator MUST allow JJ to snapshot the working copy, reject conflicts or
+snapshot warnings that affect declared inputs, and then record the resulting
+commit ID.
 
 ## 10.3 V1 alternative-build strategy
 
 The first version supports alternative builds by creating separate build
-contexts and, where editable source differs, separate Git worktrees.
+contexts and separate VCS-native work areas where editable source differs.
 
 Example:
 
 ```text
 context default
-  project worktree: ../worktrees/project-default
+  project workspace: ../workspaces/project-default (JuJutsu)
   GT worktree:      ../worktrees/gt-klibgen
   cmark worktree:   absent; use locked upstream source
 
 context cmark-debug
-  project worktree: ../worktrees/project-cmark-debug
+  project workspace: ../workspaces/project-cmark-debug (JuJutsu)
   GT worktree:      ../worktrees/gt-klibgen
   cmark worktree:   ../worktrees/cmark-debug
 ```
 
-Two contexts MAY point to the same immutable commit checkout or shared bare Git
-object store, but MUST NOT share a mutable worktree that either context may edit.
+Two contexts MAY point to the same immutable revision or shared read-only object
+cache, but MUST NOT share a mutable JJ workspace or Git worktree.
 
 ### V1 simplification
 
@@ -1059,13 +1070,14 @@ The build system SHOULD provide operations to:
 - detach or remove unused worktrees safely;
 - prevent deletion while a run image or build uses the worktree.
 
-Worktree creation and deletion MUST use Git-supported operations rather than
-manually copying `.git` metadata.
+Project workspace creation and deletion MUST use `jj workspace` operations.
+Git-backed GT and dependency worktrees MUST use Git-supported worktree operations.
+Neither adapter may manually copy VCS metadata.
 
 ## 10.5 Shared source caches
 
-Bare clones and fetched Git objects MAY be shared. They are caches, not editable
-source locations.
+JJ object storage, bare Git clones, and fetched Git objects MAY be shared. They
+are caches, not editable source locations.
 
 Build correctness MUST NOT depend on the cache retaining a friendly branch name.
 Exact commits and checksums remain authoritative.
@@ -1103,16 +1115,22 @@ image and apply only its declared transformations.
 ## 11.3 Exporting source
 
 Any image-side source change intended to persist MUST be exported to the owning
-worktree before the canonical layer can be rebuilt with that change.
+workspace/worktree before the canonical layer can be rebuilt with that change.
 
 V1 MAY use Iceberg/Tonel operations directly and MAY require explicit package
 selection.
+
+For the main project, Iceberg writes to a context-local generated Git bridge.
+Promotion MUST compare that bridge with the JJ revision recorded when the run was
+created, then copy explicitly selected packages into the configured JJ workspace.
+The next JJ snapshot produces the new authoritative commit ID. The generated Git
+commit is transport metadata only.
 
 The export command MUST refuse to guess when:
 
 - a package maps to multiple writable repositories;
 - no writable repository is configured;
-- the target worktree does not match the build context;
+- the target workspace/worktree does not match the build context;
 - exporting would overwrite conflicting disk changes.
 
 ## 11.4 Promotion between layers
@@ -1188,7 +1206,7 @@ V1 SHOULD use a repository-local generated root such as:
 ```
 
 The exact name is configurable, but the generated root MUST normally be ignored
-by Git.
+by the outer VCS.
 
 Lock files intended for review or long-term pinning MAY instead be committed
 under `build/locks/`.
@@ -1557,7 +1575,7 @@ spelling.
 just doctor [context]
 ```
 
-Checks required host tools, paths, Git worktrees, runtime prerequisites, writable
+Checks required host tools, paths, JJ workspaces, Git worktrees, runtime prerequisites, writable
 directories, and obvious port/process conflicts.
 
 ### Resolve
@@ -1577,7 +1595,7 @@ just status [context]
 Shows:
 
 - selected variants;
-- worktree commits and dirty state;
+- workspace/worktree revisions and mutable/dirty state;
 - current and expected build keys;
 - stale layers;
 - available canonical artifacts;
@@ -2065,7 +2083,7 @@ Implement:
 Implement or harden:
 
 - context creation;
-- Git worktree management;
+- JJ workspace and Git worktree management;
 - dependency fork override;
 - concurrent context isolation;
 - artifact garbage collection.
@@ -2169,7 +2187,8 @@ Writable images are isolated run copies. Saved development images are resumable
 snapshots, not canonical build inputs.
 
 Every layer can be replaced or patched through a named build context. V1 uses
-Git worktrees and context-specific artifact directories to isolate alternatives.
+JJ workspaces for the main project, Git worktrees for Git-backed inputs, and
+context-specific artifact directories to isolate alternatives.
 Changing a layer changes its build key and automatically invalidates downstream
 artifacts.
 

@@ -1,0 +1,17 @@
+# Step 008: L05 setup profiles
+
+## TODO
+
+- [ ] Build distinct CLI and GUI setup artifacts; add an explicit AGENTIC placeholder.
+- [ ] Add a build-owned Smalltalk manifest metadata API backed by canonical JSON.
+- [ ] Separate committed, generated, machine-local, and runtime configuration.
+- [ ] Test CLI, GUI opening, evaluation, path independence, and manifest queries.
+
+## Acceptance
+
+CLI and GUI satisfy their declared contracts from fresh parent copies and all
+legacy/fresh tests pass.
+
+## Rollback
+
+No existing command uses L05 by default yet; abandon the change.

@@ -1,5 +1,10 @@
 ## KlibGen-gt layers - from runtime to project distribution
 
+> **Historical document.** The normative implementation specification is
+> `docs/klibgen-gt-reproducible-build-architecture-v0.1.md`. The staged migration
+> is tracked under `docs/todo/`. Do not implement this older roadmap where it
+> conflicts with those documents.
+
 **TLDR**: KlibGen-GT is a reproducible project model for Smalltalk, layered on
 top of GToolkit and Pharo, compensating in automation and tooling for the lack
 of module and package systems, allowing for reproducible builds and seamless
