@@ -27,6 +27,7 @@ def implementation_digest(paths: BuildPaths) -> str:
     files = sorted((paths.root / "build" / "klibgen_build").glob("*.py"))
     files += sorted((paths.root / "build" / "layers").glob("l*/layer.json"))
     files += sorted((paths.root / "build" / "layers").glob("l*/tests/*"))
+    files += sorted((paths.root / "scripts").glob("patch-gt-*"))
     value = [{"path": str(path.relative_to(paths.root)), "sha256": sha256_file(path)} for path in files]
     return digest_json(value)
 
@@ -205,3 +206,75 @@ def build_base(paths: BuildPaths, context_id: str, target: str, force: bool = Fa
                 built = _publish(attempt, artifact, manifest)
     assert built is not None
     return built
+
+
+def git_worktree_state(path: Path) -> dict[str, Any]:
+    commit = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+    status = subprocess.run(["git", "-C", str(path), "status", "--porcelain"], check=True, capture_output=True, text=True).stdout.splitlines()
+    return {"vcs": "git", "worktree": str(path), "commit": commit, "dirty": bool(status), "changedPaths": status}
+
+
+def build_l03(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
+    parent_artifact = build_base(paths, context_id, "l02", force=False)
+    context = load_context(paths, context_id)
+    node = graph(paths, context_id)[2]
+    artifact = node["artifact"]
+    if (artifact / "manifest.json").is_file() and not force:
+        return artifact
+    with artifact_lock(paths, context_id, "L03", node["buildKey"]):
+        if (artifact / "manifest.json").is_file() and not force:
+            return artifact
+        attempt_id = str(uuid.uuid4())
+        attempt = paths.state / "tmp" / f"attempt-{attempt_id}"
+        attempt.mkdir(parents=True)
+        copy_reflink(parent_artifact / "image", attempt / "image")
+        set_tree_writable(attempt, True)
+        selection = context["layers"]["L03"]
+        variant = selection["variant"]
+        sources: list[dict[str, Any]] = []
+        if "worktree" in selection:
+            worktree = (paths.root / selection["worktree"]).resolve()
+            sources.append(git_worktree_state(worktree))
+        runtime_artifact = graph(paths, context_id)[0]["artifact"]
+        launcher = runtime_artifact / "runtime/bin/GlamorousToolkit-cli"
+        home = attempt / "test-home"
+        for name in ("", "config", "cache"):
+            (home / name).mkdir(parents=True, exist_ok=True)
+        environment = os.environ.copy()
+        environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache")})
+        if variant == "klibgen":
+            patch = paths.root / "scripts" / "patch-gt-headless-webview.st"
+            process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(patch)], env=environment, capture_output=True, text=True)
+            (attempt / "patch.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+            if process.returncode:
+                raise RuntimeError(f"L03 patch failed; retained attempt: {attempt}")
+        contract = paths.root / "build/layers/l03-gt-patched/tests/contract.st"
+        environment["KLIBGEN_EXPECT_GT_PATCH"] = "true" if variant == "klibgen" else "false"
+        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L03 contract failed; retained attempt: {attempt}")
+        shutil.rmtree(home)
+        output = {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}
+        parent_node = graph(paths, context_id)[1]
+        manifest = _manifest(node["definition"], context_id, node["buildKey"], parent_node,
+                             [{"selection": selection, "sources": sources, "patch": "scripts/patch-gt-headless-webview.st"}], [output],
+                             [{"name": "l03-contract", "status": "passed", "log": "contract.log"}])
+        manifest["dirty"] = any(source["dirty"] for source in sources)
+        manifest["changedPackages"] = ["GToolkit-WebView"] if variant == "klibgen" else []
+        if force and artifact.exists():
+            retained = paths.state / "logs/rebuilds" / context_id / "l03" / node["buildKey"] / attempt_id
+            retained.parent.mkdir(parents=True, exist_ok=True)
+            (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            os.replace(attempt, retained)
+            return artifact
+        return _publish(attempt, artifact, manifest)
+
+
+def build_artifact(paths: BuildPaths, context_id: str, target: str, force: bool = False) -> Path:
+    target_id = target.lower().split("-")[0]
+    if target_id in {"l1", "l01", "l2", "l02"}:
+        return build_base(paths, context_id, target_id, force=force)
+    if target_id in {"l3", "l03"}:
+        return build_l03(paths, context_id, force=force)
+    raise ValueError("implemented build targets are l01, l02, and l03")

@@ -9,7 +9,7 @@ from typing import Any
 
 from .core import BuildPaths, command_status, digest_json, load_context, load_layers, platform_id
 from .sources import expected_lock, host_facts, jj_identity, resolve_git_head, validate_lock
-from .artifacts import build_base, graph
+from .artifacts import build_artifact, graph
 from .runs import clean_runs, create_run
 
 
@@ -64,7 +64,7 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
 
 
 def build(paths: BuildPaths, context_id: str, target: str, force: bool = False) -> dict[str, Any]:
-    artifact = build_base(paths, context_id, target, force=force)
+    artifact = build_artifact(paths, context_id, target, force=force)
     manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
     return {"schemaVersion": 1, "operation": "build", "contextId": context_id, "target": target, "forced": force, "artifactPath": str(artifact), "buildKey": manifest["buildKey"]}
 
