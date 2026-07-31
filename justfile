@@ -21,6 +21,15 @@ resolve-update context="default":
 build target="l02" context="default":
     python3 -m build.klibgen_build build {{quote(target)}} {{quote(context)}}
 
+rebuild target="l02" context="default":
+    python3 -m build.klibgen_build build {{quote(target)}} {{quote(context)}} --force
+
+run profile="base" context="default":
+    python3 -m build.klibgen_build run {{quote(profile)}} {{quote(context)}}
+
+clean-runs context="default":
+    python3 -m build.klibgen_build clean-runs {{quote(context)}}
+
 test-build-tools:
     python3 -m unittest discover -s build/tests -v
 

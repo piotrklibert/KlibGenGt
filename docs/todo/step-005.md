@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] Build in isolated attempts under a per-key `flock`.
-- [ ] Copy parent bundles with reflink-auto and never hard-link mutable images.
-- [ ] Save, stop, test, checksum, and atomically publish artifacts.
-- [ ] Create writable run copies with independent HOME/XDG state.
-- [ ] Retain successful artifacts when forced builds fail.
+- [x] Build in isolated attempts under a per-key `flock`.
+- [x] Copy parent bundles with reflink-auto and never hard-link mutable images.
+- [x] Save, stop, test, checksum, and atomically publish artifacts.
+- [x] Create writable run copies with independent HOME/XDG state.
+- [x] Retain successful artifacts when forced builds fail.
 
 ## Acceptance
 

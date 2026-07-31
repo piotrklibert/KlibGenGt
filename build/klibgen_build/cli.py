@@ -10,6 +10,7 @@ from typing import Any
 from .core import BuildPaths, command_status, digest_json, load_context, load_layers, platform_id
 from .sources import expected_lock, host_facts, jj_identity, resolve_git_head, validate_lock
 from .artifacts import build_base, graph
+from .runs import clean_runs, create_run
 
 
 def doctor(paths: BuildPaths, context_id: str) -> dict[str, Any]:
@@ -62,10 +63,10 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
     }
 
 
-def build(paths: BuildPaths, context_id: str, target: str) -> dict[str, Any]:
-    artifact = build_base(paths, context_id, target)
+def build(paths: BuildPaths, context_id: str, target: str, force: bool = False) -> dict[str, Any]:
+    artifact = build_base(paths, context_id, target, force=force)
     manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
-    return {"schemaVersion": 1, "operation": "build", "contextId": context_id, "target": target, "artifactPath": str(artifact), "buildKey": manifest["buildKey"]}
+    return {"schemaVersion": 1, "operation": "build", "contextId": context_id, "target": target, "forced": force, "artifactPath": str(artifact), "buildKey": manifest["buildKey"]}
 
 
 def resolve(paths: BuildPaths, context_id: str, update: bool) -> dict[str, Any]:
@@ -115,6 +116,12 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     if result["operation"] == "build":
         print(f"{result['target']}[{result['contextId']}]: {result['artifactPath']}")
         return
+    if result["operation"] == "run":
+        print(f"run {result['runId']}: {result['runPath']}")
+        return
+    if result["operation"] == "clean-runs":
+        print(f"removed {result['removed']} run(s) for {result['contextId']}")
+        return
     print(f"context: {result['contextId']}")
     for layer in result["layers"]:
         print(f"{layer['layerId']} {layer['state']:7} {layer['name']} ({layer['expectedBuildKey'][:12]})")
@@ -123,10 +130,14 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="klibgen-build")
     subparsers = result.add_subparsers(dest="command", required=True)
-    for name in ("doctor", "status", "resolve", "build"):
+    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs"):
         command = subparsers.add_parser(name)
         if name == "build":
             command.add_argument("target")
+            command.add_argument("context", nargs="?", default="default")
+            command.add_argument("--force", action="store_true")
+        elif name == "run":
+            command.add_argument("profile", nargs="?", default="base")
             command.add_argument("context", nargs="?", default="default")
         else:
             command.add_argument("context", nargs="?", default="default")
@@ -146,9 +157,13 @@ def main(argv: list[str] | None = None) -> int:
             result = status(paths, args.context)
         elif args.command == "resolve":
             result = resolve(paths, args.context, args.update)
+        elif args.command == "build":
+            result = build(paths, args.context, args.target, args.force)
+        elif args.command == "run":
+            result = {"schemaVersion": 1, "operation": "run"} | create_run(paths, args.context, args.profile)
         else:
-            result = build(paths, args.context, args.target)
-    except (OSError, ValueError, json.JSONDecodeError) as error:
+            result = {"schemaVersion": 1, "operation": "clean-runs", "contextId": args.context, "removed": clean_runs(paths, args.context)}
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
         print(f"{args.command}[{args.context}]: {error}", file=sys.stderr)
         return 2
     emit(result, args.json)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import fcntl
 import json
 import os
 import shutil
@@ -9,6 +10,7 @@ import uuid
 import zipfile
 from pathlib import Path
 from typing import Any
+from contextlib import contextmanager
 
 from .core import BuildPaths, canonical_json, digest_json, load_context, load_layers, platform_id, read_json
 
@@ -70,6 +72,24 @@ def copy_reflink(source: Path, destination: Path) -> None:
     subprocess.run(["cp", "-a", "--reflink=auto", str(source), str(destination)], check=True)
 
 
+@contextmanager
+def artifact_lock(paths: BuildPaths, context_id: str, layer_id: str, key: str):
+    lock_path = paths.state / "state" / "locks" / context_id / layer_id.lower() / f"{key}.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("w") as stream:
+        fcntl.flock(stream, fcntl.LOCK_EX)
+        yield
+
+
+def set_tree_writable(root: Path, writable: bool) -> None:
+    for path in [root, *root.rglob("*")]:
+        mode = path.stat().st_mode
+        if writable:
+            path.chmod(mode | 0o200)
+        else:
+            path.chmod(mode & ~0o222)
+
+
 def materialize_clean_image(paths: BuildPaths, context: dict[str, Any], runtime: Path, destination: Path) -> None:
     destination.mkdir(parents=True)
     if context["layers"]["L02"]["variant"] == "release":
@@ -118,10 +138,11 @@ def _publish(attempt: Path, artifact: Path, manifest: dict[str, Any]) -> Path:
         shutil.rmtree(attempt)
         return artifact
     os.replace(attempt, artifact)
+    set_tree_writable(artifact, False)
     return artifact
 
 
-def build_base(paths: BuildPaths, context_id: str, target: str) -> Path:
+def build_base(paths: BuildPaths, context_id: str, target: str, force: bool = False) -> Path:
     normalized = target.upper() if target.upper().startswith("L") else target.upper().replace("L", "L")
     if normalized in {"L1", "L01"}:
         target_id = "L01"
@@ -136,39 +157,51 @@ def build_base(paths: BuildPaths, context_id: str, target: str) -> Path:
     built: Path | None = None
     for index, node in enumerate(selected):
         artifact = node["artifact"]
-        if (artifact / "manifest.json").is_file():
+        if (artifact / "manifest.json").is_file() and not force:
             built = artifact
             continue
-        attempt = paths.state / "tmp" / f"attempt-{uuid.uuid4()}"
-        attempt.mkdir(parents=True)
-        if node["definition"]["layerId"] == "L01":
-            copy_reflink(runtime / "bin", attempt / "runtime" / "bin")
-            copy_reflink(runtime / "lib", attempt / "runtime" / "lib")
-            outputs = []
-            for relative in ("runtime/bin/GlamorousToolkit", "runtime/bin/GlamorousToolkit-cli"):
-                path = attempt / relative
-                outputs.append({"path": relative, "sha256": sha256_file(path), "executable": os.access(path, os.X_OK)})
-            tests = [{"name": "launchers-present", "status": "passed"}]
-        else:
-            materialize_clean_image(paths, context, runtime, attempt / "image")
-            home = attempt / "test-home"
-            home.mkdir()
-            (home / "config").mkdir()
-            (home / "cache").mkdir()
-            contract = paths.root / "build" / "layers" / "l02-gt-base" / "tests" / "contract.st"
-            command = [str(selected[0]["artifact"] / "runtime/bin/GlamorousToolkit-cli"), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)]
-            environment = os.environ.copy()
-            environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache")})
-            process = subprocess.run(command, env=environment, capture_output=True, text=True)
-            (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
-            if process.returncode:
-                raise RuntimeError(f"L02 contract failed; retained attempt: {attempt}")
-            shutil.rmtree(home)
-            outputs = [{"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}]
-            tests = [{"name": "l02-contract", "status": "passed", "log": "contract.log"}]
-        parent = selected[index - 1] if index else None
-        manifest = _manifest(node["definition"], context_id, node["buildKey"], parent,
-                             [{"runtimeSource": str(runtime), "selection": context["layers"][node["definition"]["layerId"]]}], outputs, tests)
-        built = _publish(attempt, artifact, manifest)
+        with artifact_lock(paths, context_id, node["definition"]["layerId"], node["buildKey"]):
+            if (artifact / "manifest.json").is_file() and not force:
+                built = artifact
+                continue
+            attempt_id = str(uuid.uuid4())
+            attempt = paths.state / "tmp" / f"attempt-{attempt_id}"
+            attempt.mkdir(parents=True)
+            if node["definition"]["layerId"] == "L01":
+                copy_reflink(runtime / "bin", attempt / "runtime" / "bin")
+                copy_reflink(runtime / "lib", attempt / "runtime" / "lib")
+                outputs = []
+                for relative in ("runtime/bin/GlamorousToolkit", "runtime/bin/GlamorousToolkit-cli"):
+                    path = attempt / relative
+                    outputs.append({"path": relative, "sha256": sha256_file(path), "executable": os.access(path, os.X_OK)})
+                tests = [{"name": "launchers-present", "status": "passed"}]
+            else:
+                materialize_clean_image(paths, context, runtime, attempt / "image")
+                home = attempt / "test-home"
+                home.mkdir()
+                (home / "config").mkdir()
+                (home / "cache").mkdir()
+                contract = paths.root / "build" / "layers" / "l02-gt-base" / "tests" / "contract.st"
+                command = [str(selected[0]["artifact"] / "runtime/bin/GlamorousToolkit-cli"), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)]
+                environment = os.environ.copy()
+                environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache")})
+                process = subprocess.run(command, env=environment, capture_output=True, text=True)
+                (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+                if process.returncode:
+                    raise RuntimeError(f"L02 contract failed; retained attempt: {attempt}")
+                shutil.rmtree(home)
+                outputs = [{"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}]
+                tests = [{"name": "l02-contract", "status": "passed", "log": "contract.log"}]
+            parent = selected[index - 1] if index else None
+            manifest = _manifest(node["definition"], context_id, node["buildKey"], parent,
+                                 [{"runtimeSource": str(runtime), "selection": context["layers"][node["definition"]["layerId"]]}], outputs, tests)
+            if force and artifact.exists():
+                rebuild = paths.state / "logs" / "rebuilds" / context_id / node["definition"]["layerId"].lower() / node["buildKey"] / attempt_id
+                rebuild.parent.mkdir(parents=True, exist_ok=True)
+                (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                os.replace(attempt, rebuild)
+                built = artifact
+            else:
+                built = _publish(attempt, artifact, manifest)
     assert built is not None
     return built
