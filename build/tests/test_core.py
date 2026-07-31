@@ -9,6 +9,7 @@ from pathlib import Path
 from build.klibgen_build.core import BuildPaths, canonical_json, digest_json, load_context, load_layers
 from build.klibgen_build.sources import expected_lock, validate_lock
 from build.klibgen_build.lifecycle import discard_run, resume_snapshot, snapshot_run
+from build.klibgen_build.artifacts import build_l07
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -77,6 +78,13 @@ class CoreTest(unittest.TestCase):
             self.assertEqual(resumed["resumedFromSnapshot"], snapshot["snapshotId"])
             self.assertTrue((Path(resumed["runPath"]) / "image/GlamorousToolkit.image").is_file())
             self.assertTrue(discard_run(paths, resumed["runId"])["discarded"])
+
+    def test_l07_rejects_gui_and_unimplemented_release_profiles(self):
+        paths = BuildPaths(ROOT, ROOT / ".klibgen-test")
+        with self.assertRaisesRegex(ValueError, "canonical L06 CLI"):
+            build_l07(paths, "gui")
+        with self.assertRaisesRegex(ValueError, "not production-ready"):
+            build_l07(paths, "release")
 
 
 if __name__ == "__main__":

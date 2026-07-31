@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import uuid
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from contextlib import contextmanager
@@ -130,6 +131,7 @@ def _manifest(layer: dict[str, Any], context_id: str, key: str, parent: dict[str
         "contextId": context_id,
         "buildKey": key,
         "status": "success",
+        "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "parents": [] if parent is None else [{"layerId": parent["definition"]["layerId"], "buildKey": parent["buildKey"]}],
         "variant": layer.get("variants", layer.get("profiles", [])),
         "platform": platform_id(),
@@ -293,7 +295,9 @@ def build_artifact(paths: BuildPaths, context_id: str, target: str, force: bool 
         return build_l05(paths, context_id, force=force)
     if target_id in {"l6", "l06"}:
         return build_l06(paths, context_id, force=force)
-    raise ValueError("implemented build targets are l01 through l06")
+    if target_id in {"l7", "l07"}:
+        return build_l07(paths, context_id, force=force)
+    raise ValueError("implemented build targets are l01 through l07")
 
 
 def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
@@ -478,6 +482,99 @@ def build_l06(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         manifest["packageMapping"] = {"packages": "KlibGenGt-*", "generatedRunBridge": True, "authoritativeWorkspace": context["project"]["workspace"]}
         if force and artifact.exists():
             retained = paths.state / "logs/rebuilds" / context_id / "l06" / node["buildKey"] / attempt_id
+            retained.parent.mkdir(parents=True, exist_ok=True)
+            (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            os.replace(attempt, retained)
+            return artifact
+        return _publish(attempt, artifact, manifest)
+
+
+def build_l07(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
+    context = load_context(paths, context_id)
+    profile = context["layers"]["L07"]["profile"].upper()
+    if profile == "RELEASE":
+        raise ValueError("L07 RELEASE is not production-ready and rejects all builds")
+    if profile != "DEV":
+        raise ValueError(f"unsupported L07 profile {profile!r}")
+    if context["layers"]["L06"]["profile"].upper() != "CLI":
+        raise ValueError("L07 DEV must be built from a canonical L06 CLI artifact")
+    parent_artifact = build_l06(paths, context_id)
+    nodes = graph(paths, context_id)
+    node = nodes[6]
+    artifact = node["artifact"]
+    if (artifact / "manifest.json").is_file() and not force:
+        return artifact
+    with artifact_lock(paths, context_id, "L07", node["buildKey"]):
+        if (artifact / "manifest.json").is_file() and not force:
+            return artifact
+        attempt_id = str(uuid.uuid4())
+        attempt = paths.state / "tmp" / f"attempt-{attempt_id}"
+        bundle = attempt / "bundle"
+        bundle.mkdir(parents=True)
+        runtime_artifact = nodes[0]["artifact"]
+        copy_reflink(runtime_artifact / "runtime/bin", bundle / "runtime/bin")
+        copy_reflink(runtime_artifact / "runtime/lib", bundle / "runtime/lib")
+        copy_reflink(parent_artifact / "image", bundle / "image")
+        set_tree_writable(bundle, True)
+        for generated in (bundle / "image/pharo-local", bundle / "image/gt-extra"):
+            if generated.exists():
+                shutil.rmtree(generated)
+        launcher = bundle / "bin/klibgen-gt"
+        launcher.parent.mkdir()
+        launcher.write_text(
+            "#!/usr/bin/env sh\n"
+            "set -eu\n"
+            "root=$(CDPATH= cd -- \"$(dirname -- \"$0\")/..\" && pwd)\n"
+            "exec \"$root/runtime/bin/GlamorousToolkit-cli\" \"$root/image/GlamorousToolkit.image\" \"$@\"\n",
+            encoding="utf-8",
+        )
+        launcher.chmod(0o755)
+        parent_manifest = read_json(parent_artifact / "manifest.json")
+        version = {
+            "schemaVersion": 1,
+            "distribution": "KlibGenGt",
+            "profile": profile,
+            "projectCommitId": parent_manifest["sources"][0]["commitId"],
+            "projectChangeId": parent_manifest["sources"][0]["changeId"],
+            "parentL06BuildKey": parent_manifest["buildKey"],
+        }
+        (bundle / "version.json").write_text(json.dumps(version, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        smoke = paths.root / "build/layers/l07-project-dist/tests/smoke.st"
+        smoke_cwd = paths.root / "tmp"
+        smoke_cwd.mkdir(exist_ok=True)
+        environment = os.environ.copy()
+        test_home = attempt / "test-home"
+        for name in ("", "config", "cache"):
+            (test_home / name).mkdir(parents=True, exist_ok=True)
+        environment.update({"HOME": str(test_home), "XDG_CONFIG_HOME": str(test_home / "config"), "XDG_CACHE_HOME": str(test_home / "cache")})
+        process = subprocess.run([str(launcher), "st", str(smoke)], cwd=smoke_cwd, env=environment, capture_output=True, text=True)
+        (attempt / "startup-smoke.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L07 startup smoke failed; retained attempt: {attempt}")
+        shutil.rmtree(test_home)
+        checksum_entries = []
+        for path in sorted(item for item in bundle.rglob("*") if item.is_file()):
+            relative = path.relative_to(bundle).as_posix()
+            checksum_entries.append((sha256_file(path), relative))
+        checksum_file = bundle / "SHA256SUMS"
+        checksum_file.write_text("".join(f"{digest}  {relative}\n" for digest, relative in checksum_entries), encoding="utf-8")
+        outputs = [
+            {"path": "bundle/bin/klibgen-gt", "sha256": sha256_file(launcher), "executable": True},
+            {"path": "bundle/version.json", "sha256": sha256_file(bundle / "version.json")},
+            {"path": "bundle/SHA256SUMS", "sha256": sha256_file(checksum_file)},
+            {"path": "bundle/image/GlamorousToolkit.image", "sha256": sha256_file(bundle / "image/GlamorousToolkit.image")},
+        ]
+        manifest = _manifest(
+            node["definition"], context_id, node["buildKey"], nodes[5],
+            [{"parentL06Artifact": str(parent_artifact), "parentL06BuildKey": parent_manifest["buildKey"], "profile": profile}],
+            outputs,
+            [{"name": "distribution-startup", "status": "passed", "log": "startup-smoke.log", "workingDirectory": str(smoke_cwd)}],
+        )
+        manifest["variant"] = {"name": profile, "kind": "packaging-profile"}
+        manifest["sources"] = parent_manifest["sources"]
+        manifest["snapshotParent"] = False
+        if force and artifact.exists():
+            retained = paths.state / "logs/rebuilds" / context_id / "l07" / node["buildKey"] / attempt_id
             retained.parent.mkdir(parents=True, exist_ok=True)
             (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             os.replace(attempt, retained)

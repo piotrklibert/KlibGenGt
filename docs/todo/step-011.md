@@ -2,10 +2,10 @@
 
 ## TODO
 
-- [ ] Build L07 DEV only from canonical L06 CLI.
-- [ ] Publish launcher, image bundle, manifest, version data, and checksums.
-- [ ] Add startup and packaging smoke tests.
-- [ ] Add a non-production RELEASE placeholder with strict source/override rejection.
+- [x] Build L07 DEV only from canonical L06 CLI.
+- [x] Publish launcher, image bundle, manifest, version data, and checksums.
+- [x] Add startup and packaging smoke tests.
+- [x] Add a non-production RELEASE placeholder that rejects all builds.
 
 ## Acceptance
 
