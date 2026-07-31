@@ -13,6 +13,8 @@ from typing import Any
 from contextlib import contextmanager
 
 from .core import BuildPaths, canonical_json, digest_json, load_context, load_layers, platform_id, read_json
+from .sources import jj_identity
+from .bridge import materialize_jj_source
 
 
 def sha256_file(path: Path) -> str:
@@ -39,6 +41,8 @@ def layer_key(paths: BuildPaths, context: dict[str, Any], definition: dict[str, 
         override = context["layers"].get("L04", {}).get("dependencyOverrides", {}).get("sqlite3")
         if override:
             source_state = git_worktree_state((paths.root / override["worktree"]).resolve())
+    if definition["layerId"] in {"L06", "L07"}:
+        source_state = jj_identity(paths, context["project"]["revision"])
     return digest_json({
         "schemaVersion": 1,
         "layer": definition,
@@ -287,7 +291,9 @@ def build_artifact(paths: BuildPaths, context_id: str, target: str, force: bool 
         return build_l04(paths, context_id, force=force)
     if target_id in {"l5", "l05"}:
         return build_l05(paths, context_id, force=force)
-    raise ValueError("implemented build targets are l01 through l05")
+    if target_id in {"l6", "l06"}:
+        return build_l06(paths, context_id, force=force)
+    raise ValueError("implemented build targets are l01 through l06")
 
 
 def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
@@ -406,6 +412,72 @@ def build_l05(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         manifest["inImageMetadata"] = {"class": "KlibGenBuildMetadata", "digest": manifests_digest}
         if force and artifact.exists():
             retained = paths.state / "logs/rebuilds" / context_id / "l05" / node["buildKey"] / attempt_id
+            retained.parent.mkdir(parents=True, exist_ok=True)
+            (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            os.replace(attempt, retained)
+            return artifact
+        return _publish(attempt, artifact, manifest)
+
+
+def build_l06(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
+    parent_artifact = build_l05(paths, context_id)
+    context = load_context(paths, context_id)
+    nodes = graph(paths, context_id)
+    node = nodes[5]
+    artifact = node["artifact"]
+    profile = context["layers"]["L06"]["profile"].upper()
+    if profile == "AGENTIC":
+        raise ValueError("L06 AGENTIC is a placeholder: no trusted-local agent protocol is implemented")
+    if (artifact / "manifest.json").is_file() and not force:
+        return artifact
+    with artifact_lock(paths, context_id, "L06", node["buildKey"]):
+        if (artifact / "manifest.json").is_file() and not force:
+            return artifact
+        attempt_id = str(uuid.uuid4())
+        attempt = paths.state / "tmp" / f"attempt-{attempt_id}"
+        attempt.mkdir(parents=True)
+        copy_reflink(parent_artifact / "image", attempt / "image")
+        set_tree_writable(attempt, True)
+        identity = jj_identity(paths, context["project"]["revision"])
+        bridge = attempt / "export"
+        bridge_commit = materialize_jj_source(paths, identity, bridge)
+        runtime_artifact = nodes[0]["artifact"]
+        launcher = runtime_artifact / "runtime/bin/GlamorousToolkit-cli"
+        home = attempt / "test-home"
+        for name in ("", "config", "cache"):
+            (home / name).mkdir(parents=True, exist_ok=True)
+        environment = os.environ.copy()
+        environment.update({
+            "HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache"),
+            "KLIBGEN_EXPORT_GIT": str(bridge / ".git"), "KLIBGEN_PROFILE": profile,
+        })
+        loader = paths.root / "build/layers/l06-project-dev/scripts/load.st"
+        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(loader)], env=environment, capture_output=True, text=True)
+        (attempt / "load.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L06 project load failed; retained attempt: {attempt}")
+        contract = paths.root / "build/layers/l06-project-dev/tests/contract.st"
+        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L06 contract failed; retained attempt: {attempt}")
+        shutil.rmtree(home)
+        shutil.rmtree(bridge)
+        (attempt / "source-mapping.json").write_text(json.dumps({
+            "vcs": "jj", "workspace": context["project"]["workspace"], "revision": identity,
+            "generatedBridgeCommit": bridge_commit, "tonelDirectory": "src",
+        }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        output = {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}
+        manifest = _manifest(node["definition"], context_id, node["buildKey"], nodes[4],
+                             [{"projectSource": identity, "generatedBridgeCommit": bridge_commit, "profile": profile}], [output],
+                             [{"name": "project-load", "status": "passed", "log": "load.log"}, {"name": "project-tests", "status": "passed", "log": "contract.log"}])
+        manifest["variant"] = {"name": profile, "kind": "configuration-profile"}
+        manifest["sources"] = [{"repositoryId": "project", "vcs": "jj", **identity}]
+        manifest["dirty"] = False
+        manifest["mutable"] = identity["mutable"]
+        manifest["packageMapping"] = {"packages": "KlibGenGt-*", "generatedRunBridge": True, "authoritativeWorkspace": context["project"]["workspace"]}
+        if force and artifact.exists():
+            retained = paths.state / "logs/rebuilds" / context_id / "l06" / node["buildKey"] / attempt_id
             retained.parent.mkdir(parents=True, exist_ok=True)
             (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             os.replace(attempt, retained)

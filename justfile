@@ -56,26 +56,26 @@ push-src-to-export:
 pull-export-to-src:
     ./scripts/pull-export-to-src.sh
 
-gui:
-    ./scripts/gt
+gui context="gui":
+    python3 -m build.klibgen_build launch gui {{quote(context)}}
 
-load:
-    ./scripts/gt --headless ./scripts/load-project.st
+load context="default":
+    python3 -m build.klibgen_build load {{quote(context)}}
 
-test:
-    ./scripts/gt --headless ./scripts/test.st
+test context="default":
+    python3 -m build.klibgen_build test {{quote(context)}}
 
-test-fresh: push-src-to-export bootstrap
-    ./scripts/test-fresh.sh
+test-fresh context="default":
+    KLIBGEN_STATE_ROOT=artifacts/fresh-layered python3 -m build.klibgen_build test {{quote(context)}} --fresh
 
-check-type-pragmas: push-src-to-export
-    ./scripts/gt --headless ./scripts/check-type-pragmas.st
+check-type-pragmas context="default":
+    python3 -m build.klibgen_build check-type-pragmas {{quote(context)}}
 
-smoke:
-    ./scripts/gt --headless ./scripts/smoke.st
+smoke context="default":
+    python3 -m build.klibgen_build smoke {{quote(context)}}
 
-eval expr:
-    GT_EVAL={{quote(expr)}} ./scripts/gt --headless ./scripts/eval.st
+eval expr profile="cli" context="default":
+    GT_EVAL={{quote(expr)}} python3 -m build.klibgen_build eval {{quote(profile)}} {{quote(context)}}
 
 clean-runtime:
     rm -rf vendor/gt vendor/gt.zip vendor/gt.unpack vendor/gt-build/workspaces pharo-local gt-local *.image *.changes *.sources *.log *.fuel *.ombu *.bak

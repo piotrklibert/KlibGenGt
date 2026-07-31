@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] Resolve and archive an exact JJ workspace commit.
-- [ ] Create a context-local generated Iceberg Git bridge from that archive.
-- [ ] Load and test project packages without persisting stale absolute bindings.
-- [ ] Rebind each writable run to its own export bridge.
-- [ ] Cut compatible load/test/fresh/gui/eval/smoke/type commands over after parity tests.
+- [x] Resolve and materialize an exact JJ workspace commit through `jj file` operations.
+- [x] Create a context-local generated Iceberg Git bridge from that materialization.
+- [x] Load and test project packages without persisting stale absolute bindings.
+- [x] Rebind each writable run to its own export bridge.
+- [x] Cut compatible load/test/fresh/gui/eval/smoke/type commands over after parity tests.
 
 ## Acceptance
 
