@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] Declare deterministic dependency order and verification actions.
-- [ ] Build SQLite3 from its lock into a dependency-only canonical image.
-- [ ] Record repository, package, load-order, and override metadata.
-- [ ] Support an explicit context-local Git worktree override.
-- [ ] Test default and forked dependency identities independently.
+- [x] Declare deterministic dependency order and verification actions.
+- [x] Build SQLite3 from its lock into a dependency-only canonical image.
+- [x] Record repository, package, load-order, and override metadata.
+- [x] Support an explicit context-local Git worktree override.
+- [x] Test default and forked dependency identities independently.
 
 ## Acceptance
 

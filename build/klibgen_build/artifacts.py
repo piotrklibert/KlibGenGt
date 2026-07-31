@@ -34,6 +34,11 @@ def implementation_digest(paths: BuildPaths) -> str:
 
 def layer_key(paths: BuildPaths, context: dict[str, Any], definition: dict[str, Any], parent_key: str | None) -> str:
     lock = read_json(paths.root / "build" / "locks" / "default.lock.json")
+    source_state = None
+    if definition["layerId"] == "L04":
+        override = context["layers"].get("L04", {}).get("dependencyOverrides", {}).get("sqlite3")
+        if override:
+            source_state = git_worktree_state((paths.root / override["worktree"]).resolve())
     return digest_json({
         "schemaVersion": 1,
         "layer": definition,
@@ -42,6 +47,7 @@ def layer_key(paths: BuildPaths, context: dict[str, Any], definition: dict[str, 
         "lock": lock,
         "platform": platform_id(),
         "implementation": implementation_digest(paths),
+        "sourceState": source_state,
     })
 
 
@@ -277,4 +283,65 @@ def build_artifact(paths: BuildPaths, context_id: str, target: str, force: bool 
         return build_base(paths, context_id, target_id, force=force)
     if target_id in {"l3", "l03"}:
         return build_l03(paths, context_id, force=force)
-    raise ValueError("implemented build targets are l01, l02, and l03")
+    if target_id in {"l4", "l04"}:
+        return build_l04(paths, context_id, force=force)
+    raise ValueError("implemented build targets are l01 through l04")
+
+
+def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
+    parent_artifact = build_l03(paths, context_id)
+    context = load_context(paths, context_id)
+    nodes = graph(paths, context_id)
+    node = nodes[3]
+    artifact = node["artifact"]
+    if (artifact / "manifest.json").is_file() and not force:
+        return artifact
+    with artifact_lock(paths, context_id, "L04", node["buildKey"]):
+        if (artifact / "manifest.json").is_file() and not force:
+            return artifact
+        attempt_id = str(uuid.uuid4())
+        attempt = paths.state / "tmp" / f"attempt-{attempt_id}"
+        attempt.mkdir(parents=True)
+        copy_reflink(parent_artifact / "image", attempt / "image")
+        set_tree_writable(attempt, True)
+        selection = context["layers"]["L04"]
+        lock = read_json(paths.root / "build/locks/default.lock.json")
+        sqlite = next(source for source in lock["sources"] if source["sourceId"] == "sqlite3")
+        override = selection.get("dependencyOverrides", {}).get("sqlite3")
+        source_state = None
+        if override:
+            worktree = (paths.root / override["worktree"]).resolve()
+            source_state = git_worktree_state(worktree)
+            repository = f"gitlocal://{worktree / '.git'}:{source_state['commit']}/src"
+        else:
+            repository = f"github://pharo-rdbms/Pharo-SQLite3:{sqlite['resolved']['commit']}/src"
+        runtime_artifact = nodes[0]["artifact"]
+        launcher = runtime_artifact / "runtime/bin/GlamorousToolkit-cli"
+        home = attempt / "test-home"
+        for name in ("", "config", "cache"):
+            (home / name).mkdir(parents=True, exist_ok=True)
+        environment = os.environ.copy()
+        environment.update({"HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache"), "KLIBGEN_SQLITE_REPOSITORY": repository})
+        loader = paths.root / "build/layers/l04-project-deps/scripts/load.st"
+        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(loader)], env=environment, capture_output=True, text=True)
+        (attempt / "load.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L04 dependency load failed; retained attempt: {attempt}")
+        contract = paths.root / "build/layers/l04-project-deps/tests/contract.st"
+        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L04 contract failed; retained attempt: {attempt}")
+        shutil.rmtree(home)
+        output = {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}
+        manifest = _manifest(node["definition"], context_id, node["buildKey"], nodes[2],
+                             [{"dependencyId": "sqlite3", "repository": repository, "lock": sqlite, "overrideState": source_state, "loadOrder": 1}],
+                             [output], [{"name": "sqlite3-load", "status": "passed", "log": "load.log"}, {"name": "l04-contract", "status": "passed", "log": "contract.log"}])
+        manifest["packageMappings"] = [{"packages": ["SQLite3-Core", "SQLite3-Pharo9", "SQLite3-Pharo10"], "repository": repository}]
+        if force and artifact.exists():
+            retained = paths.state / "logs/rebuilds" / context_id / "l04" / node["buildKey"] / attempt_id
+            retained.parent.mkdir(parents=True, exist_ok=True)
+            (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            os.replace(attempt, retained)
+            return artifact
+        return _publish(attempt, artifact, manifest)
