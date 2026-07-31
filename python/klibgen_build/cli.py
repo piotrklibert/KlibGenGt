@@ -14,7 +14,10 @@ from .sources import expected_lock, host_facts, jj_identity, resolve_git_head, v
 from .artifacts import build_artifact, build_l06, graph
 from .runs import clean_runs, create_project_run, create_run, process_is_alive
 from .operations import compatibility_context, execute, execute_image_tool, fresh_test, launch_gui
-from .lifecycle import discard_run, promote_packages, resume_snapshot, snapshot_run
+from .lifecycle import (
+    clear_current_snapshot, current_snapshot_id, discard_run, find_snapshot, list_snapshots, promote_packages,
+    resume_snapshot, select_snapshot, snapshot_current, snapshot_run,
+)
 from .contexts import add_git_worktree, create_context, list_contexts, remove_context, remove_git_worktree
 from .retention import garbage_collect, pin_artifact, unpin_artifact
 from .sources import project_workspace
@@ -100,6 +103,7 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
     for run in runs:
         run["active"] = process_is_alive(run.get("pid"))
     snapshots = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(snapshots_root.glob("*/snapshot.json"))]
+    current_gui_snapshot = current_snapshot_id(paths, context_id)
     return {
         "schemaVersion": 1,
         "operation": "status",
@@ -109,6 +113,7 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
         "layers": layers,
         "runs": runs,
         "snapshots": snapshots,
+        "currentGuiSnapshotId": current_gui_snapshot,
     }
 
 
@@ -176,6 +181,16 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
         return
     if result["operation"] == "resume":
         print(f"resumed as run {result['runId']}: {result['runPath']}")
+        return
+    if result["operation"] == "snapshot-list":
+        for snapshot in result["snapshots"]:
+            print(f"{'*' if snapshot['current'] else ' '} {snapshot['snapshotId']} {snapshot['createdAt']} {snapshot['classification']}")
+        return
+    if result["operation"] == "snapshot-current":
+        print(result["snapshotId"] or "none")
+        return
+    if result["operation"] in {"snapshot-select", "snapshot-clear"}:
+        print(json.dumps(result, indent=2, sort_keys=True))
         return
     if result["operation"] == "discard":
         print(f"discarded {result['recordKind']} {result['recordId']}")
@@ -348,7 +363,7 @@ def parser() -> argparse.ArgumentParser:
     subparsers = result.add_subparsers(dest="command", required=True)
     _host_parser(subparsers)
     _image_parser(subparsers)
-    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "smoke", "check-type-pragmas", "eval", "launch", "snapshot", "resume", "discard", "promote", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"):
+    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"):
         command = subparsers.add_parser(name)
         if name == "build":
             command.add_argument("target")
@@ -362,6 +377,15 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("context", nargs="?", default="default")
         elif name == "launch":
             command.add_argument("profile", choices=("gui",))
+            command.add_argument("context", nargs="?", default="gui")
+        elif name == "gui-fresh":
+            command.add_argument("context", nargs="?", default="gui")
+        elif name == "gui-snapshot":
+            command.add_argument("snapshot_id")
+        elif name in {"snapshot-list", "snapshot-current", "snapshot-clear"}:
+            command.add_argument("context", nargs="?", default="gui")
+        elif name == "snapshot-select":
+            command.add_argument("snapshot_id")
             command.add_argument("context", nargs="?", default="gui")
         elif name in {"snapshot", "resume", "discard"}:
             command.add_argument("record_id")
@@ -564,6 +588,14 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "promote":
             packages = [item.strip() for item in args.packages.split(",") if item.strip()]
             result = promote_packages(paths, args.source_id, packages, args.context)
+        elif args.command == "snapshot-list":
+            result = list_snapshots(paths, args.context)
+        elif args.command == "snapshot-current":
+            result = snapshot_current(paths, args.context)
+        elif args.command == "snapshot-select":
+            result = select_snapshot(paths, args.context, args.snapshot_id)
+        elif args.command == "snapshot-clear":
+            result = clear_current_snapshot(paths, args.context)
         elif args.command == "context-list":
             result = list_contexts(paths)
         elif args.command == "context-create":
@@ -580,6 +612,12 @@ def main(argv: list[str] | None = None) -> int:
             result = unpin_artifact(paths, args.name)
         elif args.command == "gc":
             result = garbage_collect(paths)
+        elif args.command == "gui-fresh":
+            return launch_gui(paths, args.context, fresh=True)
+        elif args.command == "gui-snapshot":
+            snapshot_path = find_snapshot(paths, args.snapshot_id)
+            snapshot = json.loads((snapshot_path / "snapshot.json").read_text(encoding="utf-8"))
+            return launch_gui(paths, snapshot["contextId"], snapshot_id=args.snapshot_id, advance_current=False)
         else:
             return launch_gui(paths, args.context)
     except (OSError, RuntimeError, ValueError, TimeoutError, re.error, json.JSONDecodeError, ProcessExecutionError) as error:

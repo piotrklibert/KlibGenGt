@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import build_base, build_l06, copy_reflink, graph, set_tree_writable
-from .core import BuildPaths
+from .core import BuildPaths, platform_id
 from .bridge import materialize_jj_source
+from .sources import project_workspace
 
 
 def utc_now() -> str:
@@ -98,10 +99,15 @@ def create_project_run(paths: BuildPaths, context_id: str, profile: str) -> dict
     identity = manifest["sources"][0]
     bridge_commit = materialize_jj_source(paths, identity, run / "export")
     nodes = graph(paths, context_id)
+    runtime_manifest = json.loads((nodes[0]["artifact"] / "manifest.json").read_text(encoding="utf-8"))
     metadata = {
-        "schemaVersion": 1, "runId": run_id, "contextId": context_id, "profile": actual_profile,
+        "schemaVersion": 2, "runId": run_id, "contextId": context_id, "profile": actual_profile,
         "parentArtifact": str(artifact), "parentBuildKey": manifest["buildKey"],
+        "runtimeArtifact": str(nodes[0]["artifact"]), "runtimeBuildKey": runtime_manifest["buildKey"],
+        "runtimeProfile": platform_id(),
         "projectCommitId": identity["commitId"], "projectChangeId": identity["changeId"],
+        "workspace": identity.get("workspace", "."),
+        "workspacePath": str(project_workspace(paths, identity.get("workspace", "."))),
         "generatedBridgeCommit": bridge_commit, "state": "created",
         "launcher": str(nodes[0]["artifact"] / "runtime/bin/GlamorousToolkit-cli"),
         "createdAt": utc_now(), "runtimeArguments": [],
@@ -109,6 +115,6 @@ def create_project_run(paths: BuildPaths, context_id: str, profile: str) -> dict
         "logs": [],
     }
     (run / "run.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    for name in ("home", "config", "cache", "logs", "tmp"):
+    for name in ("home", "config", "data", "cache", "logs", "tmp"):
         (run / name).mkdir()
     return metadata | {"runPath": str(run)}

@@ -3,6 +3,8 @@ import os
 import sys
 import unittest
 import tempfile
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,6 +13,7 @@ from klibgen_build.host_tools import (
     WindowInfo,
     WindowSelector,
     X11DesktopBackend,
+    window_data,
     profile_command,
     require_one_window,
     select_windows,
@@ -18,6 +21,7 @@ from klibgen_build.host_tools import (
     terminate_process,
 )
 from klibgen_build.processes import run_command
+from klibgen_build.cli import emit
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,6 +53,27 @@ def window(identifier, title="Glamorous Toolkit", pid=42, command="/opt/gt/Glamo
 
 
 class HostToolsTest(unittest.TestCase):
+    def test_window_data_uses_public_camel_case_contract(self):
+        data = window_data([window(0x2A)])[0]
+        self.assertEqual(data["id"], 0x2A)
+        self.assertEqual(data["idHex"], "0x2a")
+        self.assertNotIn("id_hex", data)
+
+    def test_human_window_listing_uses_serialized_window_contract(self):
+        result = {
+            "schemaVersion": 1,
+            "ok": True,
+            "operation": "host.windows.list",
+            "data": {"windows": window_data([window(0x2A)])},
+        }
+        output = StringIO()
+        with redirect_stdout(output):
+            emit(result, as_json=False)
+        self.assertEqual(
+            output.getvalue(),
+            "0x2a\t42\t800x600+10+20\tGlamorous Toolkit\t/opt/gt/GlamorousToolkit\n",
+        )
+
     def test_window_selectors_compose_and_ambiguity_is_rejected(self):
         windows = [window(1), window(2, "Terminal", 43, "/usr/bin/xterm")]
         selected = select_windows(

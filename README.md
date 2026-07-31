@@ -30,11 +30,11 @@ just test default
 just gui
 ```
 
-`just gui` arms the writable run image to open its default `GtWorld` during GUI
-startup, then starts it with the normal `GlamorousToolkit --image ...`
-executable. Only the Glamorous Toolkit application window is opened. The `gui`
-recipe takes no context argument; use `just gui-context <context>` when an
-explicit alternative GUI context is required.
+`just gui` resumes the current saved GUI session for the `gui` context, or
+creates a fresh writable run when no session is selected. `just gui-fresh`
+explicitly bypasses the saved-session pointer. Both start the normal
+`GlamorousToolkit --image ...` executable and open one GT window. Use `just
+gui-context <context>` for an explicit alternative context.
 
 The host-side coordinator is the Python project declared by `pyproject.toml`
 and locked by `uv.lock`. Every Python-backed recipe uses `uv run`, which creates
@@ -179,21 +179,22 @@ attempts.
 just gui
 ```
 
-This creates `.klibgen/runs/gui/<run-id>/`, binds Iceberg to that run's
-generated bridge, installs an image-local GUI startup action, snapshots that
-preparation, and launches the GUI sibling of the CLI runtime as
-`GlamorousToolkit --image <run-image>`. Headless layer snapshots can retain a
-GT world whose Morphic host no longer has a native window, so the startup action
-opens a fresh default GT world and closes that stale serialized world. This
-happens early enough to suppress Morphic's fallback world. Closing that fresh
-world quits the disposable image, allowing the foreground `just gui` command to
-return normally. Bundled `gt-extra`
-documentation is part of L02, and the host's `~/Documents/lepiter` is copied
-into the disposable run HOME so the normal GT home opens with the GT Book and a
-writable, isolated copy of the local knowledge base. Saving the image
-changes only the run copy. The run metadata records both preparation and GUI
-commands, its PID, arguments, logs, resources, L06 parent, and exact JJ source
-identity.
+With no current snapshot, this creates `.klibgen/runs/gui/<run-id>/`, binds
+Iceberg to the run's generated bridge, installs an image-local session hook,
+and launches the GUI sibling of the CLI runtime. The host's
+`~/Documents/lepiter` is seeded once into the run's private HOME. HOME, XDG
+config/data, the complete image bundle, bridge dirty state, and logs persist;
+cache and tmp do not.
+
+Saving and quitting automatically publishes an immutable schema-v2 L06-tmp
+snapshot, verifies its component hashes, removes the source run, and advances
+the context's current pointer. A later `just gui` directly copies and launches
+that snapshot using its recorded runtime; it does not rebuild L06 or rerun
+Metacello. The serialized `GtWorld` is retained, and Iceberg is rebound to the
+new private bridge path at image startup. Current JJ/workspace divergence is
+reported but never reloads or alters the saved session. Quit-without-save and
+interrupted runs remain under `.klibgen/runs/` for recovery and do not change
+the pointer.
 
 After the GUI process stops:
 
@@ -201,12 +202,17 @@ After the GUI process stops:
 just snapshot <run-id>
 just resume <snapshot-id>
 just discard <run-or-snapshot-id>
+just gui-fresh [context]
+just gui-snapshot <snapshot-id>
+just snapshot-list [context]
+just snapshot-current [context]
+just snapshot-select <snapshot-id> [context]
+just snapshot-clear [context]
 ```
 
-`snapshot` creates an immutable L06-tmp bundle and records its image checksum,
-parent L06 key, JJ commit/change IDs, timestamps, and bridge changes. `resume`
-creates a new writable run from it. Snapshots are never considered by the L07
-builder.
+Manual `snapshot` and `resume` remain available. A manual snapshot does not
+become current unless selected explicitly. Selecting and clearing pointers
+never deletes history, and snapshots are never considered by the L07 builder.
 
 Promote only explicit packages from a run or snapshot:
 
@@ -280,8 +286,10 @@ explicit pins.
 | `just code-search`, `code-class`, `code-method` | Search loaded code or dump exact class and method definitions. |
 | `just lepiter-search`, `lepiter-export` | Search loaded Lepiter databases or export a page as Markdown. |
 | `just profile "<shell command>"` | Run a shell command with elapsed and child CPU timing. |
-| `just gui` | Create a GUI-context run and open Glamorous Toolkit. |
-| `just gui-context <context>` | Open an explicit alternative GUI context. |
+| `just gui` | Resume the current GUI snapshot, or create a fresh GUI run. |
+| `just gui-context <context>` | Apply the same policy to an explicit context. |
+| `just gui-fresh`, `gui-snapshot` | Bypass the pointer or launch one explicit snapshot. |
+| `just snapshot-list`, `snapshot-current`, `snapshot-select`, `snapshot-clear` | Inspect and manage current GUI-session selection without deleting history. |
 | `just build l07 default` | Produce the self-contained DEV launcher/image bundle and checksums. |
 | `just snapshot`, `resume`, `discard`, `promote` | Manage non-canonical development state and selected source changes. |
 | `just context-*`, `worktree-*` | Manage generated JJ workspaces and Git overrides. |

@@ -5,7 +5,7 @@ import re
 import resource
 import signal
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Protocol, Sequence
 
@@ -253,8 +253,24 @@ def profile_command(command: Sequence[str], capture: bool) -> dict[str, object]:
 
 
 def window_data(windows: Sequence[WindowInfo]) -> list[dict[str, object]]:
-    return [asdict(window) for window in windows]
+    return [
+        {
+            "id": window.id,
+            "idHex": window.id_hex,
+            "title": window.title,
+            "pid": window.pid,
+            "command": window.command,
+            "x": window.x,
+            "y": window.y,
+            "width": window.width,
+            "height": window.height,
+        }
+        for window in windows
+    ]
 
 
 def process_data(processes: Sequence[ProcessInfo]) -> list[dict[str, object]]:
-    return [asdict(process) for process in processes]
+    return [
+        {"pid": process.pid, "state": process.state, "command": process.command}
+        for process in processes
+    ]

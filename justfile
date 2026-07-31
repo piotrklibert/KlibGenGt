@@ -100,6 +100,24 @@ gui:
 gui-context context:
     uv run klibgen-build launch gui {{quote(context)}}
 
+gui-fresh context="gui":
+    uv run klibgen-build gui-fresh {{quote(context)}}
+
+gui-snapshot snapshot_id:
+    uv run klibgen-build gui-snapshot {{quote(snapshot_id)}}
+
+snapshot-list context="gui":
+    uv run klibgen-build snapshot-list {{quote(context)}}
+
+snapshot-current context="gui":
+    uv run klibgen-build snapshot-current {{quote(context)}}
+
+snapshot-select snapshot_id context="gui":
+    uv run klibgen-build snapshot-select {{quote(snapshot_id)}} {{quote(context)}}
+
+snapshot-clear context="gui":
+    uv run klibgen-build snapshot-clear {{quote(context)}}
+
 load context="default":
     uv run klibgen-build load {{quote(context)}}
 

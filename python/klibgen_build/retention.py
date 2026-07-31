@@ -40,9 +40,24 @@ def garbage_collect(paths: BuildPaths) -> dict[str, Any]:
             preserved.update(node["artifact"].resolve() for node in graph(paths, context_id) if (node["artifact"] / "manifest.json").is_file())
         except (OSError, RuntimeError, ValueError):
             skipped_contexts.append(context_id)
+    def preserve_ancestors(artifact: Path) -> None:
+        artifact = artifact.resolve()
+        if artifact in preserved or not (artifact / "manifest.json").is_file():
+            return
+        preserved.add(artifact)
+        manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
+        for parent in manifest.get("parents", []):
+            parent_path = (
+                paths.state / "artifacts" / manifest["platform"] / manifest["contextId"] /
+                parent["layerId"].lower() / parent["buildKey"]
+            )
+            preserve_ancestors(parent_path)
+
     for snapshot_file in (paths.state / "snapshots").glob("*/*/snapshot.json"):
         value = json.loads(snapshot_file.read_text(encoding="utf-8"))
-        preserved.add(Path(value["parentL06Artifact"]).resolve())
+        preserve_ancestors(Path(value["parentL06Artifact"]))
+        if value.get("parentL01Artifact"):
+            preserve_ancestors(Path(value["parentL01Artifact"]))
     for pin_file in (paths.state / "state/pins").glob("*.json"):
         value = json.loads(pin_file.read_text(encoding="utf-8"))
         preserved.add(Path(value["artifactPath"]).resolve())
