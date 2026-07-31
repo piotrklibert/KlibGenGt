@@ -1,5 +1,22 @@
 bootstrap: bootstrap-download
 
+doctor context="default":
+    python3 -m build.klibgen_build doctor {{quote(context)}}
+
+doctor-json context="default":
+    python3 -m build.klibgen_build doctor {{quote(context)}} --json
+
+status context="default":
+    python3 -m build.klibgen_build status {{quote(context)}}
+
+status-json context="default":
+    python3 -m build.klibgen_build status {{quote(context)}} --json
+
+test-build-tools:
+    python3 -m unittest discover -s build/tests -v
+
+check: test-build-tools doctor test
+
 bootstrap-download:
     ./scripts/bootstrap-gt.sh
 

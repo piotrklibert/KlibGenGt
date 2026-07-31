@@ -18,6 +18,7 @@ gt-local/
 private/
 tmp/
 export/
+.klibgen/
 data/*
 !data/kotlin-samples/
 data/kotlin-samples/*

@@ -2,12 +2,12 @@
 
 ## TODO
 
-- [ ] Add a Python-stdlib coordinator behind `just`.
-- [ ] Add context, lock, manifest, and summary schemas under `build/`.
-- [ ] Add the committed default context and seven stable layer definitions.
-- [ ] Add ignored `.klibgen/` state layout.
-- [ ] Implement human and JSON `doctor` and `status` commands.
-- [ ] Test canonical JSON, SHA-256 keys, schema checks, and path independence.
+- [x] Add a Python-stdlib coordinator behind `just`.
+- [x] Add context, lock, manifest, and summary schemas under `build/`.
+- [x] Add the committed default context and seven stable layer definitions.
+- [x] Add ignored `.klibgen/` state layout.
+- [x] Implement human and JSON `doctor` and `status` commands.
+- [x] Test canonical JSON, SHA-256 keys, schema checks, and path independence.
 
 ## Acceptance
 

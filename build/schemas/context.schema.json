@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"context.schema.json","type":"object","required":["schemaVersion","contextId","project","layers"],"properties":{"schemaVersion":{"const":1},"contextId":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"},"project":{"type":"object"},"layers":{"type":"object"}},"additionalProperties":false}

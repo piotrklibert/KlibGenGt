@@ -88,7 +88,8 @@ KGSQLite3Examples >> fileRoundTrip [
 	<gtExample>
 	<return: #(Array<(Dictionary<String, Any>)>)>
 	| path connection rows |
-	path := FileSystem workingDirectory / 'tmp' / 'kg-sqlite3-example.db'.
+	path := FileSystem workingDirectory / 'tmp'
+		/ ('kg-sqlite3-example-' , UUID new asString , '.db').
 	path parent ensureCreateDirectory.
 	path exists ifTrue: [ path delete ].
 	connection := SQLite3Connection on: path fullName.
