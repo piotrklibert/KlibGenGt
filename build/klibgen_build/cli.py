@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import BuildPaths, command_status, digest_json, load_context, load_layers, platform_id
+from .sources import expected_lock, host_facts, jj_identity, resolve_git_head, validate_lock
 
 
 def doctor(paths: BuildPaths, context_id: str) -> dict[str, Any]:
@@ -60,6 +61,34 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
     }
 
 
+def resolve(paths: BuildPaths, context_id: str, update: bool) -> dict[str, Any]:
+    context = load_context(paths, context_id)
+    lock_path = paths.root / "build" / "locks" / f"{context_id}.lock.json"
+    current = json.loads(lock_path.read_text(encoding="utf-8"))
+    validate_lock(current)
+    sqlite = next(item for item in current["sources"] if item["sourceId"] == "sqlite3")
+    commit = resolve_git_head(sqlite["source"], sqlite["requested"]["branch"]) if update else sqlite["resolved"]["commit"]
+    wanted = expected_lock(paths, commit)
+    if update:
+        lock_path.write_text(json.dumps(wanted, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        current = wanted
+    elif current != wanted:
+        raise ValueError(f"lock is stale: run just resolve-update {context_id}")
+    baseline = (paths.root / "src" / "BaselineOfKlibGenGt" / "BaselineOfKlibGenGt.class.st").read_text(encoding="utf-8")
+    if commit not in baseline:
+        raise ValueError(f"SQLite baseline does not use locked commit {commit}")
+    return {
+        "schemaVersion": 1,
+        "operation": "resolve",
+        "contextId": context["contextId"],
+        "updated": update,
+        "lockPath": str(lock_path),
+        "host": host_facts(),
+        "projectSource": jj_identity(paths, context["project"]["revision"]),
+        "sources": current["sources"],
+    }
+
+
 def emit(result: dict[str, Any], as_json: bool) -> None:
     if as_json:
         print(json.dumps(result, indent=2, sort_keys=True))
@@ -71,6 +100,11 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
             label = item.get("name", item.get("path"))
             print(f"{'ok' if item['ok'] else 'FAIL':4} {label}")
         return
+    if result["operation"] == "resolve":
+        action = "updated" if result["updated"] else "verified"
+        print(f"{action}: {result['lockPath']}")
+        print(f"project JJ commit: {result['projectSource']['commitId']}")
+        return
     print(f"context: {result['contextId']}")
     for layer in result["layers"]:
         print(f"{layer['layerId']} {layer['state']:7} {layer['name']} ({layer['expectedBuildKey'][:12]})")
@@ -79,10 +113,12 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="klibgen-build")
     subparsers = result.add_subparsers(dest="command", required=True)
-    for name in ("doctor", "status"):
+    for name in ("doctor", "status", "resolve"):
         command = subparsers.add_parser(name)
         command.add_argument("context", nargs="?", default="default")
         command.add_argument("--json", action="store_true")
+        if name == "resolve":
+            command.add_argument("--update", action="store_true")
     return result
 
 
@@ -90,7 +126,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     paths = BuildPaths.discover()
     try:
-        result = doctor(paths, args.context) if args.command == "doctor" else status(paths, args.context)
+        if args.command == "doctor":
+            result = doctor(paths, args.context)
+        elif args.command == "status":
+            result = status(paths, args.context)
+        else:
+            result = resolve(paths, args.context, args.update)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"{args.command}[{args.context}]: {error}", file=sys.stderr)
         return 2

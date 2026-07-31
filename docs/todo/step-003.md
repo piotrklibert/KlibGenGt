@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] Implement archive, Git, and JJ source resolvers.
-- [ ] Commit the default external-input lock.
-- [ ] Pin SQLite3 to the resolved commit and verify baseline/lock agreement.
-- [ ] Capture declared host facts and reject unresolved canonical inputs.
-- [ ] Implement `just resolve` with check and explicit update modes.
+- [x] Implement archive, Git, and JJ source resolvers.
+- [x] Commit the default external-input lock.
+- [x] Pin SQLite3 to the resolved commit and verify baseline/lock agreement.
+- [x] Capture declared host facts and reject unresolved canonical inputs.
+- [x] Implement `just resolve` with check and explicit update modes.
 
 ## Acceptance
 

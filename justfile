@@ -12,6 +12,12 @@ status context="default":
 status-json context="default":
     python3 -m build.klibgen_build status {{quote(context)}} --json
 
+resolve context="default":
+    python3 -m build.klibgen_build resolve {{quote(context)}}
+
+resolve-update context="default":
+    python3 -m build.klibgen_build resolve {{quote(context)}} --update
+
 test-build-tools:
     python3 -m unittest discover -s build/tests -v
 

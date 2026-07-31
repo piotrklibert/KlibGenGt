@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "dependencies": [
+    {
+      "dependencyId": "sqlite3",
+      "kind": "smalltalk",
+      "sourceType": "git",
+      "repository": "https://github.com/pharo-rdbms/Pharo-SQLite3.git",
+      "requestedRevision": "master",
+      "baseline": "SQLite3",
+      "loadGroups": ["Core"],
+      "verifyClasses": ["SQLite3Connection", "SQLite3Library"]
+    }
+  ]
+}

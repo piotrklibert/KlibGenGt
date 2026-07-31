@@ -13,7 +13,7 @@ BaselineOfKlibGenGt >> baseline: spec [
         spec
             baseline: 'SQLite3' with: [
                 spec
-                    repository: 'github://pharo-rdbms/Pharo-SQLite3:master/src';
+					repository: 'github://pharo-rdbms/Pharo-SQLite3:44dee155676f9ac9be1c7ffac8caef90024968c4/src';
                     loads: 'Core' ].
 
         spec

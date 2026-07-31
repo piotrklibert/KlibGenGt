@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "contextId": "default",
+  "sources": [
+    {
+      "sourceId": "gt-release",
+      "sourceType": "archive",
+      "requested": {"version": "v1.1.477"},
+      "resolved": {"url": "https://github.com/feenkcom/gtoolkit/releases/download/v1.1.477/GlamorousToolkit-Linux-x86_64-v1.1.477.zip"},
+      "integrity": {"sha256": "784d30cb099100983fe8a9ae1507ebd0a6703c0971e02687e8344502ee364cd3"}
+    },
+    {
+      "sourceId": "gt-installer",
+      "sourceType": "archive",
+      "requested": {"version": "v0.201.0"},
+      "resolved": {"url": "https://github.com/feenkcom/gtoolkit-maestro-rs/releases/download/v0.201.0/gt-installer-x86_64-unknown-linux-gnu"},
+      "integrity": {"sha256": "03a1aa4fa3b23fdce9b5c97d10cf10ff8b6e900f137f03a452f40c5a1a23bd93"}
+    },
+    {
+      "sourceId": "sqlite3",
+      "sourceType": "git",
+      "source": "https://github.com/pharo-rdbms/Pharo-SQLite3.git",
+      "requested": {"branch": "master"},
+      "resolved": {"commit": "44dee155676f9ac9be1c7ffac8caef90024968c4"},
+      "integrity": {"treeHash": "44dee155676f9ac9be1c7ffac8caef90024968c4"}
+    }
+  ]
+}

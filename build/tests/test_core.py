@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from build.klibgen_build.core import BuildPaths, canonical_json, digest_json, load_context, load_layers
+from build.klibgen_build.sources import expected_lock, validate_lock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +36,13 @@ class CoreTest(unittest.TestCase):
         value = json.loads(result.stdout)
         self.assertEqual(value["contextId"], "default")
         self.assertEqual(len(value["layers"]), 7)
+
+    def test_committed_lock_matches_pins_and_uses_immutable_ids(self):
+        paths = BuildPaths(ROOT, ROOT / ".klibgen-test")
+        lock = json.loads((ROOT / "build/locks/default.lock.json").read_text())
+        validate_lock(lock)
+        sqlite = next(item for item in lock["sources"] if item["sourceId"] == "sqlite3")
+        self.assertEqual(lock, expected_lock(paths, sqlite["resolved"]["commit"]))
 
 
 if __name__ == "__main__":
