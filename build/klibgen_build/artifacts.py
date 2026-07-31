@@ -285,7 +285,9 @@ def build_artifact(paths: BuildPaths, context_id: str, target: str, force: bool 
         return build_l03(paths, context_id, force=force)
     if target_id in {"l4", "l04"}:
         return build_l04(paths, context_id, force=force)
-    raise ValueError("implemented build targets are l01 through l04")
+    if target_id in {"l5", "l05"}:
+        return build_l05(paths, context_id, force=force)
+    raise ValueError("implemented build targets are l01 through l05")
 
 
 def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
@@ -340,6 +342,70 @@ def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         manifest["packageMappings"] = [{"packages": ["SQLite3-Core", "SQLite3-Pharo9", "SQLite3-Pharo10"], "repository": repository}]
         if force and artifact.exists():
             retained = paths.state / "logs/rebuilds" / context_id / "l04" / node["buildKey"] / attempt_id
+            retained.parent.mkdir(parents=True, exist_ok=True)
+            (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            os.replace(attempt, retained)
+            return artifact
+        return _publish(attempt, artifact, manifest)
+
+
+def build_l05(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
+    parent_artifact = build_l04(paths, context_id)
+    context = load_context(paths, context_id)
+    nodes = graph(paths, context_id)
+    node = nodes[4]
+    artifact = node["artifact"]
+    profile = context["layers"]["L05"]["profile"].upper()
+    if profile == "AGENTIC":
+        raise ValueError("L05 AGENTIC is a placeholder: no trusted-local agent protocol is implemented")
+    if profile not in {"CLI", "GUI"}:
+        raise ValueError(f"unsupported L05 profile {profile!r}")
+    if (artifact / "manifest.json").is_file() and not force:
+        return artifact
+    with artifact_lock(paths, context_id, "L05", node["buildKey"]):
+        if (artifact / "manifest.json").is_file() and not force:
+            return artifact
+        attempt_id = str(uuid.uuid4())
+        attempt = paths.state / "tmp" / f"attempt-{attempt_id}"
+        attempt.mkdir(parents=True)
+        copy_reflink(parent_artifact / "image", attempt / "image")
+        set_tree_writable(attempt, True)
+        manifests = []
+        for parent_node in nodes[:4]:
+            manifests.append(read_json(parent_node["artifact"] / "manifest.json"))
+        manifests_text = canonical_json(manifests)
+        manifests_digest = hashlib.sha256(manifests_text.encode("utf-8")).hexdigest()
+        metadata_file = attempt / "lower-manifests.json"
+        metadata_file.write_text(manifests_text + "\n", encoding="utf-8")
+        runtime_artifact = nodes[0]["artifact"]
+        launcher = runtime_artifact / "runtime/bin/GlamorousToolkit-cli"
+        home = attempt / "test-home"
+        for name in ("", "config", "cache"):
+            (home / name).mkdir(parents=True, exist_ok=True)
+        environment = os.environ.copy()
+        environment.update({
+            "HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache"),
+            "KLIBGEN_MANIFESTS_FILE": str(metadata_file), "KLIBGEN_MANIFESTS_DIGEST": manifests_digest, "KLIBGEN_PROFILE": profile,
+        })
+        setup = paths.root / "build/layers/l05-project-setup/scripts/install-metadata.st"
+        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(setup)], env=environment, capture_output=True, text=True)
+        (attempt / "setup.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L05 setup failed; retained attempt: {attempt}")
+        contract = paths.root / "build/layers/l05-project-setup/tests/contract.st"
+        process = subprocess.run([str(launcher), str(attempt / "image/GlamorousToolkit.image"), "st", str(contract)], env=environment, capture_output=True, text=True)
+        (attempt / "contract.log").write_text(process.stdout + process.stderr, encoding="utf-8")
+        if process.returncode:
+            raise RuntimeError(f"L05 contract failed; retained attempt: {attempt}")
+        shutil.rmtree(home)
+        output = {"path": "image/GlamorousToolkit.image", "sha256": sha256_file(attempt / "image/GlamorousToolkit.image")}
+        manifest = _manifest(node["definition"], context_id, node["buildKey"], nodes[3],
+                             [{"profile": profile, "lowerManifestDigest": manifests_digest}], [output],
+                             [{"name": "l05-contract", "status": "passed", "log": "contract.log"}])
+        manifest["variant"] = {"name": profile, "kind": "configuration-profile"}
+        manifest["inImageMetadata"] = {"class": "KlibGenBuildMetadata", "digest": manifests_digest}
+        if force and artifact.exists():
+            retained = paths.state / "logs/rebuilds" / context_id / "l05" / node["buildKey"] / attempt_id
             retained.parent.mkdir(parents=True, exist_ok=True)
             (attempt / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             os.replace(attempt, retained)

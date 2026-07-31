@@ -2,10 +2,10 @@
 
 ## TODO
 
-- [ ] Build distinct CLI and GUI setup artifacts; add an explicit AGENTIC placeholder.
-- [ ] Add a build-owned Smalltalk manifest metadata API backed by canonical JSON.
-- [ ] Separate committed, generated, machine-local, and runtime configuration.
-- [ ] Test CLI, GUI opening, evaluation, path independence, and manifest queries.
+- [x] Build distinct CLI and GUI setup artifacts; add an explicit AGENTIC placeholder.
+- [x] Add a build-owned Smalltalk manifest metadata API backed by canonical JSON.
+- [x] Separate committed, generated, machine-local, and runtime configuration.
+- [x] Test CLI/GUI capabilities, evaluation, path independence, and manifest queries.
 
 ## Acceptance
 
