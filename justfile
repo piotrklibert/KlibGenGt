@@ -30,6 +30,18 @@ run profile="base" context="default":
 clean-runs context="default":
     python3 -m build.klibgen_build clean-runs {{quote(context)}}
 
+snapshot run_id:
+    python3 -m build.klibgen_build snapshot {{quote(run_id)}}
+
+resume snapshot_id:
+    python3 -m build.klibgen_build resume {{quote(snapshot_id)}}
+
+discard run_id:
+    python3 -m build.klibgen_build discard {{quote(run_id)}}
+
+promote source_id packages context="default":
+    python3 -m build.klibgen_build promote {{quote(source_id)}} {{quote(packages)}} {{quote(context)}}
+
 test-build-tools:
     python3 -m unittest discover -s build/tests -v
 

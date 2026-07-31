@@ -9,7 +9,7 @@ from typing import Any
 
 from .artifacts import build_l06
 from .core import BuildPaths
-from .runs import create_project_run
+from .runs import create_project_run, write_run_metadata
 
 
 def compatibility_context(context_id: str, profile: str = "cli") -> str:
@@ -47,9 +47,12 @@ def execute(paths: BuildPaths, context_id: str, operation: str, expression: str 
     if expression is not None:
         environment["GT_EVAL"] = expression
     command = [run["launcher"], str(run_path / "image/GlamorousToolkit.image"), "st", str(script)]
-    process = subprocess.run(command, env=environment, capture_output=True, text=True)
-    log = process.stdout + process.stderr
+    process = subprocess.Popen(command, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    write_run_metadata(run_path, state="running", pid=process.pid, command=command, runtimeArguments=command[1:])
+    stdout, stderr = process.communicate()
+    log = stdout + stderr
     (run_path / "logs" / f"{operation}.log").write_text(log, encoding="utf-8")
+    write_run_metadata(run_path, state="stopped", exitCode=process.returncode, logs=[f"logs/{operation}.log"])
     result = {"schemaVersion": 1, "operation": operation, "contextId": context_id, "runId": run["runId"], "runPath": str(run_path), "exitCode": process.returncode, "output": log}
     if process.returncode == 0 and not retain:
         shutil.rmtree(run_path)
@@ -74,9 +77,7 @@ def launch_gui(paths: BuildPaths, context_id: str) -> int:
     command = [run["launcher"], "--interactive", str(run_path / "image/GlamorousToolkit.image"), "st", str(paths.root / "build/layers/l06-project-dev/scripts/bind-run.st")]
     process = subprocess.Popen(command, env=environment)
     metadata_path = run_path / "run.json"
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    metadata.update({"state": "running", "pid": process.pid, "command": command})
-    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_run_metadata(run_path, state="running", pid=process.pid, command=command, runtimeArguments=command[1:])
     try:
         exit_code = process.wait()
     except KeyboardInterrupt:
@@ -88,7 +89,5 @@ def launch_gui(paths: BuildPaths, context_id: str) -> int:
                 process.kill()
                 process.wait()
         exit_code = 130
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    metadata.update({"state": "stopped", "exitCode": exit_code})
-    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_run_metadata(run_path, state="stopped", exitCode=exit_code)
     return exit_code

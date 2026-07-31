@@ -12,6 +12,7 @@ from .sources import expected_lock, host_facts, jj_identity, resolve_git_head, v
 from .artifacts import build_artifact, build_l06, graph
 from .runs import clean_runs, create_project_run, create_run
 from .operations import compatibility_context, execute, fresh_test, launch_gui
+from .lifecycle import discard_run, promote_packages, resume_snapshot, snapshot_run
 
 
 def doctor(paths: BuildPaths, context_id: str) -> dict[str, Any]:
@@ -54,6 +55,10 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
             "reason": None if current else "matching successful artifact is absent",
         })
         parent_key = expected
+    runs_root = paths.state / "runs" / context_id
+    snapshots_root = paths.state / "snapshots" / context_id
+    runs = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(runs_root.glob("*/run.json"))]
+    snapshots = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(snapshots_root.glob("*/snapshot.json"))]
     return {
         "schemaVersion": 1,
         "operation": "status",
@@ -61,6 +66,8 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
         "platform": platform_id(),
         "stateRoot": str(paths.state),
         "layers": layers,
+        "runs": runs,
+        "snapshots": snapshots,
     }
 
 
@@ -123,6 +130,18 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     if result["operation"] == "clean-runs":
         print(f"removed {result['removed']} run(s) for {result['contextId']}")
         return
+    if result["operation"] == "snapshot":
+        print(f"snapshot {result['snapshotId']}: {result['snapshotPath']}")
+        return
+    if result["operation"] == "resume":
+        print(f"resumed as run {result['runId']}: {result['runPath']}")
+        return
+    if result["operation"] == "discard":
+        print(f"discarded run {result['runId']}")
+        return
+    if result["operation"] == "promote":
+        print(f"promoted {', '.join(result['packages'])} from {result['sourceKind']} {result['sourceId']}")
+        return
     if result["operation"] in {"test", "smoke", "check-type-pragmas", "eval"}:
         print(result["output"], end="")
         return
@@ -137,7 +156,7 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="klibgen-build")
     subparsers = result.add_subparsers(dest="command", required=True)
-    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "smoke", "check-type-pragmas", "eval", "launch"):
+    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "smoke", "check-type-pragmas", "eval", "launch", "snapshot", "resume", "discard", "promote"):
         command = subparsers.add_parser(name)
         if name == "build":
             command.add_argument("target")
@@ -152,6 +171,12 @@ def parser() -> argparse.ArgumentParser:
         elif name == "launch":
             command.add_argument("profile", choices=("gui",))
             command.add_argument("context", nargs="?", default="gui")
+        elif name in {"snapshot", "resume", "discard"}:
+            command.add_argument("record_id")
+        elif name == "promote":
+            command.add_argument("source_id")
+            command.add_argument("packages", help="comma-separated explicit package names")
+            command.add_argument("context", nargs="?", default="default")
         else:
             command.add_argument("context", nargs="?", default="default")
         command.add_argument("--json", action="store_true")
@@ -195,10 +220,20 @@ def main(argv: list[str] | None = None) -> int:
             if expression is None:
                 raise ValueError("GT_EVAL is missing")
             result = execute(paths, args.context, "eval", expression=expression)
+        elif args.command == "snapshot":
+            result = snapshot_run(paths, args.record_id)
+        elif args.command == "resume":
+            result = resume_snapshot(paths, args.record_id)
+        elif args.command == "discard":
+            result = discard_run(paths, args.record_id)
+        elif args.command == "promote":
+            packages = [item.strip() for item in args.packages.split(",") if item.strip()]
+            result = promote_packages(paths, args.source_id, packages, args.context)
         else:
             return launch_gui(paths, args.context)
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
-        print(f"{args.command}[{args.context}]: {error}", file=sys.stderr)
+        context = getattr(args, "context", "-")
+        print(f"{args.command}[{context}]: {error}", file=sys.stderr)
         return 2
     emit(result, args.json)
     return result.get("exitCode", 0) if result.get("ok", True) else 1

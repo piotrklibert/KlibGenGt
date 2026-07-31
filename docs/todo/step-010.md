@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] Track run IDs, PIDs, logs, runtime arguments, and allocated resources.
-- [ ] Implement snapshot, resume, discard, and clean-runs operations.
-- [ ] Record the L06 parent and JJ source revision in every snapshot.
-- [ ] Promote explicit packages only after source/destination conflict checks.
-- [ ] Keep push/pull recipes as default-context compatibility wrappers.
+- [x] Track run IDs, PIDs, logs, runtime arguments, and allocated resources.
+- [x] Implement snapshot, resume, discard, and clean-runs operations.
+- [x] Record the L06 parent and JJ source revision in every snapshot.
+- [x] Promote explicit packages only after source/destination conflict checks.
+- [x] Keep push/pull recipes as default-context compatibility wrappers.
 
 ## Acceptance
 
