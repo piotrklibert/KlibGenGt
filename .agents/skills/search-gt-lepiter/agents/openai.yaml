@@ -1,0 +1,4 @@
+interface:
+  display_name: "Search GT Lepiter"
+  short_description: "Search loaded Lepiter docs and pages"
+  default_prompt: "Use $search-gt-lepiter to find and export the relevant GT or project documentation."

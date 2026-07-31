@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evaluate GT Image"
+  short_description: "Inspect and profile code in a fresh GT image"
+  default_prompt: "Use $evaluate-gt-image to inspect this behavior safely in a fresh GT image."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Operate GT Host"
+  short_description: "Inspect and control local GT host processes"
+  default_prompt: "Use $operate-gt-host to inspect and control the relevant local GT window or process."

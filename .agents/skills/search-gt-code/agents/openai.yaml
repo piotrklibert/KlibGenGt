@@ -1,0 +1,4 @@
+interface:
+  display_name: "Search GT Code"
+  short_description: "Search loaded GT and Pharo code in-image"
+  default_prompt: "Use $search-gt-code to find the relevant loaded GT classes and methods."
