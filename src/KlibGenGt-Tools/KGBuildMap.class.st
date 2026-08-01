@@ -15,6 +15,10 @@
     Build the aggregate storage overview.
   - {{gtMethod:KGBuildMap>>#graphMondrian}}
     Build the filtered relationship graph.
+  - {{gtMethod:KGBuildMap>>#layeredGraphMondrian}}
+    Build the layer-column and context-row relationship graph.
+  - {{gtMethod:KGBuildMap>>#layeredGraphWithoutContextsMondrian}}
+    Build the layer-column graph without rendering context nodes.
   - {{gtMethod:KGBuildMap>>#filteredByContext:kind:status:}}
     Answer a new map sharing the inventory with explicit filters.
 "
@@ -130,6 +134,18 @@ KGBuildMap >> graphMondrian [
 	^ self paintGraphOn: GtMondrian new
 ]
 
+{ #category : 'visualization' }
+KGBuildMap >> layeredGraphMondrian [
+	<return: #GtMondrian>
+	^ self paintLayeredGraphOn: GtMondrian new includeContexts: true
+]
+
+{ #category : 'visualization' }
+KGBuildMap >> layeredGraphWithoutContextsMondrian [
+	<return: #GtMondrian>
+	^ self paintLayeredGraphOn: GtMondrian new includeContexts: false
+]
+
 { #category : 'views' }
 KGBuildMap >> gtFiltersFor: aView [
 	<gtView>
@@ -170,6 +186,28 @@ KGBuildMap >> gtInventoryFor: aView [
 		column: 'Context' text: [ :each | each contextId ifNil: [ '' ] ];
 		column: 'Logical' text: [ :each | self humanBytes: each logicalBytes ];
 		column: 'Allocated' text: [ :each | self humanBytes: each allocatedBytes ]
+]
+
+{ #category : 'views' }
+KGBuildMap >> gtLayeredGraphFor: aView [
+	<gtView>
+	<arg: #aView type: #GtPhlowView>
+	<return: #GtPhlowView>
+	^ aView mondrian
+		title: 'Layers';
+		priority: 6;
+		painting: [ :mondrian | self paintLayeredGraphOn: mondrian includeContexts: true ]
+]
+
+{ #category : 'views' }
+KGBuildMap >> gtLayeredGraphWithoutContextsFor: aView [
+	<gtView>
+	<arg: #aView type: #GtPhlowView>
+	<return: #GtPhlowView>
+	^ aView mondrian
+		title: 'Layers without contexts';
+		priority: 7;
+		painting: [ :mondrian | self paintLayeredGraphOn: mondrian includeContexts: false ]
 ]
 
 { #category : 'views' }
@@ -262,6 +300,94 @@ KGBuildMap >> nodeAt: nodeId [
 ]
 
 { #category : 'private - visualization' }
+KGBuildMap >> layerNameFor: node [
+	<arg: #node type: #KGBuildMapNode>
+	<return: #(String?)>
+	| identifier |
+	node kind = 'layer' ifTrue: [ ^ node label ].
+	identifier := node id asLowercase.
+	^ #('L01' 'L02' 'L03' 'L04' 'L05' 'L06' 'L07')
+		detect: [ :layerName |
+			(node label beginsWith: layerName)
+				or: [ identifier includesSubstring: '/', layerName asLowercase, '/' ] ]
+		ifNone: [ nil ]
+]
+
+{ #category : 'private - visualization' }
+KGBuildMap >> layeredNodesIncludingContexts: includeContexts [
+	<arg: #includeContexts type: #Boolean>
+	<return: #(Array<KGBuildMapNode>)>
+	^ self visibleNodes select: [ :node |
+		(#('layer' 'artifact' 'missing-reference') includes: node kind)
+			or: [ includeContexts and: [ node kind = 'context' ] ] ]
+]
+
+{ #category : 'private - visualization' }
+KGBuildMap >> layeredPositionsFor: visibleNodes [
+	<arg: #visibleNodes type: #(Array<KGBuildMapNode>)>
+	<return: #(Dictionary<KGBuildMapNode, Point>)>
+	| positions layerNames contextNames rowTops nextRow counters unlinkedRow |
+	positions := Dictionary new.
+	layerNames := #('L01' 'L02' 'L03' 'L04' 'L05' 'L06' 'L07').
+	contextNames := self contexts.
+	rowTops := Dictionary new.
+	nextRow := 130.
+	contextNames do: [ :contextName |
+		| maximumArtifacts |
+		rowTops at: contextName put: nextRow.
+		maximumArtifacts := layerNames
+			inject: 1
+			into: [ :maximum :layerName |
+				maximum max: (visibleNodes count: [ :node |
+					node contextId = contextName
+						and: [ (self layerNameFor: node) = layerName ] ]) ].
+		nextRow := nextRow + (maximumArtifacts * 70) + 55 ].
+	unlinkedRow := nextRow.
+	counters := Dictionary new.
+	visibleNodes do: [ :node |
+		| layerName layerIndex contextName rowTop counterKey offset |
+		node kind = 'context'
+			ifTrue: [ positions at: node put: 25 @ (rowTops at: node label ifAbsent: [ unlinkedRow ]) ]
+			ifFalse: [
+				layerName := self layerNameFor: node.
+				layerIndex := layerName
+					ifNil: [ layerNames size + 1 ]
+					ifNotNil: [ layerNames indexOf: layerName ].
+				node kind = 'layer'
+					ifTrue: [ positions at: node put: (210 + ((layerIndex - 1) * 210)) @ 30 ]
+					ifFalse: [
+						contextName := node contextId.
+						rowTop := contextName
+							ifNil: [ unlinkedRow ]
+							ifNotNil: [ rowTops at: contextName ifAbsent: [ unlinkedRow ] ].
+						counterKey := contextName asString, '|', layerIndex asString.
+						offset := counters at: counterKey ifAbsent: [ 0 ].
+						counters at: counterKey put: offset + 1.
+						positions
+							at: node
+							put: (210 + ((layerIndex - 1) * 210)) @ (rowTop + (offset * 70)) ] ] ].
+	^ positions
+]
+
+{ #category : 'accessing' }
+KGBuildMap >> linkedContextsFor: node [
+	<arg: #node type: #KGBuildMapNode>
+	<return: #(Array<String>)>
+	| linked |
+	linked := Set new.
+	node contextId ifNotNil: [ :contextName | linked add: contextName ].
+	node relationships do: [ :edge |
+		| otherId otherNode |
+		otherId := (edge at: 'source') = node id
+			ifTrue: [ edge at: 'target' ]
+			ifFalse: [ edge at: 'source' ].
+		otherNode := self nodeAt: otherId.
+		(otherNode notNil and: [ otherNode kind = 'context' ])
+			ifTrue: [ linked add: otherNode label ] ].
+	^ linked asArray sorted
+]
+
+{ #category : 'private - visualization' }
 KGBuildMap >> nodeElementFor: node [
 	<arg: #node type: #KGBuildMapNode>
 	<return: #BlElement>
@@ -313,6 +439,11 @@ KGBuildMap >> nodeTooltipElementFor: node [
 				text: 'Status: ', node status.
 			BrLabel new
 				aptitude: BrGlamorousLabelAptitude;
+				text: 'Contexts: ', ((self linkedContextsFor: node)
+					ifEmpty: [ 'none' ]
+					ifNotEmpty: [ :contextNames | ', ' join: contextNames ]).
+			BrLabel new
+				aptitude: BrGlamorousLabelAptitude;
 				text: (self humanBytes: node logicalBytes), ' logical / ',
 					(self humanBytes: node allocatedBytes), ' allocated' }
 ]
@@ -354,6 +485,29 @@ KGBuildMap >> paintGraphOn: mondrian [
 	mondrian layout horizontalDominanceTree
 		nodeDistance: 12;
 		levelDistance: 55.
+	^ mondrian
+]
+
+{ #category : 'private - visualization' }
+KGBuildMap >> paintLayeredGraphOn: mondrian includeContexts: includeContexts [
+	<arg: #mondrian type: #GtMondrian>
+	<arg: #includeContexts type: #Boolean>
+	<return: #GtMondrian>
+	| visible visibleIds positions |
+	visible := self layeredNodesIncludingContexts: includeContexts.
+	visibleIds := (visible collect: #id) asSet.
+	mondrian nodes
+		stencil: [ :node | self nodeElementFor: node ];
+		with: visible.
+	mondrian edges
+		stencil: [ :node | self edgeElement ];
+		connectToAll: [ :node |
+			(self targetsFrom: node) select: [ :target | visibleIds includes: target id ] ].
+	mondrian layout custom: BlBasicLayout new.
+	positions := self layeredPositionsFor: visible.
+	mondrian root graph nodeChildren do: [ :element |
+		element relocate: (positions at: element graph model) ].
+	mondrian root enableAutoScale.
 	^ mondrian
 ]
 
@@ -427,7 +581,9 @@ KGBuildMap >> summaryRecords [
 KGBuildMap >> targetsFrom: node [
 	<arg: #node type: #KGBuildMapNode>
 	<return: #(OrderedCollection<KGBuildMapNode>)>
-	^ ((self edges select: [ :edge | (edge at: 'source') = node id ])
+	^ ((self edges select: [ :edge |
+		(edge at: 'source') = node id
+			and: [ (edge at: 'kind') ~= 'context-layer' ] ])
 		collect: [ :edge | self nodeAt: (edge at: 'target') ]) reject: #isNil
 ]
 

@@ -353,10 +353,16 @@ just build-map-png
 
 `just build-map` opens a fresh disposable GT image. Its Overview groups storage
 by kind, while Graph shows layer, context, artifact, run, snapshot, attempt,
-pin, worktree, and diagnostic relationships. The Filters presentation opens
-context-, kind-, or status-specific maps, and clicking a graph node opens its
-summary, component sizes, relationships, and recorded metadata. The inventory
-is a timestamped launch snapshot; close and rerun the command to rescan it.
+pin, worktree, and diagnostic relationships. Layers aligns L01 through L07 as
+horizontal columns and arranges contexts as vertical rows from the left edge;
+Layers without contexts keeps the artifact matrix while hiding those context
+nodes. Graph and Layers omit the repetitive context-to-L01-through-L07 edges,
+while retaining context-to-artifact and all other relationships. Node tooltips
+report status, linked contexts, and logical and allocated sizes. The Filters
+presentation opens context-, kind-, or status-specific maps,
+and clicking a graph node opens its summary, component sizes, relationships,
+and recorded metadata. The inventory is a timestamped launch snapshot; close
+and rerun the command to rescan it.
 The tool never selects or saves a GUI snapshot and never installs the Iceberg
 promotion hook.
 

@@ -21,6 +21,19 @@ KGToolsTest >> buildMapFixture [
 		at: 'generatedAt' put: '2026-08-01T00:00:00Z';
 		at: 'nodes' put: {
 			Dictionary new
+				at: 'id' put: 'context:default';
+				at: 'kind' put: 'context';
+				at: 'label' put: 'default';
+				at: 'status' put: 'resolved';
+				at: 'contextId' put: 'default';
+				at: 'logicalBytes' put: 0;
+				at: 'allocatedBytes' put: 0;
+				at: 'fileCount' put: 0;
+				at: 'components' put: #();
+				at: 'characteristics' put: Dictionary new;
+				at: 'aggregate' put: false;
+				yourself.
+			Dictionary new
 				at: 'id' put: 'layer:L01';
 				at: 'kind' put: 'layer';
 				at: 'label' put: 'L01';
@@ -47,6 +60,20 @@ KGToolsTest >> buildMapFixture [
 				at: 'aggregate' put: false;
 				yourself };
 		at: 'edges' put: {
+			Dictionary new
+				at: 'id' put: 'edge:context-layer';
+				at: 'kind' put: 'context-layer';
+				at: 'source' put: 'context:default';
+				at: 'target' put: 'layer:L01';
+				at: 'characteristics' put: Dictionary new;
+				yourself.
+			Dictionary new
+				at: 'id' put: 'edge:context-artifact';
+				at: 'kind' put: 'context-artifact';
+				at: 'source' put: 'context:default';
+				at: 'target' put: 'artifact:one';
+				at: 'characteristics' put: Dictionary new;
+				yourself.
 			Dictionary new
 				at: 'id' put: 'edge:one';
 				at: 'kind' put: 'artifact-layer';
@@ -119,7 +146,9 @@ KGToolsTest >> testBuildMapFiltersAndRelationships [
 	| map artifact filtered |
 	map := self buildMapFixture.
 	artifact := map nodeAt: 'artifact:one'.
-	self assert: artifact relationships size equals: 1.
+	self assert: artifact relationships size equals: 2.
+	self assert: (map linkedContextsFor: artifact) equals: #('default').
+	self assert: (map linkedContextsFor: (map nodeAt: 'layer:L01')) equals: #('default').
 	filtered := map filteredByContext: 'default' kind: 'artifact' status: 'current'.
 	self assert: filtered visibleNodes size equals: 1.
 	self assert: filtered visibleNodes first id equals: 'artifact:one'.
@@ -140,12 +169,57 @@ KGToolsTest >> testBuildMapMondrianPresentationsBuild [
 	self assert: artifactElement text asString equals: 'L01 abc'.
 	self assert: edgeElement class equals: BlLineElement.
 	self assert: edgeElement eventDispatcher handlers size >= 2.
-	self assert: tooltip children size equals: 3.
+	self assert: tooltip children size equals: 4.
 	self assert: tooltip children first text asString equals: 'L01 abc'.
 	self assert: tooltip children second text asString equals: 'Status: current'.
-	self assert: tooltip children third text asString equals: '100 B logical / 8.0 KiB allocated'.
-	self assert: overview topStep root graph nodeChildren size equals: 4.
-	self assert: graph topStep root graph nodeChildren size equals: 2
+	self assert: tooltip children third text asString equals: 'Contexts: default'.
+	self assert: tooltip children fourth text asString equals: '100 B logical / 8.0 KiB allocated'.
+	self assert: overview topStep root graph nodeChildren size equals: 5.
+	self assert: graph topStep root graph nodeChildren size equals: 3
+]
+
+{ #category : 'tests - build map' }
+KGToolsTest >> testBuildMapLayeredLayoutsAlignLayersAndCanHideContexts [
+	| map layered withoutContexts elements layer artifact context positions |
+	map := self buildMapFixture.
+	layered := map layeredGraphMondrian.
+	withoutContexts := map layeredGraphWithoutContextsMondrian.
+	elements := layered topStep root graph nodeChildren.
+	layer := elements detect: [ :each | each graph model kind = 'layer' ].
+	artifact := elements detect: [ :each | each graph model kind = 'artifact' ].
+	context := elements detect: [ :each | each graph model kind = 'context' ].
+	positions := map layeredPositionsFor: (map layeredNodesIncludingContexts: true).
+
+	self
+		assert: elements size = 3
+		description: 'layered node count: ', elements size asString.
+	self
+		assert: withoutContexts topStep root graph nodeChildren size = 2
+		description: 'context-free node count: ', withoutContexts topStep root graph nodeChildren size asString.
+	self assert: layered topStep root graph edgeChildren size equals: 2.
+	self assert: withoutContexts topStep root graph edgeChildren size equals: 1.
+	self
+		assert: (positions at: layer graph model) x = (positions at: artifact graph model) x
+		description: 'layer and artifact columns'.
+	self
+		assert: (positions at: context graph model) x < (positions at: layer graph model) x
+		description: 'context at left edge'.
+	self
+		assert: (positions at: layer graph model) y < (positions at: artifact graph model) y
+		description: 'layer header above artifacts'
+]
+
+{ #category : 'tests - build map' }
+KGToolsTest >> testBuildMapGraphsOmitOnlyContextLayerEdges [
+	| map graph targets |
+	map := self buildMapFixture.
+	graph := map graphMondrian.
+	targets := map targetsFrom: (map nodeAt: 'context:default').
+
+	self assert: graph topStep root graph edgeChildren size equals: 2.
+	self assert: targets size equals: 1.
+	self assert: targets first id equals: 'artifact:one'.
+	self assert: (map linkedContextsFor: (map nodeAt: 'layer:L01')) equals: #('default')
 ]
 
 { #category : 'tests - build map' }
