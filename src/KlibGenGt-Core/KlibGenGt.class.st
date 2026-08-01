@@ -46,6 +46,9 @@ KlibGenGt package map:
 - Tools
   - {{gtClass:KGGuiSessionHooks}} - Emits GUI lifecycle and exact-repository Iceberg commit events for host-side promotion.
   - {{gtClass:KGTestTool}} - Runs project SUnit tests with structured failure and error diagnostics.
+  - {{gtClass:KGBuildMap}} - Models a timestamped host inventory and builds aggregate and relationship Mondrian views.
+  - {{gtClass:KGBuildMapNode}} - Represents one clickable build entity with size, status, metadata, and relationship views.
+  - {{gtClass:KGBuildMapTool}} - Opens disposable build-map sessions and renders overview and full-graph PNGs.
   - {{gtClass:KGToolRunner}} - Dispatches structured CLI requests and normalizes image-tool responses.
   - {{gtClass:KGCodeSearchTool}} - Searches loaded code and returns exact class or method definitions.
   - {{gtClass:KGLepiterTool}} - Searches loaded Lepiter databases and exports pages as Markdown.

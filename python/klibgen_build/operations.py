@@ -19,6 +19,7 @@ from .lifecycle import (
 )
 from .sources import host_facts
 from .processes import decode_output, run_command, start_command
+from .inventory import build_inventory
 
 
 def compatibility_context(context_id: str, profile: str = "cli") -> str:
@@ -404,3 +405,99 @@ def launch_gui(
         except Exception as error:
             raise RuntimeError(f"saved GUI session could not be published; retained run: {run_path}: {error}") from error
     return exit_code
+
+
+def launch_build_map(paths: BuildPaths, context_id: str = "gui") -> dict[str, Any]:
+    """Open a read-only build map in a disposable GUI run."""
+    context_id = compatibility_context(context_id, "gui")
+    build_l06(paths, context_id)
+    inventory = build_inventory(paths)
+    run = create_project_run(paths, context_id, "gui")
+    run_path = Path(run["runPath"])
+    inventory_path = run_path / "logs/build-map-inventory.json"
+    inventory_path.write_text(json.dumps(inventory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    environment = _run_environment(run, "build-map")
+    environment["KLIBGEN_BUILD_MAP_PATH"] = str(inventory_path)
+    image = str(run_path / "image/GlamorousToolkit.image")
+    prepare_command = [
+        run["launcher"], image, "st",
+        str(paths.root / "build/layers/l06-project-dev/scripts/prepare-build-map.st"),
+    ]
+    preparation = run_command(prepare_command, check=False, env=environment)
+    prepare_log = run_path / "logs/build-map-prepare.log"
+    prepare_log.write_text(preparation.stdout + preparation.stderr, encoding="utf-8")
+    if preparation.returncode:
+        write_run_metadata(
+            run_path, state="stopped", exitCode=preparation.returncode,
+            prepareCommand=prepare_command, logs=["logs/build-map-prepare.log"],
+        )
+        raise RuntimeError(f"build map preparation failed; retained run: {run_path}")
+    gui_launcher = str(Path(run["launcher"]).with_name("GlamorousToolkit"))
+    command = [gui_launcher, "--image", image]
+    process = start_command(command, env=environment)
+    write_run_metadata(
+        run_path, state="running", pid=process.pid, command=command,
+        prepareCommand=prepare_command, runtimeArguments=command[1:],
+        guiStartMode="build-map", logs=["logs/build-map-prepare.log"],
+    )
+    try:
+        exit_code = process.wait()
+    except KeyboardInterrupt:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        exit_code = 130
+    write_run_metadata(run_path, state="stopped", exitCode=exit_code)
+    result = {
+        "schemaVersion": 1,
+        "operation": "build-map",
+        "contextId": context_id,
+        "generatedAt": inventory["generatedAt"],
+        "nodeCount": len(inventory["nodes"]),
+        "edgeCount": len(inventory["edges"]),
+        "warnings": inventory["warnings"],
+        "exitCode": exit_code,
+        "runPath": str(run_path),
+    }
+    if exit_code == 0:
+        shutil.rmtree(run_path)
+        result["runPath"] = None
+    return result
+
+
+def export_build_map_pngs(
+    paths: BuildPaths, output_dir: Path, context_id: str = "default", *, force: bool = False,
+) -> dict[str, Any]:
+    """Render both build-map presentations in a disposable CLI image."""
+    context_id = compatibility_context(context_id)
+    build_l06(paths, context_id)
+    output_dir = output_dir if output_dir.is_absolute() else paths.root / output_dir
+    outputs = [output_dir / "overview.png", output_dir / "graph.png"]
+    existing = [path for path in outputs if path.exists()]
+    if existing and not force:
+        raise ValueError(f"refusing to overwrite existing build map PNG: {existing[0]}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    inventory_dir = paths.root / "tmp/build-map/inventories"
+    inventory_dir.mkdir(parents=True, exist_ok=True)
+    inventory_path = inventory_dir / f"{os.getpid()}-{time.time_ns()}.json"
+    inventory = build_inventory(paths)
+    inventory_path.write_text(json.dumps(inventory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    try:
+        response = execute_image_tool(paths, context_id, {
+            "operation": "build-map.png",
+            "inventoryPath": str(inventory_path),
+            "outputDirectory": str(output_dir),
+            "force": force,
+        })
+    finally:
+        inventory_path.unlink(missing_ok=True)
+    response["operation"] = "build-map-png"
+    response["generatedAt"] = inventory["generatedAt"]
+    response["outputDirectory"] = str(output_dir.resolve())
+    response["outputs"] = [str(path.resolve()) for path in outputs]
+    response["warnings"] = inventory["warnings"]
+    return response

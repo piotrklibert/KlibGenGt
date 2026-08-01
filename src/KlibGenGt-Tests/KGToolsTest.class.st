@@ -13,6 +13,50 @@ Class {
 	#package : 'KlibGenGt-Tests'
 }
 
+{ #category : 'private - fixtures' }
+KGToolsTest >> buildMapFixture [
+	<return: #KGBuildMap>
+	^ KGBuildMap fromDictionary: (Dictionary new
+		at: 'schemaVersion' put: 1;
+		at: 'generatedAt' put: '2026-08-01T00:00:00Z';
+		at: 'nodes' put: {
+			Dictionary new
+				at: 'id' put: 'layer:L01';
+				at: 'kind' put: 'layer';
+				at: 'label' put: 'L01';
+				at: 'status' put: 'defined';
+				at: 'contextId' put: nil;
+				at: 'logicalBytes' put: 10;
+				at: 'allocatedBytes' put: 4096;
+				at: 'fileCount' put: 1;
+				at: 'components' put: #();
+				at: 'characteristics' put: Dictionary new;
+				at: 'aggregate' put: false;
+				yourself.
+			Dictionary new
+				at: 'id' put: 'artifact:one';
+				at: 'kind' put: 'artifact';
+				at: 'label' put: 'L01 abc';
+				at: 'status' put: 'current';
+				at: 'contextId' put: 'default';
+				at: 'logicalBytes' put: 100;
+				at: 'allocatedBytes' put: 8192;
+				at: 'fileCount' put: 2;
+				at: 'components' put: #();
+				at: 'characteristics' put: Dictionary new;
+				at: 'aggregate' put: false;
+				yourself };
+		at: 'edges' put: {
+			Dictionary new
+				at: 'id' put: 'edge:one';
+				at: 'kind' put: 'artifact-layer';
+				at: 'source' put: 'layer:L01';
+				at: 'target' put: 'artifact:one';
+				at: 'characteristics' put: Dictionary new;
+				yourself };
+		yourself)
+]
+
 { #category : 'tests' }
 KGToolsTest >> testClassAndMethodDefinitionsAreExactText [
 	| classResult methodResult |
@@ -68,6 +112,66 @@ KGToolsTest >> testEvaluationResultAndProfileAreSerializable [
 	encoded := STONJSON toString: response.
 	decoded := STONJSON fromString: encoded.
 	self assert: (decoded at: 'ok')
+]
+
+{ #category : 'tests - build map' }
+KGToolsTest >> testBuildMapFiltersAndRelationships [
+	| map artifact filtered |
+	map := self buildMapFixture.
+	artifact := map nodeAt: 'artifact:one'.
+	self assert: artifact relationships size equals: 1.
+	filtered := map filteredByContext: 'default' kind: 'artifact' status: 'current'.
+	self assert: filtered visibleNodes size equals: 1.
+	self assert: filtered visibleNodes first id equals: 'artifact:one'.
+	self assert: (map humanBytes: 1073741824) equals: '1.0 GiB'
+]
+
+{ #category : 'tests - build map' }
+KGToolsTest >> testBuildMapMondrianPresentationsBuild [
+	| map overview graph artifactElement edgeElement tooltip |
+	map := self buildMapFixture.
+	overview := map overviewMondrian.
+	graph := map graphMondrian.
+	artifactElement := map nodeElementFor: (map nodeAt: 'artifact:one').
+	edgeElement := map edgeElement.
+	tooltip := map nodeTooltipElementFor: (map nodeAt: 'artifact:one').
+	self assert: overview class equals: GtMondrian.
+	self assert: graph class equals: GtMondrian.
+	self assert: artifactElement text asString equals: 'L01 abc'.
+	self assert: edgeElement class equals: BlLineElement.
+	self assert: edgeElement eventDispatcher handlers size >= 2.
+	self assert: tooltip children size equals: 3.
+	self assert: tooltip children first text asString equals: 'L01 abc'.
+	self assert: tooltip children second text asString equals: 'Status: current'.
+	self assert: tooltip children third text asString equals: '100 B logical / 8.0 KiB allocated'.
+	self assert: overview topStep root graph nodeChildren size equals: 4.
+	self assert: graph topStep root graph nodeChildren size equals: 2
+]
+
+{ #category : 'tests - build map' }
+KGToolsTest >> testBuildMapEdgeHoverHighlightsConnection [
+	| map graph edge connectedNodes |
+	map := self buildMapFixture.
+	graph := map graphMondrian.
+	edge := graph topStep root graph edgeChildren first.
+	connectedNodes := OrderedCollection new.
+	edge graph connectedNodes do: [ :each | connectedNodes add: each ].
+	self assert: connectedNodes size equals: 2.
+
+	edge fireEvent: BlMouseEnterEvent new.
+	self assert: edge border width equals: 4.
+	self assert: (connectedNodes allSatisfy: [ :each | each border width = 4 ]).
+
+	edge fireEvent: BlMouseLeaveEvent new.
+	self assert: edge border width equals: 2.
+	self assert: (connectedNodes allSatisfy: [ :each | each border width = 2 ])
+]
+
+{ #category : 'tests - build map' }
+KGToolsTest >> testBuildMapRejectsUnknownSchema [
+	self
+		should: [ KGBuildMap fromDictionary: (Dictionary new at: 'schemaVersion' put: 2; yourself) ]
+		raise: Error
 ]
 
 { #category : 'tests' }

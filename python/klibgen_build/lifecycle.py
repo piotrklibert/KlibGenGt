@@ -14,6 +14,7 @@ from .core import BuildPaths, load_context, platform_id
 from .runs import process_is_alive, utc_now
 from .processes import ProcessExecutionError, run_command
 from .sources import jj_identity, project_workspace
+from .coordination import with_shared_retention_lock
 
 
 SNAPSHOT_COMPONENTS = ("image", "export", "home", "config", "data", "logs")
@@ -220,6 +221,7 @@ def current_snapshot_id(paths: BuildPaths, context_id: str) -> str | None:
     return snapshot_id
 
 
+@with_shared_retention_lock
 def select_snapshot(paths: BuildPaths, context_id: str, snapshot_id: str) -> dict[str, Any]:
     snapshot_path = find_snapshot(paths, snapshot_id)
     snapshot = json.loads((snapshot_path / "snapshot.json").read_text(encoding="utf-8"))
@@ -235,6 +237,7 @@ def select_snapshot(paths: BuildPaths, context_id: str, snapshot_id: str) -> dic
     return {"schemaVersion": 1, "operation": "snapshot-select", **pointer}
 
 
+@with_shared_retention_lock
 def clear_current_snapshot(paths: BuildPaths, context_id: str) -> dict[str, Any]:
     pointer = paths.state / "state/gui" / f"{context_id}.json"
     previous = json.loads(pointer.read_text(encoding="utf-8")).get("snapshotId") if pointer.is_file() else None
@@ -266,6 +269,7 @@ def snapshot_current(paths: BuildPaths, context_id: str) -> dict[str, Any]:
     }
 
 
+@with_shared_retention_lock
 def snapshot_run(
     paths: BuildPaths, run_id: str, *, make_current: bool = False, remove_source: bool = False,
     save_evidence: dict[str, Any] | None = None,
@@ -356,6 +360,7 @@ def _source_divergence(paths: BuildPaths, snapshot: dict[str, Any]) -> dict[str,
     return {"diverged": bool(reasons), "reasons": reasons, "current": current, "workspacePath": current_workspace}
 
 
+@with_shared_retention_lock
 def resume_snapshot(paths: BuildPaths, snapshot_id: str) -> dict[str, Any]:
     snapshot_path = find_snapshot(paths, snapshot_id)
     snapshot = json.loads((snapshot_path / "snapshot.json").read_text(encoding="utf-8"))
@@ -381,12 +386,14 @@ def resume_snapshot(paths: BuildPaths, snapshot_id: str) -> dict[str, Any]:
         "sourceDivergence": divergence,
         "createdAt": utc_now(),
         "updatedAt": utc_now(),
+        "coordinatorPid": os.getpid(),
     }
     (run_path / "run.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     set_tree_writable(run_path, True)
     return metadata | {"runPath": str(run_path), "operation": "resume"}
 
 
+@with_shared_retention_lock
 def discard_run(paths: BuildPaths, record_id: str) -> dict[str, Any]:
     try:
         record_path = find_run(paths, record_id)

@@ -36,6 +36,7 @@ KGToolRunner >> dispatch: operation request: aRequest [
 	operation = 'lepiter.export' ifTrue: [ ^ KGLepiterTool new export: aRequest ].
 	operation = 'eval' ifTrue: [ ^ KGEvaluationTool new evaluate: aRequest ].
 	operation = 'test.run' ifTrue: [ ^ KGTestTool new run: aRequest ].
+	operation = 'build-map.png' ifTrue: [ ^ KGBuildMapTool new exportPngs: aRequest ].
 	self error: 'unknown image tool operation: ' , operation
 ]
 

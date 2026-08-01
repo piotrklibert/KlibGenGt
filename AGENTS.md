@@ -4,6 +4,10 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Use `just` for project operations.
 
+- Use `just build-map` to inspect relationships, status, and storage across
+  committed build definitions and the active generated state root. Use
+  `just build-map-png` for ignored overview and full-graph PNG exports.
+
 - Do not edit or commit files under `./vendor/` and `./private/`.
 
 - Use `./tmp/` instead of `/tmp` for any temporary files; never track `./tmp/`
@@ -99,6 +103,10 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 - Lepiter docs go under `lepiter/`.
 
 - Use `just test` before finishing changes.
+
+- Use `just gc-dry-run` for routine cache review. `just prune-dry-run` previews
+  the aggressive clone-like cleanup, which deletes stopped runs, snapshots,
+  build attempts, rebuild logs, and non-current/non-default artifacts.
 
 - Use `just eval "Smalltalk expression"` for quick checks.
 

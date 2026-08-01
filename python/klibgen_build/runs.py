@@ -12,6 +12,7 @@ from .artifacts import build_base, build_l06, copy_reflink, graph, set_tree_writ
 from .core import BuildPaths, platform_id
 from .bridge import materialize_jj_source
 from .sources import project_workspace
+from .coordination import with_shared_retention_lock
 
 
 def utc_now() -> str:
@@ -37,6 +38,7 @@ def write_run_metadata(run_path: Path, **updates: Any) -> dict[str, Any]:
     return metadata
 
 
+@with_shared_retention_lock
 def create_run(paths: BuildPaths, context_id: str, profile: str) -> dict[str, Any]:
     if profile.lower() != "base":
         raise ValueError("Step 005 supports only the base profile")
@@ -55,6 +57,7 @@ def create_run(paths: BuildPaths, context_id: str, profile: str) -> dict[str, An
         "parentArtifact": str(artifact),
         "parentBuildKey": manifest["buildKey"],
         "state": "created",
+        "coordinatorPid": os.getpid(),
         "createdAt": utc_now(),
         "runtimeArguments": [],
         "allocatedResources": {"ports": [], "sockets": [], "temporaryDirectories": ["tmp"]},
@@ -66,6 +69,7 @@ def create_run(paths: BuildPaths, context_id: str, profile: str) -> dict[str, An
     return metadata | {"runPath": str(run)}
 
 
+@with_shared_retention_lock
 def clean_runs(paths: BuildPaths, context_id: str) -> int:
     root = paths.state / "runs" / context_id
     if not root.exists():
@@ -85,6 +89,7 @@ def clean_runs(paths: BuildPaths, context_id: str) -> int:
     return count
 
 
+@with_shared_retention_lock
 def create_project_run(paths: BuildPaths, context_id: str, profile: str) -> dict[str, Any]:
     artifact = build_l06(paths, context_id)
     manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
@@ -109,6 +114,7 @@ def create_project_run(paths: BuildPaths, context_id: str, profile: str) -> dict
         "workspace": identity.get("workspace", "."),
         "workspacePath": str(project_workspace(paths, identity.get("workspace", "."))),
         "generatedBridgeCommit": bridge_commit, "state": "created",
+        "coordinatorPid": os.getpid(),
         "launcher": str(nodes[0]["artifact"] / "runtime/bin/GlamorousToolkit-cli"),
         "createdAt": utc_now(), "runtimeArguments": [],
         "allocatedResources": {"ports": [], "sockets": [], "temporaryDirectories": ["tmp"]},

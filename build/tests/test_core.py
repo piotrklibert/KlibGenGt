@@ -1,7 +1,9 @@
 import json
 import os
+import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,17 +18,310 @@ from klibgen_build.lifecycle import (
 )
 from klibgen_build.operations import (
     GuiEventConsumer, _gui_save_evidence, _run_environment, diagnose_test,
-    execute_image_tool, execute_test_one, launch_gui,
+    execute_image_tool, execute_test_one, export_build_map_pngs, launch_build_map, launch_gui,
 )
 from klibgen_build.artifacts import build_l07, git_worktree_state, set_tree_writable
+from klibgen_build.retention import garbage_collect, prune, retention_plan
+from klibgen_build.coordination import retention_lock
+from klibgen_build.cli import parser
 from klibgen_build.contexts import list_contexts
 from klibgen_build.processes import run_command
+from klibgen_build.inventory import build_inventory
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class CoreTest(unittest.TestCase):
+    def _artifact(self, state: Path, context: str, layer: str, key: str, parents=None) -> Path:
+        artifact = state / "artifacts/linux-x86_64" / context / layer.lower() / key
+        artifact.mkdir(parents=True)
+        manifest = {
+            "schemaVersion": 1,
+            "platform": "linux-x86_64",
+            "contextId": context,
+            "layerId": layer.upper(),
+            "buildKey": key,
+            "parents": parents or [],
+        }
+        (artifact / "manifest.json").write_text(json.dumps(manifest))
+        (artifact / "payload").write_bytes(b"artifact")
+        return artifact
+
+    def _node(self, artifact: Path, layer: str, key: str) -> dict:
+        return {"artifact": artifact, "buildKey": key, "definition": {"layerId": layer.upper()}}
+
+    def test_gc_dry_run_is_non_mutating_and_apply_uses_same_candidates(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            state = Path(temporary)
+            root = state / "repo"
+            (root / "build/contexts").mkdir(parents=True)
+            (root / "build/contexts/default.json").write_text("{}")
+            paths = BuildPaths(root, state / "state")
+            current = self._artifact(paths.state, "default", "l01", "current")
+            stale = self._artifact(paths.state, "default", "l01", "stale")
+            for index in range(5):
+                attempt = paths.state / "tmp" / f"attempt-{index}"
+                attempt.mkdir(parents=True)
+                (attempt / "diagnostic.log").write_text(str(index))
+                os.utime(attempt, (index + 1, index + 1))
+
+            nodes = [self._node(current, "l01", "current")]
+            with patch("klibgen_build.retention.graph", return_value=nodes):
+                planned = garbage_collect(paths, dry_run=True)
+            self.assertTrue(stale.exists())
+            self.assertEqual(planned["candidateCounts"], {"artifact": 1, "attempt": 2})
+            self.assertGreater(planned["estimatedLogicalBytes"], 0)
+
+            with patch("klibgen_build.retention.graph", return_value=nodes):
+                applied = garbage_collect(paths)
+            self.assertEqual(
+                {(item["kind"], item["path"]) for item in planned["candidates"]},
+                {(item["kind"], item["path"]) for item in applied["candidates"]},
+            )
+            self.assertEqual(applied["removedCounts"], applied["candidateCounts"])
+            self.assertTrue(current.exists())
+            self.assertFalse(stale.exists())
+            self.assertEqual(len(list((paths.state / "tmp").glob("attempt-*"))), 3)
+
+    def test_gc_protects_all_artifacts_for_an_unresolved_context(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            state = Path(temporary)
+            root = state / "repo"
+            (root / "build/contexts").mkdir(parents=True)
+            (root / "build/contexts/broken.json").write_text("{}")
+            paths = BuildPaths(root, state / "state")
+            artifact = self._artifact(paths.state, "broken", "l01", "only")
+            with patch("klibgen_build.retention.graph", side_effect=ValueError("broken context")):
+                result = retention_plan(paths, "gc")
+            self.assertEqual(result["skippedContexts"], ["broken"])
+            self.assertFalse(any(item["path"] == str(artifact.resolve()) for item in result["candidates"]))
+            self.assertTrue(any(item["reason"] == "unresolved-context-protection" for item in result["retained"]))
+
+    def test_prune_removes_clone_rebuild_state_and_preserves_live_work(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            state = Path(temporary)
+            paths = BuildPaths(ROOT, state)
+            default = self._artifact(state, "default", "l01", "default-current")
+            gui = self._artifact(state, "gui", "l01", "gui-current")
+            stale = self._artifact(state, "default", "l01", "stale")
+            other = self._artifact(state, "acceptance", "l01", "other")
+            pinned = self._artifact(state, "acceptance", "l02", "pinned")
+            active_parent = self._artifact(state, "acceptance", "l03", "active-parent")
+            (state / "state/pins").mkdir(parents=True)
+            (state / "state/pins/keep.json").write_text(json.dumps({
+                "pin": "keep", "artifactPath": str(pinned),
+            }))
+
+            active = state / "runs/acceptance/active"
+            stopped = state / "runs/default/stopped"
+            active.mkdir(parents=True)
+            stopped.mkdir(parents=True)
+            (active / "run.json").write_text(json.dumps({
+                "runId": "active", "state": "running", "pid": 123,
+                "parentArtifact": str(active_parent),
+            }))
+            (stopped / "run.json").write_text(json.dumps({"runId": "stopped", "state": "stopped", "pid": 456}))
+
+            snapshot = state / "snapshots/gui/saved"
+            snapshot.mkdir(parents=True)
+            (snapshot / "snapshot.json").write_text(json.dumps({"snapshotId": "saved"}))
+            (state / "state/gui").mkdir(parents=True)
+            (state / "state/gui/gui.json").write_text(json.dumps({"snapshotId": "saved"}))
+            (state / "state/gui-refresh").mkdir(parents=True)
+            refresh = state / "state/gui-refresh/gui.json"
+            refresh.write_text(json.dumps({"state": "pending"}))
+            generated = state / "contexts/acceptance.json"
+            generated.parent.mkdir(parents=True)
+            generated.write_text("{}")
+            worktree_marker = state / "worktrees/acceptance/marker"
+            worktree_marker.parent.mkdir(parents=True)
+            worktree_marker.write_text("keep")
+            for name in ("one", "two"):
+                attempt = state / "tmp" / f"attempt-{name}"
+                attempt.mkdir(parents=True)
+                (attempt / "log").write_text(name)
+            rebuild = state / "logs/rebuilds/default/l01/key/id"
+            rebuild.mkdir(parents=True)
+            (rebuild / "contract.log").write_text("diagnostic")
+
+            nodes = {
+                "default": [self._node(default, "l01", "default-current")],
+                "gui": [self._node(gui, "l01", "gui-current")],
+            }
+            with patch("klibgen_build.retention.graph", side_effect=lambda _, context: nodes[context]), \
+                 patch("klibgen_build.retention.process_is_alive", side_effect=lambda pid: pid == 123):
+                dry_run = prune(paths, dry_run=True)
+                self.assertTrue(snapshot.exists())
+                result = prune(paths)
+
+            self.assertEqual(dry_run["candidateCounts"], result["candidateCounts"])
+            self.assertEqual(result["removedCounts"], result["candidateCounts"])
+            for retained in (default, gui, pinned, active_parent, active, refresh, generated, worktree_marker):
+                self.assertTrue(retained.exists(), retained)
+            for removed in (stale, other, stopped, snapshot, state / "state/gui/gui.json", state / "tmp/attempt-one", rebuild):
+                self.assertFalse(removed.exists(), removed)
+            self.assertIn("snapshot", result["candidateCounts"])
+            self.assertIn("rebuild-log", result["candidateCounts"])
+
+    def test_retention_cli_exposes_dry_run_for_gc_and_prune(self):
+        self.assertTrue(parser().parse_args(["gc", "--dry-run"]).dry_run)
+        self.assertTrue(parser().parse_args(["prune", "--dry-run", "--json"]).json)
+
+    def test_build_inventory_connects_definitions_artifacts_runs_snapshots_and_pins(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            root = Path(temporary) / "repo"
+            state = Path(temporary) / "state"
+            layer = root / "build/layers/l01-runtime"
+            layer.mkdir(parents=True)
+            (layer / "layer.json").write_text(json.dumps({"layerId": "L01", "name": "runtime"}))
+            contexts = root / "build/contexts"
+            contexts.mkdir(parents=True)
+            (contexts / "default.json").write_text(json.dumps({
+                "schemaVersion": 1, "contextId": "default", "layers": {"L01": {"variant": "test"}},
+            }))
+            artifact = self._artifact(state, "default", "l01", "current")
+            stale = self._artifact(state, "default", "l01", "stale")
+            run = state / "runs/default/run-one"
+            run.mkdir(parents=True)
+            (run / "run.json").write_text(json.dumps({
+                "runId": "run-one", "contextId": "default", "state": "stopped",
+                "parentArtifact": str(artifact),
+            }))
+            snapshot = state / "snapshots/default/saved"
+            snapshot.mkdir(parents=True)
+            (snapshot / "snapshot.json").write_text(json.dumps({
+                "snapshotId": "saved", "contextId": "default", "parentL06Artifact": str(artifact),
+            }))
+            (state / "state/gui").mkdir(parents=True)
+            (state / "state/gui/default.json").write_text(json.dumps({
+                "snapshotId": "saved", "contextId": "default",
+            }))
+            (state / "state/pins").mkdir(parents=True)
+            (state / "state/pins/current.json").write_text(json.dumps({
+                "pin": "current", "contextId": "default", "artifactPath": str(artifact),
+            }))
+            nodes = [self._node(artifact, "l01", "current")]
+            with patch("klibgen_build.inventory.graph", return_value=nodes), \
+                 patch("klibgen_build.inventory.process_is_alive", return_value=False):
+                inventory = build_inventory(BuildPaths(root, state))
+            by_path = {node["path"]: node for node in inventory["nodes"] if node["path"]}
+            self.assertEqual(by_path[str(artifact.resolve())]["status"], "current")
+            self.assertEqual(by_path[str(stale.resolve())]["status"], "stale")
+            edge_kinds = {edge["kind"] for edge in inventory["edges"]}
+            self.assertTrue({
+                "context-layer", "context-artifact", "artifact-materializes", "pin-artifact", "pointer-snapshot",
+            } <= edge_kinds)
+            self.assertGreater(inventory["metrics"]["stateRoot"]["logicalBytes"], 0)
+            self.assertIn("Allocated bytes double-count", inventory["metrics"]["sizeWarning"])
+
+    def test_build_inventory_does_not_follow_symlinks_and_reports_broken_records(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            root = Path(temporary) / "repo"
+            state = Path(temporary) / "state"
+            (root / "build/layers").mkdir(parents=True)
+            (root / "build/contexts").mkdir(parents=True)
+            outside = Path(temporary) / "outside"
+            outside.mkdir()
+            (outside / "large").write_bytes(b"x" * 10000)
+            cache = state / "cache"
+            cache.mkdir(parents=True)
+            (cache / "outside").symlink_to(outside, target_is_directory=True)
+            (state / "state/pins").mkdir(parents=True)
+            (state / "state/pins/broken.json").write_text(json.dumps({
+                "pin": "broken", "artifactPath": str(state / "missing"),
+            }))
+            inventory = build_inventory(BuildPaths(root, state))
+            cache_node = next(node for node in inventory["nodes"] if node["kind"] == "auxiliary-storage")
+            self.assertLess(cache_node["logicalBytes"], 10000)
+            pin = next(node for node in inventory["nodes"] if node["kind"] == "pin")
+            self.assertEqual(pin["status"], "broken")
+            self.assertTrue(any(node["kind"] == "missing-reference" for node in inventory["nodes"]))
+
+    def test_build_map_cli_contracts_and_disposable_launch_cleanup(self):
+        parsed = parser().parse_args(["build-map-png", "tmp/out", "default", "--force"])
+        self.assertEqual(parsed.output_dir, "tmp/out")
+        self.assertTrue(parsed.force)
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            state = Path(temporary) / "state"
+            run_path = state / "runs/gui/tool"
+            (run_path / "logs").mkdir(parents=True)
+            (run_path / "image").mkdir()
+            run = {"runId": "tool", "runPath": str(run_path), "launcher": str(state / "GlamorousToolkit-cli")}
+            process = MagicMock()
+            process.wait.return_value = 0
+            process.poll.return_value = 0
+            inventory = {"generatedAt": "now", "nodes": [], "edges": [], "warnings": []}
+            with patch("klibgen_build.operations.build_l06"), \
+                 patch("klibgen_build.operations.build_inventory", return_value=inventory), \
+                 patch("klibgen_build.operations.create_project_run", return_value=run), \
+                 patch("klibgen_build.operations.run_command", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
+                 patch("klibgen_build.operations.start_command", return_value=process), \
+                 patch("klibgen_build.operations.write_run_metadata"):
+                result = launch_build_map(BuildPaths(ROOT, state))
+            self.assertIsNone(result["runPath"])
+            self.assertFalse(run_path.exists())
+
+    def test_build_map_png_refuses_overwrite_before_image_execution(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            output = Path(temporary) / "map"
+            output.mkdir()
+            (output / "overview.png").write_bytes(b"png")
+            with patch("klibgen_build.operations.build_l06"), \
+                 patch("klibgen_build.operations.execute_image_tool") as execute:
+                with self.assertRaisesRegex(ValueError, "refusing to overwrite"):
+                    export_build_map_pngs(BuildPaths(ROOT, Path(temporary) / "state"), output)
+            execute.assert_not_called()
+
+    def test_exclusive_retention_waits_for_a_shared_build_lock(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            state = Path(temporary)
+            code = (
+                "import sys\n"
+                "from pathlib import Path\n"
+                "from klibgen_build.core import BuildPaths\n"
+                "from klibgen_build.coordination import retention_lock\n"
+                f"paths = BuildPaths(Path({str(ROOT)!r}), Path({str(state)!r}))\n"
+                "with retention_lock(paths):\n"
+                " print('ready', flush=True)\n"
+                " sys.stdin.read(1)\n"
+            )
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = str(ROOT / "python")
+            child = subprocess.Popen(
+                [sys.executable, "-c", code], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                text=True, env=environment,
+            )
+            acquired = threading.Event()
+            try:
+                self.assertEqual(child.stdout.readline().strip(), "ready")
+
+                def acquire_exclusive():
+                    with retention_lock(BuildPaths(ROOT, state), exclusive=True):
+                        acquired.set()
+
+                waiter = threading.Thread(target=acquire_exclusive, daemon=True)
+                waiter.start()
+                self.assertFalse(acquired.wait(0.1))
+                child.stdin.write("x")
+                child.stdin.flush()
+                self.assertTrue(acquired.wait(2))
+                waiter.join(2)
+            finally:
+                if child.poll() is None:
+                    child.terminate()
+                child.wait(timeout=2)
+                child.stdin.close()
+                child.stdout.close()
+
     def test_test_one_uses_structured_image_operation(self):
         paths = BuildPaths(ROOT, ROOT / ".klibgen-test")
         response = {
@@ -141,11 +436,13 @@ class CoreTest(unittest.TestCase):
             self.assertEqual(discard_run(paths, snapshot["snapshotId"])["recordKind"], "snapshot")
 
     def test_l07_rejects_gui_and_unimplemented_release_profiles(self):
-        paths = BuildPaths(ROOT, ROOT / ".klibgen-test")
-        with self.assertRaisesRegex(ValueError, "canonical L06 CLI"):
-            build_l07(paths, "gui")
-        with self.assertRaisesRegex(ValueError, "not production-ready"):
-            build_l07(paths, "release")
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            paths = BuildPaths(ROOT, Path(temporary))
+            with self.assertRaisesRegex(ValueError, "canonical L06 CLI"):
+                build_l07(paths, "gui")
+            with self.assertRaisesRegex(ValueError, "not production-ready"):
+                build_l07(paths, "release")
 
     def test_context_listing_includes_committed_defaults(self):
         paths = BuildPaths(ROOT, ROOT / ".klibgen-test")

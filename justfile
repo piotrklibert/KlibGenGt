@@ -68,6 +68,27 @@ unpin name:
 gc:
     uv run klibgen-build gc
 
+gc-dry-run:
+    uv run klibgen-build gc --dry-run
+
+prune:
+    uv run klibgen-build prune
+
+prune-dry-run:
+    uv run klibgen-build prune --dry-run
+
+# Open a timestamped, read-only map of committed build definitions and generated state.
+build-map context="gui":
+    uv run klibgen-build build-map {{quote(context)}}
+
+# Render both the aggregate overview and complete relationship graph to PNG.
+build-map-png output_dir="":
+    uv run klibgen-build build-map-png {{quote(output_dir)}}
+
+# Export the versioned host inventory consumed by the Mondrian presentation.
+build-map-json output="tmp/build-map/inventory.json":
+    uv run klibgen-build build-map-json {{quote(output)}}
+
 test-build-tools:
     uv run python -m unittest discover -s build/tests -v
 

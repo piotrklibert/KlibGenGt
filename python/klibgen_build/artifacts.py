@@ -16,6 +16,7 @@ from .core import BuildPaths, canonical_json, digest_json, load_context, load_la
 from .sources import jj_identity
 from .bridge import materialize_jj_source
 from .processes import run_command
+from .coordination import with_shared_retention_lock
 
 
 def sha256_file(path: Path) -> str:
@@ -180,6 +181,7 @@ def _fail_build(attempt: Path, node: dict[str, Any], context_id: str, parent: di
     raise RuntimeError(f"{message}; retained attempt: {attempt}")
 
 
+@with_shared_retention_lock
 def build_base(paths: BuildPaths, context_id: str, target: str, force: bool = False) -> Path:
     normalized = target.upper() if target.upper().startswith("L") else target.upper().replace("L", "L")
     if normalized in {"L1", "L01"}:
@@ -261,6 +263,7 @@ def git_worktree_state(path: Path) -> dict[str, Any]:
     return {"vcs": "git", "worktree": str(path), "commit": commit, "dirty": bool(status), "changedPaths": status, "dirtyContentSha256": digest.hexdigest() if status else None}
 
 
+@with_shared_retention_lock
 def build_l03(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
     parent_artifact = build_base(paths, context_id, "l02", force=False)
     context = load_context(paths, context_id)
@@ -318,6 +321,7 @@ def build_l03(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         return _publish(attempt, artifact, manifest)
 
 
+@with_shared_retention_lock
 def build_artifact(paths: BuildPaths, context_id: str, target: str, force: bool = False) -> Path:
     target_id = target.lower().split("-")[0]
     if target_id in {"l1", "l01", "l2", "l02"}:
@@ -335,6 +339,7 @@ def build_artifact(paths: BuildPaths, context_id: str, target: str, force: bool 
     raise ValueError("implemented build targets are l01 through l07")
 
 
+@with_shared_retention_lock
 def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
     parent_artifact = build_l03(paths, context_id)
     context = load_context(paths, context_id)
@@ -394,6 +399,7 @@ def build_l04(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         return _publish(attempt, artifact, manifest)
 
 
+@with_shared_retention_lock
 def build_l05(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
     parent_artifact = build_l04(paths, context_id)
     context = load_context(paths, context_id)
@@ -458,6 +464,7 @@ def build_l05(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         return _publish(attempt, artifact, manifest)
 
 
+@with_shared_retention_lock
 def build_l06(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
     parent_artifact = build_l05(paths, context_id)
     context = load_context(paths, context_id)
@@ -528,6 +535,7 @@ def build_l06(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         return _publish(attempt, artifact, manifest)
 
 
+@with_shared_retention_lock
 def build_l07(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
     context = load_context(paths, context_id)
     profile = context["layers"]["L07"]["profile"].upper()

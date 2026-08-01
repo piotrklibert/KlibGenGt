@@ -308,7 +308,69 @@ just unpin demo-build
 ```
 
 GC preserves artifacts selected by current contexts, snapshot parents, and
-explicit pins.
+explicit pins. Preview the exact paths and their estimated logical sizes before
+removing anything:
+
+```sh
+just gc-dry-run
+just gc
+```
+
+The dry run and cleanup report why each path is eligible. GC keeps the three
+newest build attempts for diagnostics. If a context cannot be resolved, all of
+its artifacts are protected rather than risking accidental deletion.
+
+For a more aggressive, clone-like reset of reproducible build state, use:
+
+```sh
+just prune-dry-run
+just prune
+```
+
+Pruning keeps only currently matching artifacts for the `default` and `gui`
+layer graphs, explicit pins, active runs, and the artifact ancestry needed by
+those active runs. It removes artifacts for other contexts, stopped or
+never-started runs, all snapshots and GUI snapshot pointers, all build attempts,
+and retained rebuild logs. Generated contexts, workspaces, attached worktrees,
+pins, active runs, and GUI refresh records remain untouched. A current layer is
+identified by its computed build key, not by filesystem modification time; if a
+current layer has not been built, there is no artifact for prune to retain.
+
+Both commands coordinate with artifact construction and snapshot/run lifecycle
+updates. Their byte totals are logical file sizes: reflink sharing means actual
+space reclaimed can be smaller and filesystem-dependent.
+
+## Build Storage Map
+
+The build map presents the committed build definitions together with the
+logical objects in the active generated state root:
+
+```sh
+just build-map
+just build-map-json tmp/build-map/inventory.json
+just build-map-png
+```
+
+`just build-map` opens a fresh disposable GT image. Its Overview groups storage
+by kind, while Graph shows layer, context, artifact, run, snapshot, attempt,
+pin, worktree, and diagnostic relationships. The Filters presentation opens
+context-, kind-, or status-specific maps, and clicking a graph node opens its
+summary, component sizes, relationships, and recorded metadata. The inventory
+is a timestamped launch snapshot; close and rerun the command to rescan it.
+The tool never selects or saves a GUI snapshot and never installs the Iceberg
+promotion hook.
+
+`just build-map-png` writes both `overview.png` and `graph.png` below a
+timestamped ignored `tmp/build-map/` directory. Pass an explicit output
+directory to choose the destination; the underlying CLI requires `--force` to
+replace either image. `just build-map-json` exposes the versioned host inventory
+without starting an image.
+
+Every storage-bearing node reports apparent/logical bytes, allocated filesystem
+blocks, file count, and immediate child sizes. Allocated bytes are useful for
+comparison but still count reflink-shared extents once per referencing object;
+they are not an estimate of exclusively reclaimable space. Symlinks are measured
+but never followed outside their owning object.
 
 ## Commands
 
@@ -339,7 +401,9 @@ explicit pins.
 | `just build l07 default` | Produce the self-contained DEV launcher/image bundle and checksums. |
 | `just snapshot`, `resume`, `discard`, `promote` | Manage non-canonical development state and selected source changes. |
 | `just context-*`, `worktree-*` | Manage generated JJ workspaces and Git overrides. |
-| `just clean-runs`, `pin`, `unpin`, `gc` | Manage retention without mutating canonical artifacts. |
+| `just clean-runs`, `pin`, `unpin`, `gc[-dry-run]` | Manage routine retention and preview unreferenced canonical artifacts. |
+| `just prune[-dry-run]` | Reset reproducible cache state while keeping current default/GUI artifacts, pins, and live work. |
+| `just build-map`, `build-map-json`, `build-map-png` | Inspect build definitions and generated state interactively or export the inventory and two PNG views. |
 
 ## Host and Image Tools
 

@@ -15,14 +15,15 @@ from .artifacts import build_artifact, build_l06, graph
 from .runs import clean_runs, create_project_run, create_run, process_is_alive
 from .operations import (
     compatibility_context, diagnose_test, execute, execute_image_tool, execute_test_one,
-    fresh_test, launch_gui,
+    export_build_map_pngs, fresh_test, launch_build_map, launch_gui,
 )
 from .lifecycle import (
     clear_current_snapshot, clear_gui_refresh, current_snapshot_id, discard_run, find_snapshot, gui_refresh, list_snapshots, promote_packages,
     resume_snapshot, select_snapshot, snapshot_current, snapshot_run,
 )
 from .contexts import add_git_worktree, create_context, list_contexts, remove_context, remove_git_worktree
-from .retention import garbage_collect, pin_artifact, unpin_artifact
+from .retention import garbage_collect, pin_artifact, prune, unpin_artifact
+from .inventory import write_inventory
 from .sources import project_workspace
 from .processes import ProcessExecutionError
 from .host_tools import (
@@ -210,6 +211,21 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     if result["operation"] == "build":
         print(f"{result['target']}[{result['contextId']}]: {result['artifactPath']}")
         return
+    if result["operation"] == "build-map-json":
+        print(f"build inventory: {result['outputPath']}")
+        print(f"nodes: {len(result['nodes'])}; edges: {len(result['edges'])}; warnings: {len(result['warnings'])}")
+        return
+    if result["operation"] == "build-map-png":
+        for output in result["outputs"]:
+            print(f"build map PNG: {output}")
+        if result.get("warnings"):
+            print(f"inventory warnings: {len(result['warnings'])}", file=sys.stderr)
+        return
+    if result["operation"] == "build-map":
+        print(f"build map: {result['nodeCount']} nodes, {result['edgeCount']} edges")
+        if result.get("runPath"):
+            print(f"retained run: {result['runPath']}", file=sys.stderr)
+        return
     if result["operation"] == "run":
         print(f"run {result['runId']}: {result['runPath']}")
         return
@@ -247,7 +263,23 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
         for context in result["contexts"]:
             print(f"{context['contextId']:20} {'generated' if context['generated'] else 'committed':9} {context['project']['workspace']}")
         return
-    if result["operation"] in {"context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"}:
+    if result["operation"] in {"gc", "prune"}:
+        action = "would remove" if result["dryRun"] else "removed"
+        print(
+            f"{result['operation']} {'dry run' if result['dryRun'] else 'complete'}: "
+            f"{action} {len(result['candidates'])} item(s), "
+            f"{_format_bytes(result['estimatedLogicalBytes'])} logical"
+        )
+        for entry in result["candidates"]:
+            print(f"  {entry['kind']:16} {entry['reason']:32} {entry['path']}")
+        print(f"retaining {len(result['retained'])} protected item(s):")
+        for entry in result["retained"]:
+            print(f"  {entry['kind']:16} {entry['reason']:32} {entry['path']}")
+        if result.get("skippedContexts"):
+            print(f"protected unresolved contexts: {', '.join(result['skippedContexts'])}")
+        print("Logical bytes do not account for reflink-shared extents.")
+        return
+    if result["operation"] in {"context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin"}:
         print(json.dumps(result, indent=2, sort_keys=True))
         return
     if not result.get("ok", True):
@@ -403,12 +435,21 @@ def _image_parser(subparsers: argparse._SubParsersAction) -> None:
         command.add_argument("--json", action="store_true")
 
 
+def _format_bytes(value: int) -> str:
+    amount = float(value)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if amount < 1024 or unit == "TiB":
+            return f"{amount:.1f} {unit}" if unit != "B" else f"{int(amount)} B"
+        amount /= 1024
+    raise AssertionError("unreachable")
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="klibgen-build")
     subparsers = result.add_subparsers(dest="command", required=True)
     _host_parser(subparsers)
     _image_parser(subparsers)
-    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "test-one", "test-diagnose", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "gui-refresh-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"):
+    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "test-one", "test-diagnose", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "gui-refresh-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc", "prune", "build-map", "build-map-png", "build-map-json"):
         command = subparsers.add_parser(name)
         if name == "build":
             command.add_argument("target")
@@ -464,7 +505,15 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("name", nargs="?")
         elif name == "unpin":
             command.add_argument("name")
-        elif name in {"context-list", "gc"}:
+        elif name == "build-map":
+            command.add_argument("context", nargs="?", default="gui")
+        elif name == "build-map-png":
+            command.add_argument("output_dir", nargs="?")
+            command.add_argument("context", nargs="?", default="default")
+            command.add_argument("--force", action="store_true")
+        elif name == "build-map-json":
+            command.add_argument("output", nargs="?", default="tmp/build-map/inventory.json")
+        elif name in {"context-list", "gc", "prune"}:
             pass
         else:
             command.add_argument("context", nargs="?", default="default")
@@ -473,6 +522,8 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("--update", action="store_true")
         if name == "test":
             command.add_argument("--fresh", action="store_true")
+        if name in {"gc", "prune"}:
+            command.add_argument("--dry-run", action="store_true")
     return result
 
 
@@ -668,7 +719,19 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "unpin":
             result = unpin_artifact(paths, args.name)
         elif args.command == "gc":
-            result = garbage_collect(paths)
+            result = garbage_collect(paths, args.dry_run)
+        elif args.command == "prune":
+            result = prune(paths, args.dry_run)
+        elif args.command == "build-map-json":
+            result = write_inventory(paths, Path(args.output))
+            result["operation"] = "build-map-json"
+        elif args.command == "build-map-png":
+            output = Path(args.output_dir) if args.output_dir else Path(
+                "tmp/build-map" + time.strftime("/%Y%m%d-%H%M%S")
+            )
+            result = export_build_map_pngs(paths, output, args.context, force=args.force)
+        elif args.command == "build-map":
+            result = launch_build_map(paths, args.context)
         elif args.command == "gui-fresh":
             return launch_gui(paths, args.context, fresh=True)
         elif args.command == "gui-snapshot":
