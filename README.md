@@ -31,7 +31,9 @@ just gui
 ```
 
 `just gui` resumes the current saved GUI session for the `gui` context, or
-creates a fresh writable run when no session is selected. `just gui-fresh`
+creates a fresh writable run when no session is selected. After Iceberg changes
+have been promoted, it deliberately starts fresh from current JJ `@` instead.
+`just gui-fresh`
 explicitly bypasses the saved-session pointer. Both start the normal
 `GlamorousToolkit --image ...` executable and open one GT window. Use `just
 gui-context <context>` for an explicit alternative context.
@@ -58,6 +60,7 @@ with `uv add`/`uv lock`, not with an unmanaged `pip install`.
 | `.klibgen/artifacts/` | Immutable canonical layer artifacts, keyed by platform, context, layer, and build key. | No. |
 | `.klibgen/runs/` | Writable per-command or GUI image copies and their isolated host state. | No. |
 | `.klibgen/snapshots/` | Immutable, resumable, non-canonical L06-tmp images. | No. |
+| `.klibgen/state/gui-refresh/` | Durable pending or blocked GUI source-refresh requests. | No. |
 | `.klibgen/contexts/`, `.klibgen/workspaces/`, `.klibgen/worktrees/` | Generated context definitions and their JJ/Git working areas. | No. |
 | `artifacts/fresh-layered/` | Completely separate state root used by `just test-fresh`. | No. |
 | `tmp/` | Project-local temporary snippets and validation files. | No. |
@@ -180,7 +183,7 @@ just gui
 ```
 
 With no current snapshot, this creates `.klibgen/runs/gui/<run-id>/`, binds
-Iceberg to the run's generated bridge, installs an image-local session hook,
+Iceberg to the run's generated bridge, installs `KGGuiSessionHooks`,
 and launches the GUI sibling of the CLI runtime. The host's
 `~/Documents/lepiter` is seeded once into the run's private HOME. HOME, XDG
 config/data, the complete image bundle, bridge dirty state, and logs persist;
@@ -196,6 +199,24 @@ reported but never reloads or alters the saved session. Quit-without-save and
 interrupted runs remain under `.klibgen/runs/` for recovery and do not change
 the pointer.
 
+An Iceberg commit in that private bridge emits an `iceberg-committed` JSONL
+event. While GT remains open, the launcher promotes committed changes under
+`src/KlibGenGt-*` into authoritative `src/`, leaving reviewable outer JJ
+working-copy changes and never creating a JJ commit. Repeated commits are
+incremental. If the same authoritative package changed outside that GUI run,
+promotion is blocked without overwriting either side; the GUI remains open and
+later commit events retry the cumulative bridge change.
+
+A successful GUI promotion records a generation-tagged pending refresh under
+`.klibgen/state/gui-refresh/`. The next ordinary `just gui` bypasses its saved
+snapshot and builds or reuses L06 for current `@`; the pending generation is
+cleared only after that fresh run is successfully saved. Startup failure,
+quit-without-save, and a newer promotion retain it. A blocked record stops an
+ordinary launch and reports the source run, packages, and conflict. After
+manual reconciliation, use `just gui-refresh-clear [context]` followed by
+`just gui-fresh [context]`. Explicit `gui-fresh` and `gui-snapshot` bypass
+selection but never silently clear blocked state.
+
 After the GUI process stops:
 
 ```sh
@@ -208,6 +229,7 @@ just snapshot-list [context]
 just snapshot-current [context]
 just snapshot-select <snapshot-id> [context]
 just snapshot-clear [context]
+just gui-refresh-clear [context]
 ```
 
 Manual `snapshot` and `resume` remain available. A manual snapshot does not
@@ -221,10 +243,14 @@ just promote <run-or-snapshot-id> KlibGenGt-Core default
 just promote <id> KlibGenGt-Core,KlibGenGt-Tests default
 ```
 
-Promotion refuses a package with no bridge changes and refuses to overwrite a
-package that changed in the authoritative JJ workspace since the run was
-created. V1 promotion targets the root JJ workspace and `KlibGenGt-*` packages.
-Review the resulting JJ working-copy change and rebuild L06 normally.
+Manual promotion uses the same coordinator lock and conflict checks as
+automatic promotion. A successful manual promotion from a GUI run requests the
+same fresh-launch generation. Promotion targets the root JJ workspace and
+`KlibGenGt-*` packages.
+
+`just push-src-to-export` and `just pull-export-to-src` remain available only
+for compatibility with the legacy shared `export/` repository. Private-run
+promotion is authoritative for layered GUI development.
 
 ## Alternative Contexts
 
@@ -289,6 +315,7 @@ explicit pins.
 | `just gui` | Resume the current GUI snapshot, or create a fresh GUI run. |
 | `just gui-context <context>` | Apply the same policy to an explicit context. |
 | `just gui-fresh`, `gui-snapshot` | Bypass the pointer or launch one explicit snapshot. |
+| `just gui-refresh-clear [context]` | Explicitly discard a pending or manually reconciled blocked refresh record. |
 | `just snapshot-list`, `snapshot-current`, `snapshot-select`, `snapshot-clear` | Inspect and manage current GUI-session selection without deleting history. |
 | `just build l07 default` | Produce the self-contained DEV launcher/image bundle and checksums. |
 | `just snapshot`, `resume`, `discard`, `promote` | Manage non-canonical development state and selected source changes. |

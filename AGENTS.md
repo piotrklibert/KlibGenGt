@@ -14,18 +14,14 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Do not commit images, changes files, caches, logs, or generated artifacts.
 
-- Source changes go under `src/`; GT/Iceberg edits use the ignored nested Git
-  repository in `export/`.
+- Source changes go under `src/`. A GUI run uses its own ignored private Git
+  bridge; committing `KlibGenGt-*` changes in Iceberg promotes those packages
+  immediately into `src/` without creating a JJ commit.
 
-- Run `just push-src-to-export` before opening GT after filesystem edits.
-
-- `just push-src-to-export` commits the ignored `export/` Git repository,
-  because Metacello `gitlocal://` loads committed Git contents rather than the
-  export working tree.
-
-- Run `just pull-export-to-src` after saving GUI/Iceberg changes that should
-  become JJ-versioned source. Ask the user what do to if `export/` contain
-  changes not pulled into `src/`.
+- Review promoted GUI changes in the outer JJ working copy. The next ordinary
+  `just gui` refreshes from current `@` after the current session is saved.
+  `push-src-to-export` and `pull-export-to-src` are legacy compatibility
+  commands for the shared ignored `export/` bridge, not the layered GUI flow.
 
 - For Smalltalk TDD, add or edit tests in `src/*-Tests`, run `just test-fresh`,
   which pushes `src` into `export/` and runs the suite from a disposable GT

@@ -10,10 +10,11 @@ from unittest.mock import MagicMock, patch
 from klibgen_build.core import BuildPaths, canonical_json, digest_json, load_context, load_layers
 from klibgen_build.sources import expected_lock, validate_lock
 from klibgen_build.lifecycle import (
-    clear_current_snapshot, current_snapshot_id, discard_run, list_snapshots,
-    resume_snapshot, select_snapshot, snapshot_run,
+    acknowledge_gui_refresh, clear_current_snapshot, clear_gui_refresh, current_snapshot_id,
+    discard_run, gui_refresh, list_snapshots, promote_gui_commits, promote_packages, resume_snapshot,
+    select_snapshot, snapshot_run,
 )
-from klibgen_build.operations import _gui_save_evidence, _run_environment, execute_image_tool, launch_gui
+from klibgen_build.operations import GuiEventConsumer, _gui_save_evidence, _run_environment, execute_image_tool, launch_gui
 from klibgen_build.artifacts import build_l07, git_worktree_state, set_tree_writable
 from klibgen_build.contexts import list_contexts
 from klibgen_build.processes import run_command
@@ -224,11 +225,226 @@ class CoreTest(unittest.TestCase):
             resume.assert_called_once_with(paths, "saved")
 
     def test_gui_startup_quits_when_the_world_closes(self):
-        startup = (ROOT / "build/layers/l06-project-dev/scripts/bind-run.st").read_text()
+        startup = (ROOT / "src/KlibGenGt-Tools/KGGuiSessionHooks.class.st").read_text()
         self.assertIn("world removeShutdownListener; addShutdownListener.", startup)
-        self.assertIn("mode = ''resumed''", startup)
+        self.assertIn("mode = 'resumed'", startup)
         self.assertIn("staleWorld ~~ world ifTrue: [ staleWorld close ]", startup)
         self.assertIn("ifFalse: [ GtWorld defaultWorld ifNil: [ GtWorld openDefault ] ]", startup)
+
+    def _gui_promotion_fixture(self, temporary):
+        root = Path(temporary)
+        state = root / ".klibgen"
+        paths = BuildPaths(root, state)
+        for context in ("default", "gui"):
+            context_path = root / f"build/contexts/{context}.json"
+            context_path.parent.mkdir(parents=True, exist_ok=True)
+            context_path.write_text(json.dumps({
+                "schemaVersion": 1, "contextId": context,
+                "project": {"workspace": ".", "revision": "@"}, "layers": {},
+            }))
+        package = root / "src/KlibGenGt-Core"
+        package.mkdir(parents=True)
+        (package / "package.st").write_text("base\n")
+        run = state / "runs/gui/gui-run"
+        bridge = run / "export"
+        (bridge / "src/KlibGenGt-Core").mkdir(parents=True)
+        (bridge / "src/KlibGenGt-Core/package.st").write_text("base\n")
+        run_command(["git", "init", "--initial-branch=master", bridge])
+        run_command(["git", "-C", bridge, "add", "src"])
+        run_command(["git", "-C", bridge, "-c", "user.name=Test", "-c", "user.email=test@localhost", "commit", "-m", "base"])
+        base = run_command(["git", "-C", bridge, "rev-parse", "HEAD"]).stdout.strip()
+        metadata = {
+            "schemaVersion": 2, "runId": "gui-run", "contextId": "gui", "profile": "gui",
+            "projectCommitId": "outer-base", "generatedBridgeCommit": base,
+        }
+        (run / "run.json").write_text(json.dumps(metadata))
+        return paths, run, bridge
+
+    def _bridge_commit(self, bridge, message):
+        run_command(["git", "-C", bridge, "add", "."])
+        run_command(["git", "-C", bridge, "-c", "user.name=Test", "-c", "user.email=test@localhost", "commit", "-m", message])
+
+    def test_automatic_gui_promotion_handles_repeated_and_coalesced_commits(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            paths, run, bridge = self._gui_promotion_fixture(temporary)
+            source = bridge / "src/KlibGenGt-Core/package.st"
+            source.write_text("first\n")
+            self._bridge_commit(bridge, "first")
+            with patch("klibgen_build.lifecycle._authoritative_package_changed", return_value=False):
+                first = promote_gui_commits(paths, "gui-run")
+            self.assertTrue(first["promoted"])
+            self.assertEqual((paths.root / "src/KlibGenGt-Core/package.st").read_text(), "first\n")
+
+            source.write_text("second\n")
+            self._bridge_commit(bridge, "second")
+            extra = bridge / "src/KlibGenGt-Tools"
+            extra.mkdir()
+            (extra / "package.st").write_text("tools\n")
+            self._bridge_commit(bridge, "third")
+            with patch("klibgen_build.lifecycle._authoritative_package_changed", return_value=False):
+                repeated = promote_gui_commits(paths, "gui-run")
+            self.assertEqual(repeated["packages"], ["KlibGenGt-Core", "KlibGenGt-Tools"])
+            self.assertEqual((paths.root / "src/KlibGenGt-Core/package.st").read_text(), "second\n")
+            self.assertTrue((paths.root / "src/KlibGenGt-Tools/package.st").is_file())
+            self.assertEqual(gui_refresh(paths, "gui")["state"], "pending")
+
+    def test_automatic_gui_promotion_ignores_nonproject_paths(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            paths, run, bridge = self._gui_promotion_fixture(temporary)
+            (bridge / "README.md").write_text("ignored\n")
+            self._bridge_commit(bridge, "docs")
+            result = promote_gui_commits(paths, "gui-run")
+            self.assertEqual(result["packages"], [])
+            self.assertIsNone(gui_refresh(paths, "gui"))
+
+    def test_automatic_gui_promotion_never_copies_uncommitted_followup_edits(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            paths, run, bridge = self._gui_promotion_fixture(temporary)
+            source = bridge / "src/KlibGenGt-Core/package.st"
+            source.write_text("committed\n")
+            self._bridge_commit(bridge, "committed")
+            source.write_text("uncommitted followup\n")
+            with patch("klibgen_build.lifecycle._authoritative_package_changed", return_value=False):
+                blocked = promote_gui_commits(paths, "gui-run")
+            self.assertFalse(blocked["promoted"])
+            self.assertIn("uncommitted changes", blocked["error"]["message"])
+            self.assertEqual(
+                (paths.root / "src/KlibGenGt-Core/package.st").read_text(), "base\n",
+            )
+
+    def test_manual_gui_promotion_requests_refresh_without_hiding_other_commits(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            paths, run, bridge = self._gui_promotion_fixture(temporary)
+            (bridge / "src/KlibGenGt-Core/package.st").write_text("manual\n")
+            tools = bridge / "src/KlibGenGt-Tools"
+            tools.mkdir()
+            (tools / "package.st").write_text("automatic later\n")
+            self._bridge_commit(bridge, "both")
+            with patch("klibgen_build.lifecycle._authoritative_package_changed", return_value=False):
+                manual = promote_packages(paths, "gui-run", ["KlibGenGt-Core"], "default")
+                automatic = promote_gui_commits(paths, "gui-run")
+            self.assertTrue(manual["guiRefreshRequested"])
+            self.assertEqual(
+                automatic["packages"], ["KlibGenGt-Core", "KlibGenGt-Tools"],
+            )
+            self.assertTrue((paths.root / "src/KlibGenGt-Tools/package.st").is_file())
+
+    def test_automatic_gui_promotion_blocks_concurrent_same_package_edit_and_retries(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            paths, run, bridge = self._gui_promotion_fixture(temporary)
+            source = bridge / "src/KlibGenGt-Core/package.st"
+            source.write_text("first\n")
+            self._bridge_commit(bridge, "first")
+            with patch("klibgen_build.lifecycle._authoritative_package_changed", return_value=False):
+                promote_gui_commits(paths, "gui-run")
+            promoted = paths.root / "src/KlibGenGt-Core/package.st"
+            promoted.write_text("concurrent\n")
+            source.write_text("second\n")
+            self._bridge_commit(bridge, "second")
+            blocked = promote_gui_commits(paths, "gui-run")
+            self.assertFalse(blocked["promoted"])
+            self.assertEqual(promoted.read_text(), "concurrent\n")
+            self.assertEqual(gui_refresh(paths, "gui")["state"], "blocked")
+            promoted.write_text("first\n")
+            retried = promote_gui_commits(paths, "gui-run")
+            self.assertTrue(retried["promoted"])
+            self.assertEqual(promoted.read_text(), "second\n")
+
+    def test_gui_event_consumer_tolerates_malformed_and_filters_repository(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            root = Path(temporary)
+            paths = BuildPaths(root, root / ".klibgen")
+            run_path = root / "run"
+            (run_path / "logs").mkdir(parents=True)
+            run = {"runId": "run", "runPath": str(run_path)}
+            consumer = GuiEventConsumer(paths, run)
+            journal = run_path / "logs/gui-events.jsonl"
+            journal.write_text('{bad}\n' + json.dumps({"event": "iceberg-committed", "repositoryPath": str(root / "other")}) + "\n")
+            with patch("klibgen_build.operations.promote_gui_commits") as promote:
+                self.assertEqual(consumer.consume(), [])
+            promote.assert_not_called()
+            with journal.open("a") as stream:
+                stream.write(json.dumps({"event": "iceberg-committed", "repositoryPath": str(run_path / "export")}) + "\n")
+            with patch("klibgen_build.operations.promote_gui_commits", return_value={"promoted": True, "packages": ["KlibGenGt-Core"]}) as promote:
+                self.assertEqual(len(consumer.consume()), 1)
+            promote.assert_called_once_with(paths, "run")
+
+    def test_gui_refresh_generation_acknowledgement_is_conditional(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            paths = BuildPaths(Path(temporary), Path(temporary) / ".klibgen")
+            record = paths.state / "state/gui-refresh/gui.json"
+            record.parent.mkdir(parents=True)
+            record.write_text(json.dumps({"state": "pending", "generation": "new"}))
+            self.assertFalse(acknowledge_gui_refresh(paths, "gui", "old"))
+            self.assertTrue(record.exists())
+            self.assertTrue(acknowledge_gui_refresh(paths, "gui", "new"))
+            self.assertFalse(record.exists())
+
+    def test_pending_gui_refresh_bypasses_current_snapshot(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            root = Path(temporary)
+            paths = BuildPaths(root, root / ".klibgen")
+            snapshot = paths.state / "snapshots/gui/saved"
+            snapshot.mkdir(parents=True)
+            (snapshot / "snapshot.json").write_text(json.dumps({"snapshotId": "saved", "contextId": "gui"}))
+            pointer = paths.state / "state/gui/gui.json"
+            pointer.parent.mkdir(parents=True)
+            pointer.write_text(json.dumps({"snapshotId": "saved", "contextId": "gui"}))
+            refresh = paths.state / "state/gui-refresh/gui.json"
+            refresh.parent.mkdir(parents=True)
+            refresh.write_text(json.dumps({
+                "state": "pending", "generation": "generation", "sourceRunId": "old-run",
+                "packages": ["KlibGenGt-Core"],
+            }))
+            run_path = root / "run"
+            (run_path / "image").mkdir(parents=True)
+            (run_path / "logs").mkdir()
+            image = run_path / "image/GlamorousToolkit.image"
+            image.write_bytes(b"image")
+            cli_launcher = root / "runtime/GlamorousToolkit-cli"
+            gui_launcher = cli_launcher.with_name("GlamorousToolkit")
+            gui_launcher.parent.mkdir(parents=True)
+            gui_launcher.touch()
+            run = {"runId": "fresh", "runPath": str(run_path), "launcher": str(cli_launcher)}
+            process = MagicMock(pid=123)
+            process.wait.return_value = 0
+            with (
+                patch("klibgen_build.operations.create_project_run", return_value=run) as create,
+                patch("klibgen_build.operations.resume_snapshot") as resume,
+                patch("klibgen_build.operations.run_command", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")),
+                patch("klibgen_build.operations.start_command", return_value=process),
+                patch("klibgen_build.operations.write_run_metadata"),
+            ):
+                self.assertEqual(launch_gui(paths, "gui"), 0)
+            create.assert_called_once_with(paths, "gui", "gui")
+            resume.assert_not_called()
+            self.assertTrue(refresh.exists(), "quit without save must retain the generation")
+
+    def test_blocked_gui_refresh_stops_only_ordinary_launch(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            root = Path(temporary)
+            paths = BuildPaths(root, root / ".klibgen")
+            refresh = paths.state / "state/gui-refresh/gui.json"
+            refresh.parent.mkdir(parents=True)
+            refresh.write_text(json.dumps({
+                "state": "blocked", "generation": "generation", "sourceRunId": "source-run",
+                "packages": ["KlibGenGt-Core"], "failureDetails": {"message": "concurrent edit"},
+            }))
+            with self.assertRaisesRegex(ValueError, "source-run.*KlibGenGt-Core.*concurrent edit"):
+                launch_gui(paths, "gui")
+            with patch("klibgen_build.operations.create_project_run", side_effect=RuntimeError("explicit launch reached build")):
+                with self.assertRaisesRegex(RuntimeError, "explicit launch reached build"):
+                    launch_gui(paths, "gui", fresh=True)
+            self.assertTrue(refresh.exists())
 
     def test_gui_environment_is_allowlisted_and_records_private_paths(self):
         run = {"runId": "run", "runPath": "/managed/run"}

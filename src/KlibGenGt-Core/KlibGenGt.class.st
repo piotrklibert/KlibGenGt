@@ -44,6 +44,7 @@ KlibGenGt package map:
   - {{gtClass:KGKotlinGrammar}} - PetitParser2 entry grammar for Kotlin source text.
   - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
 - Tools
+  - {{gtClass:KGGuiSessionHooks}} - Emits GUI lifecycle and exact-repository Iceberg commit events for host-side promotion.
   - {{gtClass:KGToolRunner}} - Dispatches structured CLI requests and normalizes image-tool responses.
   - {{gtClass:KGCodeSearchTool}} - Searches loaded code and returns exact class or method definitions.
   - {{gtClass:KGLepiterTool}} - Searches loaded Lepiter databases and exports pages as Markdown.

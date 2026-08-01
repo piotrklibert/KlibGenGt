@@ -85,3 +85,52 @@ KGToolsTest >> testGtBookCanBeSearchedAndIdentified [
 	self assert: ((result at: 'results') allSatisfy: [ :each |
 		(each at: 'database') = 'Glamorous Toolkit Book' ])
 ]
+
+{ #category : 'tests - GUI hooks' }
+KGToolsTest >> testGuiHooksAppendCommitEventRecord [
+	| eventPath exportPath records last environment previousEvent previousExport |
+	environment := Smalltalk os environment.
+	previousEvent := environment at: 'KLIBGEN_GUI_EVENT_PATH' ifAbsent: [ nil ].
+	previousExport := environment at: 'KLIBGEN_EXPORT_GIT' ifAbsent: [ nil ].
+	eventPath := FileLocator workingDirectory / 'tmp' / UUID new asString / 'events.jsonl'.
+	exportPath := FileLocator workingDirectory / 'tmp' / 'test-run' / 'export'.
+	[ environment
+		at: 'KLIBGEN_GUI_EVENT_PATH' put: eventPath fullName;
+		at: 'KLIBGEN_EXPORT_GIT' put: (exportPath / '.git') fullName.
+	KGGuiSessionHooks emitIcebergCommittedForRepositoryPath: exportPath fullName.
+	records := eventPath contents lines.
+	self assert: records size equals: 1.
+	last := STONJSON fromString: records last.
+	self assert: (last at: 'event') equals: 'iceberg-committed'.
+	self assert: (last at: 'repositoryPath') equals: exportPath fullName ]
+		ensure: [
+			previousEvent
+				ifNil: [ environment removeKey: 'KLIBGEN_GUI_EVENT_PATH' ]
+				ifNotNil: [ environment at: 'KLIBGEN_GUI_EVENT_PATH' put: previousEvent ].
+			previousExport
+				ifNil: [ environment removeKey: 'KLIBGEN_EXPORT_GIT' ]
+				ifNotNil: [ environment at: 'KLIBGEN_EXPORT_GIT' put: previousExport ].
+			eventPath parent ensureDeleteAll ]
+]
+
+{ #category : 'tests - GUI hooks' }
+KGToolsTest >> testGuiHooksFilterTheExactRunRepository [
+	| exportPath environment previousExport |
+	environment := Smalltalk os environment.
+	previousExport := environment at: 'KLIBGEN_EXPORT_GIT' ifAbsent: [ nil ].
+	exportPath := FileLocator workingDirectory / 'tmp' / 'test-run' / 'export'.
+	[ environment at: 'KLIBGEN_EXPORT_GIT' put: (exportPath / '.git') fullName.
+	self assert: (KGGuiSessionHooks handlesRepositoryPath: exportPath fullName).
+	self deny: (KGGuiSessionHooks handlesRepositoryPath: (exportPath parent / 'another-export') fullName) ]
+		ensure: [ previousExport
+			ifNil: [ environment removeKey: 'KLIBGEN_EXPORT_GIT' ]
+			ifNotNil: [ environment at: 'KLIBGEN_EXPORT_GIT' put: previousExport ] ]
+]
+
+{ #category : 'tests - GUI hooks' }
+KGToolsTest >> testGuiHooksInstallRepeatedlyAndCleanUp [
+	self shouldnt: [
+		KGGuiSessionHooks install; install.
+		KGGuiSessionHooks shutDown: true.
+		KGGuiSessionHooks install; uninstall ] raise: Error
+]

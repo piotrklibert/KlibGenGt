@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import json
+import fcntl
 import os
 import shutil
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 from .artifacts import copy_reflink, set_tree_writable, sha256_file, sha256_tree
 from .core import BuildPaths, load_context, platform_id
 from .runs import process_is_alive, utc_now
-from .processes import run_command
+from .processes import ProcessExecutionError, run_command
 from .sources import jj_identity, project_workspace
 
 
 SNAPSHOT_COMPONENTS = ("image", "export", "home", "config", "data", "logs")
+PROJECT_PACKAGE_PREFIX = "KlibGenGt-"
 
 
 def _find_record(root: Path, record_id: str, metadata_name: str) -> Path:
@@ -57,6 +60,150 @@ def _write_json_atomic(path: Path, value: dict[str, Any]) -> None:
     temporary = path.with_name(f".{path.name}.{uuid.uuid4()}.tmp")
     temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(temporary, path)
+
+
+def gui_refresh(paths: BuildPaths, context_id: str) -> dict[str, Any] | None:
+    record = paths.state / "state/gui-refresh" / f"{context_id}.json"
+    return json.loads(record.read_text(encoding="utf-8")) if record.is_file() else None
+
+
+def clear_gui_refresh(paths: BuildPaths, context_id: str) -> dict[str, Any]:
+    record = paths.state / "state/gui-refresh" / f"{context_id}.json"
+    previous = gui_refresh(paths, context_id)
+    record.unlink(missing_ok=True)
+    return {
+        "schemaVersion": 1, "operation": "gui-refresh-clear", "contextId": context_id,
+        "cleared": previous is not None, "previous": previous,
+    }
+
+
+def acknowledge_gui_refresh(paths: BuildPaths, context_id: str, generation: str) -> bool:
+    with promotion_lock(paths):
+        record = gui_refresh(paths, context_id)
+        if record is None or record.get("state") != "pending" or record.get("generation") != generation:
+            return False
+        (paths.state / "state/gui-refresh" / f"{context_id}.json").unlink()
+        return True
+
+
+def _write_gui_refresh(
+    paths: BuildPaths, context_id: str, state: str, source_run_id: str,
+    packages: list[str], bridge_commit: str, failure_details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    previous = gui_refresh(paths, context_id) or {}
+    record = {
+        "schemaVersion": 1,
+        "state": state,
+        "generation": str(uuid.uuid4()),
+        "contextId": context_id,
+        "sourceRunId": source_run_id,
+        "packages": sorted(set(previous.get("packages", [])) | set(packages)),
+        "lastPromotedBridgeCommit": bridge_commit,
+        "failureDetails": failure_details,
+        "updatedAt": utc_now(),
+    }
+    _write_json_atomic(paths.state / "state/gui-refresh" / f"{context_id}.json", record)
+    return record
+
+
+@contextmanager
+def promotion_lock(paths: BuildPaths):
+    lock_path = paths.state / "state/locks/gui-promotion.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("w") as stream:
+        fcntl.flock(stream, fcntl.LOCK_EX)
+        yield
+
+
+def _promotion_state(run_path: Path, metadata: dict[str, Any]) -> dict[str, Any]:
+    path = run_path / "promotion.json"
+    if path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    return {
+        "schemaVersion": 1,
+        "lastPromotedBridgeCommit": metadata["generatedBridgeCommit"],
+        "destinationPackageHashes": {},
+    }
+
+
+def _project_packages_changed(bridge: Path, old_commit: str, new_commit: str) -> list[str]:
+    result = run_command([
+        "git", "-C", str(bridge), "diff", "--name-only", old_commit, new_commit, "--", "src",
+    ])
+    packages = set()
+    for name in result.stdout.splitlines():
+        parts = Path(name).parts
+        if len(parts) >= 3 and parts[0] == "src" and parts[1].startswith(PROJECT_PACKAGE_PREFIX):
+            packages.add(parts[1])
+    return sorted(packages)
+
+
+def _validate_package_name(package: str) -> None:
+    if "/" in package or not package.startswith(PROJECT_PACKAGE_PREFIX):
+        raise ValueError(f"invalid project package name {package!r}")
+
+
+def _authoritative_package_changed(
+    paths: BuildPaths, context: dict[str, Any], baseline: str, package: str,
+) -> bool:
+    result = run_command([
+        "jj", "-R", str(paths.root), "diff", "--from", baseline,
+        "--to", context["project"]["revision"], "--", f"src/{package}",
+    ])
+    return bool(result.stdout.strip())
+
+
+def _promote_selected_packages(
+    paths: BuildPaths, source_path: Path, source_metadata: dict[str, Any], packages: list[str],
+    destination_context: str, state: dict[str, Any] | None, *, require_clean_bridge: bool = False,
+) -> dict[str, str]:
+    context = load_context(paths, destination_context)
+    if context["project"]["workspace"] != ".":
+        raise ValueError("promotion currently supports only the root JJ workspace")
+    if source_metadata["contextId"] != destination_context and destination_context != "default":
+        raise ValueError("cross-context promotion requires destination 'default'")
+    bridge = source_path / "export"
+    selected: list[tuple[str, Path, Path]] = []
+    destination_hashes = dict((state or {}).get("destinationPackageHashes", {}))
+    conflicts = []
+    for package in packages:
+        _validate_package_name(package)
+        source = bridge / "src" / package
+        destination = paths.root / "src" / package
+        if not source.is_dir():
+            raise ValueError(f"selected package is absent from bridge: {package}")
+        if require_clean_bridge:
+            dirty = run_command([
+                "git", "-C", str(bridge), "status", "--porcelain", "--untracked-files=all",
+                "--", f"src/{package}",
+            ]).stdout
+            if dirty.strip():
+                conflicts.append({
+                    "package": package,
+                    "reason": "bridge package has uncommitted changes after the announced commit",
+                    "bridgeStatus": dirty.splitlines(),
+                })
+        expected_hash = destination_hashes.get(package)
+        if expected_hash is not None:
+            actual_hash = sha256_tree(destination) if destination.is_dir() else None
+            if actual_hash != expected_hash:
+                conflicts.append({
+                    "package": package, "reason": "authoritative package changed after promotion",
+                    "expectedSha256": expected_hash, "actualSha256": actual_hash,
+                })
+        elif _authoritative_package_changed(paths, context, source_metadata["projectCommitId"], package):
+            conflicts.append({"package": package, "reason": "authoritative package changed since run creation"})
+        selected.append((package, source, destination))
+    if conflicts:
+        summary = "; ".join(f"{item['package']}: {item['reason']}" for item in conflicts)
+        error = ValueError(f"promotion blocked: {summary}")
+        error.conflicts = conflicts
+        raise error
+    for _, source, destination in selected:
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(source, destination)
+    return {package: sha256_tree(destination) for package, _, destination in selected}
 
 
 def current_snapshot_id(paths: BuildPaths, context_id: str) -> str | None:
@@ -273,32 +420,98 @@ def promote_packages(paths: BuildPaths, source_id: str, packages: list[str], des
         snapshot = json.loads((source_path / "snapshot.json").read_text(encoding="utf-8"))
         source_metadata = snapshot["runMetadata"]
         source_kind = "snapshot"
-    context = load_context(paths, destination_context)
-    if context["project"]["workspace"] != ".":
-        raise ValueError("promotion currently supports only the root JJ workspace")
-    if source_metadata["contextId"] != destination_context and destination_context != "default":
-        raise ValueError("cross-context promotion requires destination 'default'")
     bridge = source_path / "export"
-    baseline = source_metadata["projectCommitId"]
-    selected: list[tuple[str, Path, Path]] = []
     for package in packages:
-        if "/" in package or not package.startswith("KlibGenGt-"):
-            raise ValueError(f"invalid project package name {package!r}")
-        source = bridge / "src" / package
-        destination = paths.root / "src" / package
-        if not source.is_dir():
-            raise ValueError(f"selected package is absent from bridge: {package}")
+        _validate_package_name(package)
         changed = run_command(["git", "-C", str(bridge), "diff", "--quiet", source_metadata["generatedBridgeCommit"], "--", f"src/{package}"], check=False).returncode
         if changed == 0:
             raise ValueError(f"selected bridge package has no changes: {package}")
         if changed != 1:
             raise RuntimeError(f"could not compare bridge package {package}")
-        conflict = run_command(["jj", "-R", str(paths.root), "diff", "--from", baseline, "--to", context["project"]["revision"], "--", f"src/{package}"]).stdout
-        if conflict.strip():
-            raise ValueError(f"authoritative package changed since run creation: {package}")
-        selected.append((package, source, destination))
-    for _, source, destination in selected:
-        if destination.exists():
-            shutil.rmtree(destination)
-        shutil.copytree(source, destination)
-    return {"schemaVersion": 1, "operation": "promote", "sourceId": source_id, "sourceKind": source_kind, "destinationContext": destination_context, "baselineProjectCommitId": baseline, "packages": packages}
+    refresh = None
+    with promotion_lock(paths):
+        state = _promotion_state(source_path, source_metadata) if source_kind == "run" else None
+        hashes = _promote_selected_packages(
+            paths, source_path, source_metadata, packages, destination_context, state,
+        )
+        head = run_command(["git", "-C", str(bridge), "rev-parse", "HEAD"]).stdout.strip()
+        if source_kind == "run":
+            state["destinationPackageHashes"].update(hashes)
+            _write_json_atomic(source_path / "promotion.json", state)
+        if source_metadata.get("profile", "").lower() == "gui":
+            refresh = _write_gui_refresh(
+                paths, source_metadata["contextId"], "pending", source_metadata["runId"],
+                packages, head,
+            )
+    return {
+        "schemaVersion": 2, "operation": "promote", "sourceId": source_id,
+        "sourceKind": source_kind, "destinationContext": destination_context,
+        "baselineProjectCommitId": source_metadata["projectCommitId"], "packages": packages,
+        "guiRefreshRequested": refresh is not None,
+        "guiRefresh": refresh,
+    }
+
+
+def promote_gui_commits(paths: BuildPaths, run_id: str) -> dict[str, Any]:
+    """Promote cumulative committed project packages from one active GUI bridge."""
+    run_path = find_run(paths, run_id)
+    metadata = json.loads((run_path / "run.json").read_text(encoding="utf-8"))
+    if metadata.get("profile", "").lower() != "gui":
+        raise ValueError(f"run {run_id} is not a GUI run")
+    bridge = run_path / "export"
+    with promotion_lock(paths):
+        state = _promotion_state(run_path, metadata)
+        old_commit = state["lastPromotedBridgeCommit"]
+        try:
+            head = run_command(["git", "-C", str(bridge), "rev-parse", "HEAD"]).stdout.strip()
+            packages = _project_packages_changed(bridge, old_commit, head)
+        except (OSError, RuntimeError, ValueError, ProcessExecutionError) as error:
+            details = {
+                "message": str(error), "conflicts": [],
+                "fromBridgeCommit": old_commit, "toBridgeCommit": None,
+            }
+            refresh = _write_gui_refresh(
+                paths, metadata["contextId"], "blocked", run_id, [], old_commit, details,
+            )
+            return {
+                "schemaVersion": 1, "operation": "auto-promote", "sourceId": run_id,
+                "packages": [], "bridgeCommit": None, "promoted": False,
+                "guiRefreshRequested": False, "guiRefresh": refresh, "error": details,
+            }
+        if not packages:
+            state["lastPromotedBridgeCommit"] = head
+            _write_json_atomic(run_path / "promotion.json", state)
+            return {
+                "schemaVersion": 1, "operation": "auto-promote", "sourceId": run_id,
+                "packages": [], "bridgeCommit": head, "guiRefreshRequested": False,
+            }
+        try:
+            hashes = _promote_selected_packages(
+                paths, run_path, metadata, packages, "default", state,
+                require_clean_bridge=True,
+            )
+        except (OSError, ValueError, RuntimeError, ProcessExecutionError) as error:
+            details = {
+                "message": str(error), "conflicts": getattr(error, "conflicts", []),
+                "fromBridgeCommit": old_commit, "toBridgeCommit": head,
+            }
+            refresh = _write_gui_refresh(
+                paths, metadata["contextId"], "blocked", run_id, packages,
+                state["lastPromotedBridgeCommit"], details,
+            )
+            return {
+                "schemaVersion": 1, "operation": "auto-promote", "sourceId": run_id,
+                "packages": packages, "bridgeCommit": head, "promoted": False,
+                "guiRefreshRequested": False, "guiRefresh": refresh, "error": details,
+            }
+        state["lastPromotedBridgeCommit"] = head
+        state["destinationPackageHashes"].update(hashes)
+        _write_json_atomic(run_path / "promotion.json", state)
+        refresh = _write_gui_refresh(
+            paths, metadata["contextId"], "pending", run_id, packages, head,
+        )
+        return {
+            "schemaVersion": 1, "operation": "auto-promote", "sourceId": run_id,
+            "packages": packages, "bridgeCommit": head, "promoted": True,
+            "guiRefreshRequested": True, "guiRefresh": refresh,
+        }

@@ -4,6 +4,7 @@ import os
 import json
 import hashlib
 import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -12,7 +13,10 @@ from typing import Any
 from .artifacts import build_l06, set_tree_writable, sha256_file
 from .core import BuildPaths
 from .runs import create_project_run, write_run_metadata
-from .lifecycle import current_snapshot_id, resume_snapshot, snapshot_run
+from .lifecycle import (
+    acknowledge_gui_refresh, current_snapshot_id, gui_refresh, promote_gui_commits,
+    resume_snapshot, snapshot_run,
+)
 from .sources import host_facts
 from .processes import decode_output, run_command, start_command
 
@@ -188,12 +192,96 @@ def _gui_save_evidence(run_path: Path, before_hash: str, changes_offset: int) ->
     }
 
 
+class GuiEventConsumer:
+    def __init__(self, paths: BuildPaths, run: dict[str, Any]):
+        self.paths = paths
+        self.run = run
+        self.journal = Path(run["runPath"]) / "logs/gui-events.jsonl"
+        self.offset = self.journal.stat().st_size if self.journal.is_file() else 0
+        self.remainder = ""
+
+    def consume(self) -> list[dict[str, Any]]:
+        if not self.journal.is_file():
+            return []
+        with self.journal.open(encoding="utf-8", errors="replace") as stream:
+            stream.seek(self.offset)
+            chunk = stream.read()
+            self.offset = stream.tell()
+        text = self.remainder + chunk
+        lines = text.splitlines(keepends=True)
+        self.remainder = ""
+        if lines and not lines[-1].endswith(("\n", "\r")):
+            self.remainder = lines.pop()
+        results = []
+        for line in lines:
+            try:
+                event = json.loads(line)
+            except (json.JSONDecodeError, TypeError) as error:
+                print(f"warning: ignored malformed GUI event: {error}", file=sys.stderr, flush=True)
+                continue
+            if event.get("event") != "iceberg-committed":
+                continue
+            repository = event.get("repositoryPath")
+            expected = (Path(self.run["runPath"]) / "export").resolve()
+            try:
+                actual = Path(repository).resolve() if isinstance(repository, str) else None
+            except OSError:
+                actual = None
+            if actual != expected:
+                print(
+                    f"warning: ignored Iceberg commit event for {repository!r}; expected {expected}",
+                    file=sys.stderr, flush=True,
+                )
+                continue
+            try:
+                result = promote_gui_commits(self.paths, self.run["runId"])
+            except Exception as error:
+                print(f"automatic GUI promotion failed: {error}", file=sys.stderr, flush=True)
+                continue
+            results.append(result)
+            if result.get("promoted"):
+                print(
+                    f"promoted {', '.join(result['packages'])} from GUI run {self.run['runId']}; "
+                    "the next ordinary `just gui` will refresh",
+                    file=sys.stderr, flush=True,
+                )
+            elif result.get("error"):
+                print(
+                    f"automatic GUI promotion blocked for {', '.join(result['packages'])}: "
+                    f"{result['error']['message']}",
+                    file=sys.stderr, flush=True,
+                )
+        return results
+
+
+def _wait_for_gui(process: Any, consumer: GuiEventConsumer) -> int:
+    while True:
+        consumer.consume()
+        try:
+            exit_code = process.wait(timeout=0.2)
+            consumer.consume()
+            return exit_code
+        except subprocess.TimeoutExpired:
+            continue
+
+
 def launch_gui(
     paths: BuildPaths, context_id: str, *, fresh: bool = False,
     snapshot_id: str | None = None, advance_current: bool = True,
 ) -> int:
     context_id = compatibility_context(context_id, "gui")
-    selected_snapshot = snapshot_id if snapshot_id is not None else (None if fresh else current_snapshot_id(paths, context_id))
+    refresh = None if fresh or snapshot_id is not None else gui_refresh(paths, context_id)
+    if refresh is not None and refresh.get("state") == "blocked":
+        details = refresh.get("failureDetails") or {}
+        raise ValueError(
+            f"GUI refresh blocked by run {refresh.get('sourceRunId')} for "
+            f"{', '.join(refresh.get('packages', []))}: {details.get('message', 'promotion conflict')}; "
+            f"reconcile the packages, run `just gui-refresh-clear {context_id}`, then `just gui-fresh {context_id}`"
+        )
+    refresh_generation = refresh.get("generation") if refresh and refresh.get("state") == "pending" else None
+    selected_snapshot = snapshot_id if snapshot_id is not None else (
+        None if fresh or refresh_generation is not None else current_snapshot_id(paths, context_id)
+    )
     if selected_snapshot is None:
         run = create_project_run(paths, context_id, "gui")
         start_mode = "fresh"
@@ -228,6 +316,7 @@ def launch_gui(
     image_hash = sha256_file(Path(image))
     changes = run_path / "image/GlamorousToolkit.changes"
     changes_offset = changes.stat().st_size if changes.is_file() else 0
+    event_consumer = GuiEventConsumer(paths, run)
     process = start_command(command, env=environment)
     write_run_metadata(
         run_path, state="running", pid=process.pid, command=command,
@@ -237,7 +326,7 @@ def launch_gui(
         environment=_environment_record(environment), host=host_facts(), logs=logs,
     )
     try:
-        exit_code = process.wait()
+        exit_code = _wait_for_gui(process, event_consumer)
     except KeyboardInterrupt:
         if process.poll() is None:
             process.terminate()
@@ -256,6 +345,8 @@ def launch_gui(
                 paths, run["runId"], make_current=advance_current,
                 remove_source=True, save_evidence=evidence,
             )
+            if refresh_generation is not None:
+                acknowledge_gui_refresh(paths, context_id, refresh_generation)
         except Exception as error:
             raise RuntimeError(f"saved GUI session could not be published; retained run: {run_path}: {error}") from error
     return exit_code

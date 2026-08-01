@@ -118,6 +118,9 @@ snapshot-select snapshot_id context="gui":
 snapshot-clear context="gui":
     uv run klibgen-build snapshot-clear {{quote(context)}}
 
+gui-refresh-clear context="gui":
+    uv run klibgen-build gui-refresh-clear {{quote(context)}}
+
 load context="default":
     uv run klibgen-build load {{quote(context)}}
 

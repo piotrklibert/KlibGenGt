@@ -15,7 +15,7 @@ from .artifacts import build_artifact, build_l06, graph
 from .runs import clean_runs, create_project_run, create_run, process_is_alive
 from .operations import compatibility_context, execute, execute_image_tool, fresh_test, launch_gui
 from .lifecycle import (
-    clear_current_snapshot, current_snapshot_id, discard_run, find_snapshot, list_snapshots, promote_packages,
+    clear_current_snapshot, clear_gui_refresh, current_snapshot_id, discard_run, find_snapshot, gui_refresh, list_snapshots, promote_packages,
     resume_snapshot, select_snapshot, snapshot_current, snapshot_run,
 )
 from .contexts import add_git_worktree, create_context, list_contexts, remove_context, remove_git_worktree
@@ -114,6 +114,7 @@ def status(paths: BuildPaths, context_id: str) -> dict[str, Any]:
         "runs": runs,
         "snapshots": snapshots,
         "currentGuiSnapshotId": current_gui_snapshot,
+        "guiRefresh": gui_refresh(paths, context_id),
     }
 
 
@@ -167,6 +168,21 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
         print(f"{action}: {result['lockPath']}")
         print(f"project JJ commit: {result['projectSource']['commitId']}")
         return
+    if result["operation"] == "status":
+        print(f"context: {result['contextId']}")
+        for layer in result["layers"]:
+            print(f"{layer['layerId']}: {layer['state']}")
+        refresh = result.get("guiRefresh")
+        if refresh is None:
+            print("GUI refresh: none")
+        else:
+            print(
+                f"GUI refresh: {refresh['state']} generation={refresh['generation']} "
+                f"run={refresh['sourceRunId']} packages={','.join(refresh['packages'])}"
+            )
+            if refresh.get("failureDetails"):
+                print(f"GUI refresh failure: {refresh['failureDetails'].get('message', 'unknown')}")
+        return
     if result["operation"] == "build":
         print(f"{result['target']}[{result['contextId']}]: {result['artifactPath']}")
         return
@@ -192,11 +208,16 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     if result["operation"] in {"snapshot-select", "snapshot-clear"}:
         print(json.dumps(result, indent=2, sort_keys=True))
         return
+    if result["operation"] == "gui-refresh-clear":
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return
     if result["operation"] == "discard":
         print(f"discarded {result['recordKind']} {result['recordId']}")
         return
     if result["operation"] == "promote":
         print(f"promoted {', '.join(result['packages'])} from {result['sourceKind']} {result['sourceId']}")
+        if result.get("guiRefreshRequested"):
+            print("GUI refresh requested")
         return
     if result["operation"] == "context-list":
         for context in result["contexts"]:
@@ -363,7 +384,7 @@ def parser() -> argparse.ArgumentParser:
     subparsers = result.add_subparsers(dest="command", required=True)
     _host_parser(subparsers)
     _image_parser(subparsers)
-    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"):
+    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "gui-refresh-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"):
         command = subparsers.add_parser(name)
         if name == "build":
             command.add_argument("target")
@@ -382,7 +403,7 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("context", nargs="?", default="gui")
         elif name == "gui-snapshot":
             command.add_argument("snapshot_id")
-        elif name in {"snapshot-list", "snapshot-current", "snapshot-clear"}:
+        elif name in {"snapshot-list", "snapshot-current", "snapshot-clear", "gui-refresh-clear"}:
             command.add_argument("context", nargs="?", default="gui")
         elif name == "snapshot-select":
             command.add_argument("snapshot_id")
@@ -596,6 +617,8 @@ def main(argv: list[str] | None = None) -> int:
             result = select_snapshot(paths, args.context, args.snapshot_id)
         elif args.command == "snapshot-clear":
             result = clear_current_snapshot(paths, args.context)
+        elif args.command == "gui-refresh-clear":
+            result = clear_gui_refresh(paths, args.context)
         elif args.command == "context-list":
             result = list_contexts(paths)
         elif args.command == "context-create":
