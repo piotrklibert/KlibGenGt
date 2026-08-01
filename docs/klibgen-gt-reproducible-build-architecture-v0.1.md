@@ -12,6 +12,7 @@ but distinct worlds:
 
 1. source-controlled files, repositories, configuration, scripts, and external
    tools on the host system;
+   
 2. mutable Smalltalk images containing executable code, development state,
    tools, configuration, and arbitrary live objects.
 
@@ -150,7 +151,8 @@ After a canonical layer artifact has passed its tests and has been published int
 the artifact store, it MUST NOT be modified in place.
 
 A runnable or editable image MUST be created as a writable copy of a canonical
-artifact. Reflinks, copy-on-write filesystem copies, or normal copies MAY be used.
+artifact. Reflinks, copy-on-write filesystem copies, or normal copies SHOULD be
+used.
 
 ### 5.3 Mutable snapshots are explicitly non-reproducible
 

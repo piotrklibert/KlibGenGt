@@ -22,6 +22,9 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
   bridge; committing `KlibGenGt-*` changes in Iceberg promotes those packages
   immediately into `src/` without creating a JJ commit.
 
+- Maintain a description of the current JJ change: for each completed task, add
+  a line to the description. Do not create new JJ changes unless explicitly asked.
+
 - Review promoted GUI changes in the outer JJ working copy. The next ordinary
   `just gui` refreshes from current `@` after the current session is saved.
   `push-src-to-export` and `pull-export-to-src` are legacy compatibility

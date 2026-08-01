@@ -2,15 +2,19 @@
 
 ## 0. Scope
 
-GradT annotations are stored as Smalltalk pragmas on methods. The annotated method may be:
+GradT annotations are stored as Smalltalk pragmas on methods. The annotated
+method may be:
 
 1. the actual implementation method being annotated;
 2. a declaration-only method in a sidecar provider class;
 3. an extension/helper declaration method owned by another package.
 
-Pragmas are not the checker’s internal model. Pragmas are a **source/storage format**. During loading or analysis, GradT scans pragmas, validates them, and normalizes them into registry objects.
+Pragmas are not the checker’s internal model. Pragmas are a **source/storage
+format**. During loading or analysis, GradT scans pragmas, validates them, and
+normalizes them into registry objects.
 
-The registry is the authoritative API for typechecking, contract checking, tooling, and runtime instrumentation.
+The registry is the authoritative API for typechecking, contract checking,
+tooling, and runtime instrumentation.
 
 ---
 
@@ -43,7 +47,8 @@ GradTCollectionsTypes >> orderedCollectionAdd
     returns: #Element>
 ```
 
-The method body is irrelevant. It may be empty, return `self`, or return a declaration object for browsing/debugging. The pragma is the declaration.
+The method body is irrelevant. It may be empty, return `self`, or return a
+declaration object for browsing/debugging. The pragma is the declaration.
 
 ### 1.3 Provider class
 
