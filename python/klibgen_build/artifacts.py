@@ -492,6 +492,7 @@ def build_l06(paths: BuildPaths, context_id: str, force: bool = False) -> Path:
         environment.update({
             "HOME": str(home), "XDG_CONFIG_HOME": str(home / "config"), "XDG_CACHE_HOME": str(home / "cache"),
             "KLIBGEN_EXPORT_GIT": str(bridge / ".git"), "KLIBGEN_PROFILE": profile,
+            "KLIBGEN_TEST_RESULTS_PATH": str(attempt / "contract-results.json"),
         })
         loader = paths.root / "build/layers/l06-project-dev/scripts/load.st"
         process = run_command([launcher, attempt / "image/GlamorousToolkit.image", "st", loader], check=False, env=environment)

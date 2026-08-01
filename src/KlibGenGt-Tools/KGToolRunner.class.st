@@ -35,6 +35,7 @@ KGToolRunner >> dispatch: operation request: aRequest [
 	operation = 'lepiter.search' ifTrue: [ ^ KGLepiterTool new search: aRequest ].
 	operation = 'lepiter.export' ifTrue: [ ^ KGLepiterTool new export: aRequest ].
 	operation = 'eval' ifTrue: [ ^ KGEvaluationTool new evaluate: aRequest ].
+	operation = 'test.run' ifTrue: [ ^ KGTestTool new run: aRequest ].
 	self error: 'unknown image tool operation: ' , operation
 ]
 

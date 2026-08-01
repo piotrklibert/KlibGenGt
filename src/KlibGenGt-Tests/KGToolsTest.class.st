@@ -134,3 +134,44 @@ KGToolsTest >> testGuiHooksInstallRepeatedlyAndCleanUp [
 		KGGuiSessionHooks shutDown: true.
 		KGGuiSessionHooks install; uninstall ] raise: Error
 ]
+
+{ #category : 'tests - test tool' }
+KGToolsTest >> testTestToolCapturesFailuresAndErrors [
+	| temporary failure error |
+	temporary := TestCase
+		subclass: #KGTemporaryRecordingTest
+		instanceVariableNames: ''
+		classVariableNames: ''
+		package: 'KlibGen-Build-Transient'.
+	[ temporary compile: 'testFailure self assert: false'.
+	temporary compile: 'testError self error: ''diagnostic boom'''.
+	failure := KGTestTool new run: (Dictionary new
+		at: 'operation' put: 'test.run';
+		at: 'class' put: temporary name asString;
+		at: 'selector' put: 'testFailure';
+		yourself).
+	error := KGTestTool new run: (Dictionary new
+		at: 'operation' put: 'test.run';
+		at: 'class' put: temporary name asString;
+		at: 'selector' put: 'testError';
+		yourself).
+	self deny: (failure at: 'successful').
+	self assert: ((failure at: 'tests') first at: 'status') equals: 'failure'.
+	self assert: ((error at: 'tests') first at: 'status') equals: 'error'.
+	self assert: ((((error at: 'tests') first at: 'exception') at: 'message') includesSubstring: 'diagnostic boom').
+	self deny: ((((error at: 'tests') first at: 'exception') at: 'stack') isEmpty) ]
+		ensure: [ temporary removeFromSystem ]
+]
+
+{ #category : 'tests - test tool' }
+KGToolsTest >> testTestToolRunsOnePassingSelector [
+	| report |
+	report := KGTestTool new run: (Dictionary new
+		at: 'operation' put: 'test.run';
+		at: 'class' put: 'KlibGenGtTest';
+		at: 'selector' put: 'testProjectName';
+		yourself).
+	self assert: (report at: 'successful').
+	self assert: (report at: 'runCount') equals: 1.
+	self assert: ((report at: 'tests') first at: 'status') equals: 'passed'
+]

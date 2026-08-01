@@ -14,7 +14,10 @@ from klibgen_build.lifecycle import (
     discard_run, gui_refresh, list_snapshots, promote_gui_commits, promote_packages, resume_snapshot,
     select_snapshot, snapshot_run,
 )
-from klibgen_build.operations import GuiEventConsumer, _gui_save_evidence, _run_environment, execute_image_tool, launch_gui
+from klibgen_build.operations import (
+    GuiEventConsumer, _gui_save_evidence, _run_environment, diagnose_test,
+    execute_image_tool, execute_test_one, launch_gui,
+)
 from klibgen_build.artifacts import build_l07, git_worktree_state, set_tree_writable
 from klibgen_build.contexts import list_contexts
 from klibgen_build.processes import run_command
@@ -24,6 +27,44 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CoreTest(unittest.TestCase):
+    def test_test_one_uses_structured_image_operation(self):
+        paths = BuildPaths(ROOT, ROOT / ".klibgen-test")
+        response = {
+            "schemaVersion": 1, "ok": True, "operation": "test.run",
+            "data": {"successful": True, "runCount": 1},
+        }
+        with patch("klibgen_build.operations.execute_image_tool", return_value=response) as execute:
+            result = execute_test_one(paths, "default", "KlibGenGtTest", "testProjectName")
+        execute.assert_called_once_with(paths, "default", {
+            "operation": "test.run", "class": "KlibGenGtTest", "selector": "testProjectName",
+        })
+        self.assertEqual(result["operation"], "test-one")
+        self.assertEqual(result["selector"], "testProjectName")
+
+    def test_test_diagnose_reads_run_and_attempt_reports(self):
+        (ROOT / "tmp").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temporary:
+            state = Path(temporary)
+            paths = BuildPaths(ROOT, state)
+            report = {
+                "schemaVersion": 1, "successful": False, "runCount": 1,
+                "passedCount": 0, "failureCount": 1, "errorCount": 0,
+                "skippedCount": 0, "tests": [],
+            }
+            run = state / "runs/default/run-id/logs"
+            run.mkdir(parents=True)
+            (run / "test-results.json").write_text(json.dumps(report))
+            diagnosed_run = diagnose_test(paths, "run-id")
+            self.assertEqual(diagnosed_run["recordKind"], "run")
+            self.assertEqual(diagnosed_run["testResults"], report)
+
+            attempt = state / "tmp/attempt-id"
+            attempt.mkdir(parents=True)
+            (attempt / "contract-results.json").write_text(json.dumps(report))
+            diagnosed_attempt = diagnose_test(paths, "attempt-id")
+            self.assertEqual(diagnosed_attempt["recordKind"], "attempt")
+            self.assertTrue(diagnosed_attempt["ok"])
+
     def test_plumbum_adapter_captures_output_and_expected_failure(self):
         result = run_command(
             [sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr); raise SystemExit(7)"],

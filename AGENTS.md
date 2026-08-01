@@ -26,6 +26,10 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 - For Smalltalk TDD, add or edit tests in `src/*-Tests`, run `just test-fresh`,
   which pushes `src` into `export/` and runs the suite from a disposable GT
   image unpacked under `artifacts/`.
+
+- Use `just test-one TestClass testSelector [context]` for focused SUnit work.
+  Failed runs and build attempts persist structured diagnostics consumable with
+  `just test-diagnose <run-or-attempt-id>`.
   
 - Legacy post parsing work lives in `KlibGenGt-Core-LegacyHtml`. Keep the
   PetitParser2 grammar extensible: `KGHtmlParser` is the simplified HTML base,

@@ -37,6 +37,27 @@ env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image eval \
 
 Profiling adds elapsed image time, sample count, and the textual `AndreasSystemProfiler` report. Use `$operate-gt-host` when profiling a shell command rather than Smalltalk execution.
 
+## Diagnose SUnit failures
+
+Prefer the structured test commands over temporary evaluation scripts:
+
+```sh
+just test-one KlibGenGtTest testProjectName default
+just test-diagnose <run-id-or-attempt-id>
+just test-one-json KlibGenGtTest testProjectName default
+just test-diagnose-json <run-id-or-attempt-id>
+```
+
+`test-one` runs one selector in an isolated current project image. Failed runs
+are retained and include `logs/test-results.json`. Project build contracts write
+`contract-results.json` into retained attempts, which `test-diagnose` reads
+without reopening a possibly partial image. Set `KLIBGEN_STATE_ROOT` to the
+state root that produced the record when it is not `.klibgen`.
+
+Use `image eval --file ./tmp/diagnostic.st` only when the structured test report
+cannot answer the question, such as inspecting an unrelated runtime object or
+experimenting with an image API.
+
 ## Apply safety and tool boundaries
 
 - Prefer read-only expressions. Do not use evaluation to edit Tonel source, persist image state, or bypass the `src/` and `export/` workflow.

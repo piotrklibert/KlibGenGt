@@ -127,6 +127,18 @@ load context="default":
 test context="default":
     uv run klibgen-build test {{quote(context)}}
 
+test-one test_class selector context="default":
+    uv run klibgen-build test-one {{quote(test_class)}} {{quote(selector)}} {{quote(context)}}
+
+test-one-json test_class selector context="default":
+    uv run klibgen-build test-one {{quote(test_class)}} {{quote(selector)}} {{quote(context)}} --json
+
+test-diagnose run_or_attempt_id:
+    uv run klibgen-build test-diagnose {{quote(run_or_attempt_id)}}
+
+test-diagnose-json run_or_attempt_id:
+    uv run klibgen-build test-diagnose {{quote(run_or_attempt_id)}} --json
+
 test-fresh context="default":
     KLIBGEN_STATE_ROOT=artifacts/fresh-layered uv run klibgen-build test {{quote(context)}} --fresh
 

@@ -13,7 +13,10 @@ from .core import BuildPaths, command_status, digest_json, load_context, load_la
 from .sources import expected_lock, host_facts, jj_identity, resolve_git_head, validate_lock
 from .artifacts import build_artifact, build_l06, graph
 from .runs import clean_runs, create_project_run, create_run, process_is_alive
-from .operations import compatibility_context, execute, execute_image_tool, fresh_test, launch_gui
+from .operations import (
+    compatibility_context, diagnose_test, execute, execute_image_tool, execute_test_one,
+    fresh_test, launch_gui,
+)
 from .lifecycle import (
     clear_current_snapshot, clear_gui_refresh, current_snapshot_id, discard_run, find_snapshot, gui_refresh, list_snapshots, promote_packages,
     resume_snapshot, select_snapshot, snapshot_current, snapshot_run,
@@ -182,6 +185,27 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
             )
             if refresh.get("failureDetails"):
                 print(f"GUI refresh failure: {refresh['failureDetails'].get('message', 'unknown')}")
+        return
+    if result["operation"] in {"test-one", "test-diagnose"} and (
+        result.get("data") or result.get("testResults")
+    ):
+        report = result.get("data", result.get("testResults"))
+        print(
+            f"Tests run: {report['runCount']}, failures: {report['failureCount']}, "
+            f"errors: {report['errorCount']}, skipped: {report['skippedCount']}"
+        )
+        for test in report["tests"]:
+            if test["status"] == "passed":
+                continue
+            detail = test.get("exception") or {}
+            message = f": {detail.get('class')}: {detail.get('message')}" if detail else ""
+            print(f"{test['status'].upper()} {test['class']}>>{test['selector']}{message}")
+            for frame in detail.get("stack", [])[:10]:
+                print(f"  {frame}")
+        if result.get("runPath"):
+            print(f"retained run: {result['runPath']}", file=sys.stderr)
+        if result["operation"] == "test-diagnose":
+            print(f"diagnostics: {result['resultsPath']}")
         return
     if result["operation"] == "build":
         print(f"{result['target']}[{result['contextId']}]: {result['artifactPath']}")
@@ -384,7 +408,7 @@ def parser() -> argparse.ArgumentParser:
     subparsers = result.add_subparsers(dest="command", required=True)
     _host_parser(subparsers)
     _image_parser(subparsers)
-    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "gui-refresh-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"):
+    for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "test-one", "test-diagnose", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "gui-refresh-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc"):
         command = subparsers.add_parser(name)
         if name == "build":
             command.add_argument("target")
@@ -396,6 +420,12 @@ def parser() -> argparse.ArgumentParser:
         elif name == "eval":
             command.add_argument("profile", nargs="?", default="cli")
             command.add_argument("context", nargs="?", default="default")
+        elif name == "test-one":
+            command.add_argument("test_class")
+            command.add_argument("selector")
+            command.add_argument("context", nargs="?", default="default")
+        elif name == "test-diagnose":
+            command.add_argument("record_id")
         elif name == "launch":
             command.add_argument("profile", choices=("gui",))
             command.add_argument("context", nargs="?", default="gui")
@@ -588,6 +618,10 @@ def main(argv: list[str] | None = None) -> int:
             result = {"schemaVersion": 1, "operation": "load", "contextId": selected, "artifactPath": str(artifact)}
         elif args.command == "test":
             result = fresh_test(paths, args.context) if args.fresh else execute(paths, args.context, "test")
+        elif args.command == "test-one":
+            result = execute_test_one(paths, args.context, args.test_class, args.selector)
+        elif args.command == "test-diagnose":
+            result = diagnose_test(paths, args.record_id)
         elif args.command in {"smoke", "check-type-pragmas"}:
             result = execute(paths, args.context, args.command)
         elif args.command == "eval":

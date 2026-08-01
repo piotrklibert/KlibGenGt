@@ -86,6 +86,7 @@ def execute_image_tool(
     _seed_gui_documents(run_path)
     environment = _run_environment(run)
     environment["KLIBGEN_TOOL_REQUEST"] = json.dumps(request, separators=(",", ":"))
+    environment["KLIBGEN_TEST_RESULTS_PATH"] = str(run_path / "logs/test-results.json")
     script = paths.root / "build/layers/l06-project-dev/scripts/run-tool.st"
     command = [run["launcher"], str(run_path / "image/GlamorousToolkit.image"), "st", str(script)]
     started = time.perf_counter_ns()
@@ -123,6 +124,54 @@ def execute_image_tool(
     return response
 
 
+def execute_test_one(
+    paths: BuildPaths, context_id: str, test_class: str, selector: str,
+) -> dict[str, Any]:
+    response = execute_image_tool(paths, context_id, {
+        "operation": "test.run", "class": test_class, "selector": selector,
+    })
+    response["operation"] = "test-one"
+    response["testClass"] = test_class
+    response["selector"] = selector
+    return response
+
+
+def diagnose_test(paths: BuildPaths, record_id: str) -> dict[str, Any]:
+    normalized = record_id.removeprefix("attempt-")
+    candidates: list[tuple[str, Path]] = []
+    for run in (paths.state / "runs").glob(f"*/{record_id}"):
+        candidates.append(("run", run))
+    attempt = paths.state / "tmp" / f"attempt-{normalized}"
+    if attempt.is_dir():
+        candidates.append(("attempt", attempt))
+    for rebuild in (paths.state / "logs/rebuilds").glob(f"**/{record_id}"):
+        if rebuild.is_dir():
+            candidates.append(("rebuild", rebuild))
+    if len(candidates) != 1:
+        raise ValueError(f"expected one test run or attempt for {record_id!r}, found {len(candidates)}")
+    kind, path = candidates[0]
+    result_candidates = [
+        path / "logs/test-results.json",
+        path / "contract-results.json",
+    ]
+    results_path = next((item for item in result_candidates if item.is_file()), None)
+    if results_path is None:
+        logs = [item for item in (path / "logs/test.log", path / "contract.log") if item.is_file()]
+        suffix = f"; available log: {logs[0]}" if logs else ""
+        raise ValueError(f"record {record_id!r} has no structured test diagnostics{suffix}")
+    results = json.loads(results_path.read_text(encoding="utf-8"))
+    return {
+        "schemaVersion": 1,
+        "operation": "test-diagnose",
+        "recordId": record_id,
+        "recordKind": kind,
+        "recordPath": str(path),
+        "resultsPath": str(results_path),
+        "testResults": results,
+        "ok": True,
+    }
+
+
 def execute(paths: BuildPaths, context_id: str, operation: str, expression: str | None = None,
             retain: bool = False) -> dict[str, Any]:
     context_id = compatibility_context(context_id)
@@ -136,6 +185,8 @@ def execute(paths: BuildPaths, context_id: str, operation: str, expression: str 
     }
     script = paths.root / "build/layers/l06-project-dev/tests" / scripts[operation]
     environment = _run_environment(run)
+    if operation == "test":
+        environment["KLIBGEN_TEST_RESULTS_PATH"] = str(run_path / "logs/test-results.json")
     if expression is not None:
         environment["GT_EVAL"] = expression
     command = [run["launcher"], str(run_path / "image/GlamorousToolkit.image"), "st", str(script)]
@@ -146,6 +197,9 @@ def execute(paths: BuildPaths, context_id: str, operation: str, expression: str 
     (run_path / "logs" / f"{operation}.log").write_text(log, encoding="utf-8")
     write_run_metadata(run_path, state="stopped", exitCode=process.returncode, logs=[f"logs/{operation}.log"])
     result = {"schemaVersion": 1, "operation": operation, "contextId": context_id, "runId": run["runId"], "runPath": str(run_path), "exitCode": process.returncode, "output": log}
+    results_path = run_path / "logs/test-results.json"
+    if operation == "test" and results_path.is_file():
+        result["testResults"] = json.loads(results_path.read_text(encoding="utf-8"))
     if process.returncode == 0 and not retain:
         shutil.rmtree(run_path)
         result["runPath"] = None

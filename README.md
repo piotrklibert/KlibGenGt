@@ -30,6 +30,23 @@ just test default
 just gui
 ```
 
+Run one SUnit selector with structured diagnostics, or inspect a retained failed
+run/build attempt without reopening its image:
+
+```sh
+just test-one KlibGenGtTest testProjectName [context]
+just test-diagnose <run-id-or-attempt-id>
+just test-one-json KlibGenGtTest testProjectName [context]
+just test-diagnose-json <run-id-or-attempt-id>
+```
+
+Failed test reports include the class, selector, exception class and message,
+and a bounded stack in human output; `--json` exposes the complete structured
+record. Normal project contracts persist the same record as
+`contract-results.json`, while isolated test runs use
+`logs/test-results.json`. Use the matching `KLIBGEN_STATE_ROOT` when diagnosing
+a failure produced in an alternate state root such as `artifacts/fresh-layered`.
+
 `just gui` resumes the current saved GUI session for the `gui` context, or
 creates a fresh writable run when no session is selected. After Iceberg changes
 have been promoted, it deliberately starts fresh from current JJ `@` instead.
@@ -306,6 +323,8 @@ explicit pins.
 | `just test-fresh [context]` | Rebuild in the disposable fresh state root and run tests. |
 | `just check-type-pragmas [context]` | Run `KGCheckTypePragmas` in an isolated run. |
 | `just smoke [context]` | Verify the loaded project anchor and identity. |
+| `just test-one[-json] <class> <selector> [context]` | Run one SUnit selector in an isolated project image with structured diagnostics. |
+| `just test-diagnose[-json] <run-or-attempt-id>` | Display persisted structured diagnostics from a retained failed test run or build attempt. |
 | `just eval "..." [profile] [context]` | Evaluate one Smalltalk do-it in an isolated CLI run. |
 | `just windows [title-regex]` | List visible managed windows with IDs, PIDs, geometry, titles, and process commands. |
 | `just screenshot [title-regex]` | Capture one matching window under ignored `tmp/screenshots/`. |
