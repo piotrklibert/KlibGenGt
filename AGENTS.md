@@ -106,9 +106,10 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Use `just test` before finishing changes.
 
-- Use `just gc-dry-run` for routine cache review. `just gc-apply` removes only
-  unrooted immutable artifacts, abandoned transient sessions/workspaces, and
-  rotated diagnostics; named workspace and staging state are preserved.
+- Use `just gc-dry-run` for routine cache review. After resolving each task,
+  routinely run `just gc-apply`; it removes only unrooted immutable artifacts,
+  abandoned transient sessions/workspaces, and rotated diagnostics. Named
+  workspace and staging state are preserved.
 
 - Use `just eval "Smalltalk expression"` for quick checks.
 

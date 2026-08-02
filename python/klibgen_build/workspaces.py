@@ -19,6 +19,16 @@ from .v2state import V2Paths
 WORKSPACE_NAME = "gui-default"
 
 
+def _workspace_start_mode(initialized: bool, record: dict[str, Any]) -> str:
+    """Present only an orderly saved image as a resumed GUI workspace."""
+    if initialized:
+        return "fresh"
+    completion = record.get("lastCompletion") or {}
+    if record.get("state") == "saved" and completion.get("state") == "saved":
+        return "resumed"
+    return "fresh"
+
+
 @contextmanager
 def workspace_lock(v2: V2Paths) -> Iterator[None]:
     path = v2.root / "locks/workspaces/gui-default.lock"
@@ -102,7 +112,7 @@ def launch_gui_workspace(paths: BuildPaths, fresh: bool = False) -> int:
         manifest = {
             "schema": "klibgen.session/1", "schemaVersion": 1, "sessionId": session_id,
             "projectKey": record["projectKey"], "recipe": "project",
-            "preset": {"name": "gui", "frontend": "gui", "sourceChanges": "interactive", "persistence": "workspace", "startMode": "fresh" if initialized else "resumed"},
+            "preset": {"name": "gui", "frontend": "gui", "sourceChanges": "interactive", "persistence": "workspace", "startMode": _workspace_start_mode(initialized, record)},
             "paths": {"completion": str(completion), "eventJournal": str(event_journal)},
             "inputs": {"sourceGit": record["sourceGit"]},
         }

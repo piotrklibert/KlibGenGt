@@ -3,7 +3,6 @@
 - Slots
   - `DidOpen` (`#Boolean`, class state, `system startup`) - Records whether startup already opened or reused the run world.
   - `HasRestorableState` (`#Boolean`, class state, `shutdown`) - Stays true after this run adds a tool tab, even if that tab is later closed.
-  - `WidgetInstallProcess` (`#(Process?)`, class state, `startup`) - Waits for the default world, then wakes its Bloc task queue to install the toolbar button.
 - Public API
   - {{gtMethod:KGGuiSessionHooks class>>#install}}
     Install the Iceberg commit subscription idempotently; world UI is installed when a session is bound.
@@ -33,8 +32,7 @@ Class {
 	#superclass : 'Object',
 	#classVars : [
 		'DidOpen',
-		'HasRestorableState',
-		'WidgetInstallProcess'
+		'HasRestorableState'
 	],
 	#category : 'KlibGenGt-Tools',
 	#package : 'KlibGenGt-Tools'
@@ -96,17 +94,23 @@ KGGuiSessionHooks class >> ensureQuitPolicyOn: world [
 ]
 
 { #category : 'private - startup' }
-KGGuiSessionHooks class >> scheduleExportButtonInstallationOn: world [
+KGGuiSessionHooks class >> scheduleExportButtonInstallationOn: world replacing: staleWorld [
 	<arg: #world type: #GtWorld>
+	<arg: #staleWorld type: #(GtWorld?)>
 	<return: #KGGuiSessionHooks>
-	WidgetInstallProcess ifNotNil: [ :process | process terminate ].
-	WidgetInstallProcess := [
-		1 second wait.
+	world root enqueueTask: (BlTaskAction new action: [
 		world markAsDefault.
-		world root enqueueTask: (BlTaskAction new action: [
-			KGExportButton installOn: world ]).
-		world requestNextPulse.
-		WidgetInstallProcess := nil ] fork.
+		staleWorld ifNotNil: [
+			staleWorld ~~ world ifTrue: [
+				staleWorld removeEventHandlersSuchThat: [ :eachHandler |
+					(eachHandler isKindOf: GtWorldCloseEventHandler)
+						or: [ eachHandler isKindOf: KGGuiWorldCloseEventHandler ] ].
+				"This task runs on the shared Bloc universe pulse. Close synchronously so
+				 the stale release world cannot remain registered without another pulse."
+				staleWorld universe closeSpaceSynchronously: staleWorld ] ].
+		world markAsDefault.
+		KGExportButton installOn: world ]).
+	world requestNextPulse.
 	^ self
 ]
 
@@ -185,7 +189,7 @@ KGGuiSessionHooks class >> requestQuitIn: world [
 	discard := BrButton new aptitude: BrGlamorousButtonWithLabelAptitude; beSmallSize; label: 'Just quit'; action: [ :button | button disable. prompt removeFromParent. KGSession current persistence discardAndQuit ].
 	cancel := BrButton new aptitude: BrGlamorousButtonWithLabelAptitude; beSmallSize; label: 'Don''t quit'; action: [ :button | prompt removeFromParent ].
 	prompt addChildren: { question. save. discard. cancel }.
-	worldElement addChildFirst: prompt.
+	worldElement addChild: prompt.
 	^ self
 ]
 
@@ -201,8 +205,6 @@ KGGuiSessionHooks class >> shutDown: isImageQuitting [
 	<arg: #isImageQuitting type: #Boolean>
 	<return: #KGGuiSessionHooks>
 	isImageQuitting ifTrue: [
-		WidgetInstallProcess ifNotNil: [ :process | process terminate ].
-		WidgetInstallProcess := nil.
 		KGUiControlService uninstall.
 		self emitEvent: 'stopping'.
 		self uninstall ].
@@ -227,13 +229,10 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 	world := mode = 'fresh'
 		ifTrue: [
 			staleWorld := GtWorld defaultWorld.
-			world := GtWorld openDefault.
-			staleWorld ifNotNil: [ staleWorld ~~ world ifTrue: [ staleWorld close ] ].
-			world markAsDefault.
-			world ]
+			GtWorld openDefault ]
 		ifFalse: [ GtWorld defaultWorld ifNil: [ GtWorld openDefault ] ].
 	self ensureQuitPolicyOn: world.
-	self scheduleExportButtonInstallationOn: world.
+	self scheduleExportButtonInstallationOn: world replacing: staleWorld.
 	mode = 'fresh' ifTrue: [ world extent: 1600 @ 864 ].
 	KGUiControlService install.
 	self emitEvent: (mode = 'resumed' ifTrue: [ 'resumed' ] ifFalse: [ 'ready' ]).
@@ -243,8 +242,6 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 { #category : 'public - subscriptions' }
 KGGuiSessionHooks class >> uninstall [
 	<return: #KGGuiSessionHooks>
-	WidgetInstallProcess ifNotNil: [ :process | process terminate ].
-	WidgetInstallProcess := nil.
 	KGExportButton uninstallFrom: GtWorld defaultWorld.
 	KGUiControlService uninstall.
 	Iceberg announcer unsubscribe: self.

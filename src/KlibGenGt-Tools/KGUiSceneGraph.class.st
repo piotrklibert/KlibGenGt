@@ -37,15 +37,15 @@ KGUiSceneGraph >> initialize [
 { #category : 'public - spaces' }
 KGUiSceneGraph >> spaces [
 	<return: #(OrderedCollection<BlSpace>)>
-	| result universes world |
+	| result world |
 	result := OrderedCollection new.
-	universes := (BlUniverse allInstances , BlUniverse allSubInstances) asSet.
-	universes do: [ :universe |
-		universe allSpacesDo: [ :space |
-			(space isOpened and: [ (result identityIncludes: space) not ]) ifTrue: [ result add: space ] ] ].
+	BlSpace allOpenSpacesDo: [ :space |
+		(space isOpened and: [ (result identityIncludes: space) not ])
+			ifTrue: [ result add: space ] ].
 	world := GtWorld defaultWorld.
-	(world notNil and: [ world isOpened and: [ (result identityIncludes: world) not ] ])
-		ifTrue: [ result addFirst: world ].
+	(world notNil and: [ world isOpened ]) ifTrue: [
+		result remove: world ifAbsent: [ ].
+		result addFirst: world ].
 	^ result
 ]
 

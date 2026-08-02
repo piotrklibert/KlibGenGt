@@ -378,6 +378,14 @@ KGToolsTest >> testUiSceneHandlesAreStableAndDetachedHandlesFail [
 ]
 
 { #category : 'tests - UI control' }
+KGToolsTest >> testUiSceneEnumeratesParallelUniverseSpaces [
+	| spacesMethod |
+	spacesMethod := KGUiSceneGraph >> #spaces.
+	self assert: (spacesMethod sourceCode includesSubstring: 'BlSpace allOpenSpacesDo:').
+	self deny: (spacesMethod sourceCode includesSubstring: 'BlUniverse allInstances')
+]
+
+{ #category : 'tests - UI control' }
 KGToolsTest >> testUiControlRejectsInvalidEnvelopeAndContinues [
 	| service request response |
 	service := KGUiControlService new.
@@ -500,6 +508,19 @@ KGToolsTest >> testGuiQuitMenuUsesSessionQuitPolicy [
 	menuMethod := GtToolsMenu >> #quitFrom:.
 	self assert: menuMethod package name equals: 'KlibGenGt-Tools'.
 	self assert: (menuMethod sourceCode includesSubstring: 'KGGuiSessionHooks requestQuitFrom: button')
+]
+
+{ #category : 'tests - GUI hooks' }
+KGToolsTest >> testGuiQuitPromptIsFrontmost [
+	| prompt world |
+	world := GtWorld new.
+	[ KGGuiSessionHooks requestQuitIn: world.
+	world root
+		childWithId: GtWorldShutdownPromptId
+		ifFound: [ :found | prompt := found ]
+		ifNone: [ self fail: 'Expected a managed quit prompt' ].
+	self assert: world root children last identicalTo: prompt ]
+		ensure: [ prompt ifNotNil: [ prompt removeFromParent ] ]
 ]
 
 { #category : 'tests - GUI hooks' }
