@@ -25,7 +25,7 @@
   - {{gtMethod:KGGuiSessionHooks class>>#startUp:}}
     Rebind the private repository, install the hook, and open or restore the run world.
   - {{gtMethod:KGGuiSessionHooks class>>#shutDown:}}
-    Emit shutdown state and unsubscribe when the image quits.
+    Stop live UI control, emit shutdown state, and unsubscribe when the image quits.
 "
 Class {
 	#name : 'KGGuiSessionHooks',
@@ -175,6 +175,7 @@ KGGuiSessionHooks class >> shutDown: isImageQuitting [
 	<arg: #isImageQuitting type: #Boolean>
 	<return: #KGGuiSessionHooks>
 	isImageQuitting ifTrue: [
+		KGUiControlService uninstall.
 		self emitEvent: 'stopping'.
 		self uninstall ].
 	DidOpen := false.
@@ -202,6 +203,7 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 		ifFalse: [ GtWorld defaultWorld ifNil: [ GtWorld openDefault ] ].
 	self ensureQuitPolicyOn: world.
 	mode = 'fresh' ifTrue: [ world extent: 1600 @ 864 ].
+	KGUiControlService install.
 	self emitEvent: (mode = 'resumed' ifTrue: [ 'resumed' ] ifFalse: [ 'ready' ]).
 	^ self
 ]
@@ -209,6 +211,7 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 { #category : 'public - subscriptions' }
 KGGuiSessionHooks class >> uninstall [
 	<return: #KGGuiSessionHooks>
+	KGUiControlService uninstall.
 	Iceberg announcer unsubscribe: self.
 	^ self
 ]

@@ -117,6 +117,12 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Use `just gui` only when a GUI is needed.
 
+- For coordinate-free interaction with an active managed GUI, use the
+  repo-local `operate-gt-ui` skill and `klibgen-build ui`. Inspect first,
+  uniquely select a run-local node, act, then wait and re-inspect. Use live
+  `ui eval` only as an explicit diagnostic escape hatch. Scene inspection sees
+  hidden/offscreen instantiated nodes, but not uninstantiated virtualized rows.
+
 - When checking whether a GUI window opened, source `scripts/utils.sh` and call
   `opened_windows` before and after launching the GUI.
 

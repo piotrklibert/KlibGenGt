@@ -45,6 +45,9 @@ KlibGenGt package map:
   - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
 - Tools
   - {{gtClass:KGGuiSessionHooks}} - Controls GUI quit confirmation and emits lifecycle and exact-repository Iceberg commit events for host-side promotion.
+  - {{gtClass:KGUiControlService}} - Serializes run-private filesystem requests into live scene inspection, waits, batches, Scripter actions, and explicit evaluation.
+  - {{gtClass:KGUiSceneGraph}} - Enumerates instantiated Bloc scene nodes, records state, and maintains stable run-local handles.
+  - {{gtClass:KGExistingSpaceScripter}} - Attaches Scripter to an existing Bloc space without reparenting its elements.
   - {{gtClass:KGGuiWorldCloseEventHandler}} - Keeps native close requests inside the managed GUI world until restorable state is saved or discarded.
   - {{gtClass:KGGuiTabAddedEventHandler}} - Marks a GUI run as changed when it gains restorable tool state.
   - {{gtClass:KGTestTool}} - Runs project SUnit tests with structured failure and error diagnostics.

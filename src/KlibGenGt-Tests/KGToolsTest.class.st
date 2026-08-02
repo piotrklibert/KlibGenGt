@@ -313,6 +313,108 @@ KGToolsTest >> testGuiHooksInstallRepeatedlyAndCleanUp [
 		KGGuiSessionHooks install; uninstall ] raise: Error
 ]
 
+{ #category : 'tests - UI control' }
+KGToolsTest >> testExistingSpaceScripterAttachmentPreservesHierarchy [
+	| space parent child scripter |
+	space := BlSpace new.
+	parent := BlElement new.
+	child := BlElement new.
+	space root addChild: parent.
+	parent addChild: child.
+	scripter := KGExistingSpaceScripter new.
+	[ scripter attachToSpace: space.
+	self assert: child parent identicalTo: parent.
+	self assert: parent parent identicalTo: space root.
+	self assert: scripter space identicalTo: space ]
+		ensure: [ scripter detach ]
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testExistingSpaceScripterDispatchesClickWithoutReparenting [
+	| space target clicks scripter |
+	space := BlSpace new extent: 100 @ 100.
+	target := BlElement new size: 20 @ 20.
+	clicks := 0.
+	target when: BlClickEvent do: [ :event | clicks := clicks + 1. event consumed: true ].
+	space root addChild: target.
+	space pulse.
+	scripter := KGExistingSpaceScripter new attachToSpace: space.
+	[ scripter act: 'click' on: target request: Dictionary new.
+	self assert: clicks equals: 1.
+	self assert: target parent identicalTo: space root ]
+		ensure: [ scripter detach ]
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testUiSceneHandlesAreStableAndDetachedHandlesFail [
+	| scene space element first second |
+	scene := KGUiSceneGraph new.
+	space := BlSpace new.
+	element := BlElement new.
+	space root addChild: element.
+	first := scene perform: #handleFor: with: element.
+	second := scene perform: #handleFor: with: element.
+	self assert: first equals: second.
+	self assert: (scene elementAt: first) identicalTo: element.
+	element removeFromParent.
+	self should: [ scene elementAt: first ] raise: Error
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testUiControlRejectsInvalidEnvelopeAndContinues [
+	| service request response |
+	service := KGUiControlService new.
+	service instVarNamed: 'runId' put: 'test-run'.
+	request := Dictionary new
+		at: 'schemaVersion' put: 9;
+		at: 'requestId' put: 'bad';
+		at: 'runId' put: 'test-run';
+		at: 'operation' put: 'ui.status';
+		at: 'deadlineUnixMs' put: DateAndTime now asUnixTime * 1000 + 5000;
+		yourself.
+	self should: [ service handle: request ] raise: Error.
+	request at: 'schemaVersion' put: 1; at: 'requestId' put: 'good'.
+	response := service handle: request.
+	self assert: (response at: 'ok').
+	self assert: (response at: 'requestId') equals: 'good'
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testUiControlBatchStopsAtFirstFailure [
+	| service request result |
+	service := KGUiControlService new.
+	service instVarNamed: 'runId' put: 'test-run'.
+	request := Dictionary new
+		at: 'requestId' put: 'batch';
+		at: 'runId' put: 'test-run';
+		at: 'deadlineUnixMs' put: DateAndTime now asUnixTime * 1000 + 5000;
+		at: 'steps' put: {
+			Dictionary new at: 'operation' put: 'ui.status'; yourself.
+			Dictionary new at: 'operation' put: 'ui.unsupported'; yourself.
+			Dictionary new at: 'operation' put: 'ui.status'; yourself };
+		yourself.
+	result := service perform: #batch: with: request.
+	self assert: (result at: 'completedCount') equals: 1.
+	self assert: (result at: 'failedStep') equals: 2.
+	self assert: (result at: 'failure') notNil
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testUiControlLiveEvaluationSuccessAndTimeout [
+	| service request result |
+	service := KGUiControlService new.
+	request := Dictionary new
+		at: 'expression' put: '40 + 2';
+		at: 'deadlineUnixMs' put: DateAndTime now asUnixTime * 1000 + 5000;
+		yourself.
+	result := service perform: #evaluate: with: request.
+	self assert: (result at: 'result') equals: '42'.
+	request
+		at: 'expression' put: '(Delay forMilliseconds: 200) wait';
+		at: 'deadlineUnixMs' put: DateAndTime now asUnixTime * 1000 + 10.
+	self should: [ service perform: #evaluate: with: request ] raise: Error
+]
+
 { #category : 'tests - GUI hooks' }
 KGToolsTest >> testGuiHooksInstallQuitPolicyIdempotently [
 	| world closeHandlers shutdownListeners |

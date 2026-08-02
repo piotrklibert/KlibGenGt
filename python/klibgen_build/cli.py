@@ -39,6 +39,7 @@ from .host_tools import (
     wait_for_windows,
     window_data,
 )
+from .ui_control import active_gui_runs, selector_request, submit_ui_request, validate_regex_selector
 
 
 def doctor(paths: BuildPaths, context_id: str) -> dict[str, Any]:
@@ -342,6 +343,9 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
         if profile:
             print(profile["report"], file=sys.stderr, end="")
         return
+    if result["operation"].startswith("ui."):
+        print(json.dumps(result.get("data", result), indent=2, sort_keys=True))
+        return
     print(f"context: {result['contextId']}")
     for layer in result["layers"]:
         print(f"{layer['layerId']} {layer['state']:7} {layer['name']} ({layer['expectedBuildKey'][:12]})")
@@ -435,6 +439,69 @@ def _image_parser(subparsers: argparse._SubParsersAction) -> None:
         command.add_argument("--json", action="store_true")
 
 
+def _ui_parser(subparsers: argparse._SubParsersAction) -> None:
+    ui = subparsers.add_parser("ui")
+    commands = ui.add_subparsers(dest="ui_action", required=True)
+
+    def common(command: argparse.ArgumentParser, *, selector: bool = False) -> None:
+        command.add_argument("--context", default="gui")
+        command.add_argument("--run")
+        command.add_argument("--timeout", type=float, default=10.0)
+        command.add_argument("--json", action="store_true")
+        if selector:
+            command.add_argument("--space")
+            command.add_argument("--node")
+            command.add_argument("--under")
+            command.add_argument("--class", dest="class_name")
+            command.add_argument("--element-id")
+            command.add_argument("--text")
+            command.add_argument("--text-contains")
+            command.add_argument("--text-regex")
+            command.add_argument("--visible", action=argparse.BooleanOptionalAction)
+            command.add_argument("--enabled", action=argparse.BooleanOptionalAction)
+            command.add_argument("--focused", action=argparse.BooleanOptionalAction)
+
+    for name in ("status", "spaces"):
+        common(commands.add_parser(name))
+    tree = commands.add_parser("tree")
+    common(tree, selector=True)
+    tree.add_argument("--limit", type=int, default=5000)
+    for name in ("query", "get"):
+        common(commands.add_parser(name), selector=True)
+
+    act = commands.add_parser("act")
+    common(act, selector=True)
+    act.add_argument("action", choices=(
+        "click", "double-click", "secondary-click", "hover", "focus", "type",
+        "key-press", "shortcut", "scroll", "drag",
+    ))
+    act.add_argument("--value")
+    act.add_argument("--key")
+    act.add_argument("--dx", type=float, default=0.0)
+    act.add_argument("--dy", type=float, default=0.0)
+
+    wait = commands.add_parser("wait")
+    common(wait, selector=True)
+    wait.add_argument("state", choices=(
+        "exists", "absent", "visible", "hidden", "focused", "enabled",
+        "text-equals", "text-contains",
+    ))
+    wait.add_argument("--value")
+
+    batch = commands.add_parser("batch")
+    common(batch)
+    batch_source = batch.add_mutually_exclusive_group(required=True)
+    batch_source.add_argument("--file", type=Path)
+    batch_source.add_argument("--stdin", action="store_true")
+
+    evaluation = commands.add_parser("eval")
+    common(evaluation)
+    evaluation.add_argument("expression", nargs="?")
+    source = evaluation.add_mutually_exclusive_group()
+    source.add_argument("--file", type=Path)
+    source.add_argument("--stdin", action="store_true")
+
+
 def _format_bytes(value: int) -> str:
     amount = float(value)
     for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
@@ -449,6 +516,7 @@ def parser() -> argparse.ArgumentParser:
     subparsers = result.add_subparsers(dest="command", required=True)
     _host_parser(subparsers)
     _image_parser(subparsers)
+    _ui_parser(subparsers)
     for name in ("doctor", "status", "resolve", "build", "run", "clean-runs", "load", "test", "test-one", "test-diagnose", "smoke", "check-type-pragmas", "eval", "launch", "gui-fresh", "gui-snapshot", "snapshot", "resume", "discard", "promote", "snapshot-list", "snapshot-current", "snapshot-select", "snapshot-clear", "gui-refresh-clear", "context-list", "context-create", "context-remove", "worktree-add", "worktree-remove", "pin", "unpin", "gc", "prune", "build-map", "build-map-png", "build-map-json"):
         command = subparsers.add_parser(name)
         if name == "build":
@@ -641,6 +709,44 @@ def _image_command(paths: BuildPaths, args: argparse.Namespace) -> dict[str, Any
     return execute_image_tool(paths, args.context, request)
 
 
+def _ui_command(paths: BuildPaths, args: argparse.Namespace) -> dict[str, Any]:
+    if args.ui_action == "status":
+        runs = active_gui_runs(paths, args.context)
+        if args.run is not None:
+            runs = [item for item in runs if item.get("runId") == args.run]
+        return {
+            "schemaVersion": 1, "ok": True, "operation": "ui.status",
+            "contextId": args.context,
+            "data": {"runs": runs, "count": len(runs)},
+        }
+    operation = f"ui.{args.ui_action}"
+    request: dict[str, Any] = {"operation": operation}
+    if args.ui_action in {"tree", "query", "get", "act", "wait"}:
+        request.update(selector_request(args))
+        validate_regex_selector(request)
+    if args.ui_action == "tree":
+        request["limit"] = args.limit
+    elif args.ui_action == "act":
+        request.update({"action": args.action, "dx": args.dx, "dy": args.dy})
+        if args.value is not None:
+            request["value"] = args.value
+        if args.key is not None:
+            request["key"] = args.key
+    elif args.ui_action == "wait":
+        request["state"] = args.state
+        if args.value is not None:
+            request["value"] = args.value
+    elif args.ui_action == "batch":
+        source = args.file.read_text(encoding="utf-8") if args.file is not None else sys.stdin.read()
+        steps = json.loads(source)
+        request["steps"] = steps.get("steps", steps) if isinstance(steps, dict) else steps
+    elif args.ui_action == "eval":
+        request["expression"] = _evaluation_expression(args)
+    return submit_ui_request(
+        paths, request, context_id=args.context, run_id=args.run, timeout=args.timeout,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     paths = BuildPaths.discover()
@@ -649,6 +755,8 @@ def main(argv: list[str] | None = None) -> int:
             result = _host_command(paths, args)
         elif args.command == "image":
             result = _image_command(paths, args)
+        elif args.command == "ui":
+            result = _ui_command(paths, args)
         elif args.command == "doctor":
             result = doctor(paths, args.context)
         elif args.command == "status":

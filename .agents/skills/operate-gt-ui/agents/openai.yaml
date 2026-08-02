@@ -1,0 +1,4 @@
+interface:
+  display_name: "Operate GT UI"
+  short_description: "Inspect and drive a live managed GT scene"
+  default_prompt: "Use $operate-gt-ui to inspect and control the active managed Glamorous Toolkit UI."

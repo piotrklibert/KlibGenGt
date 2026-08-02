@@ -487,6 +487,49 @@ exception class, message, bounded Smalltalk stack, and retained run path.
 `--profile` uses `AndreasSystemProfiler` and adds its elapsed time, sample
 count, and expandable text report.
 
+### Live managed GUI control
+
+Every managed `just gui` image publishes a schema-version-one filesystem
+control spool under its run-private `tmp/ui-control/`. The Python coordinator
+requires either one active ready GUI in the selected context or an exact
+`--run RUN_ID`; it submits requests and reads responses atomically and fails if
+the image exits or the client deadline expires.
+
+```sh
+uv run klibgen-build ui status --context gui --json
+uv run klibgen-build ui spaces --context gui --json
+uv run klibgen-build ui tree --limit 2000 --context gui --json
+uv run klibgen-build ui query --class BrButton --text-contains Save --json
+uv run klibgen-build ui get --node node-42 --json
+uv run klibgen-build ui act click --node node-42 --json
+uv run klibgen-build ui act type --node node-51 --value 'new text' --json
+uv run klibgen-build ui wait focused --node node-51 --json
+uv run klibgen-build ui batch --file tmp/ui-steps.json --json
+uv run klibgen-build ui eval 'GtWorld defaultWorld title' --json
+```
+
+Inspection returns a flat scene tree and includes every currently instantiated
+node by default—even hidden, gone, clipped, or offscreen nodes. Records include
+run-local stable handles, hierarchy/path, class and Bloc ID, bounded text,
+visibility and viewport state, attachment/focus/enablement/mouse state,
+opacity, bounds, children, and view-model class. Virtualized items that have
+not been instantiated are not present and cannot be inspected.
+
+Selectors compose `--space`, `--node`, `--under`, `--class`, `--element-id`,
+exact/contains/regex text, and visible/enabled/focused filters. Mutating actions
+require exactly one match. Supported actions are click, double/secondary
+click, hover, focus, typing, key presses, shortcut combinations, scrolling,
+and dragging. Scripter attaches to the existing `BlSpace` without reparenting
+the target and pulses after each bounded action. Waits cover existence,
+absence, visibility, focus, enablement, and text. Batches stop at their first
+failed step; live eval is deliberately excluded from batches and should remain
+a diagnostic escape hatch.
+
+The repo-local `$operate-gt-ui` skill documents the recommended inspect →
+uniquely select → act → wait/reinspect workflow. Use `$operate-gt-host` for
+window lifecycle and screenshots, and `$evaluate-gt-image` for disposable
+image diagnostics.
+
 ## `just eval` Escaping
 
 `just eval` builds/loads CLI L06 and uses `GT_EVAL` only between the recipe and

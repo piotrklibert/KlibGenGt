@@ -142,6 +142,24 @@ snapshot-clear context="gui":
 gui-refresh-clear context="gui":
     uv run klibgen-build gui-refresh-clear {{quote(context)}}
 
+ui-status context="gui":
+    uv run klibgen-build ui status --context {{quote(context)}}
+
+ui-spaces context="gui":
+    uv run klibgen-build ui spaces --context {{quote(context)}}
+
+ui-tree context="gui":
+    uv run klibgen-build ui tree --context {{quote(context)}}
+
+ui-click node context="gui":
+    uv run klibgen-build ui act click --node {{quote(node)}} --context {{quote(context)}}
+
+ui-wait state node context="gui":
+    uv run klibgen-build ui wait {{quote(state)}} --node {{quote(node)}} --context {{quote(context)}}
+
+ui-eval expr context="gui":
+    uv run klibgen-build ui eval {{quote(expr)}} --context {{quote(context)}}
+
 load context="default":
     uv run klibgen-build load {{quote(context)}}
 
