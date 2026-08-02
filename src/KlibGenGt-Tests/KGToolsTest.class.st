@@ -291,6 +291,58 @@ KGToolsTest >> testGuiHooksAppendCommitEventRecord [
 			eventPath parent ensureDeleteAll ]
 ]
 
+{ #category : 'tests - GUI export' }
+KGToolsTest >> testGuiExportButtonActsAndRefreshesThroughExistingSpaceScripter [
+	| temporary tool button space scripter deadline |
+	temporary := KGExportTool
+		subclass: #KGTemporaryExportTool
+		instanceVariableNames: 'count exports'
+		classVariableNames: ''
+		package: 'KlibGen-Build-Transient'.
+	[ temporary compile: 'initialize super initialize. count := 2. exports := 0'.
+	temporary compile: 'changeCount ^ count'.
+	temporary compile: 'exportChanges exports := exports + 1. count := 0'.
+	temporary compile: 'exports ^ exports'.
+	tool := temporary new.
+	button := KGExportButton new.
+	button instVarNamed: 'tool' put: tool.
+	button aptitude: BrGlamorousButtonWithIconAptitude new.
+	space := BlSpace new extent: 200 @ 100.
+	space root addChild: button.
+	button perform: #updateCount: with: 2.
+	space pulse.
+	self assert: button label asString equals: 'Export (2)'.
+	self deny: button isDisabled.
+	scripter := KGExistingSpaceScripter new attachToSpace: space.
+	[ scripter act: 'click' on: button request: Dictionary new.
+	deadline := DateAndTime now + 2 seconds.
+	[ tool exports = 1 or: [ DateAndTime now > deadline ] ]
+		whileFalse: [ (Delay forMilliseconds: 20) wait ].
+	self assert: tool exports equals: 1.
+	deadline := DateAndTime now + 2 seconds.
+	[ button label asString = 'Export (0)' or: [ DateAndTime now > deadline ] ]
+		whileFalse: [ (Delay forMilliseconds: 20) wait ].
+	self assert: button label asString equals: 'Export (0)'.
+	self assert: button isDisabled ]
+		ensure: [ scripter detach ] ]
+		ensure: [
+			space ifNotNil: [ space close ].
+			temporary removeFromSystem ]
+]
+
+{ #category : 'tests - GUI export' }
+KGToolsTest >> testGuiExportWorldCustomizationIsIdempotentAndRemovable [
+	| world |
+	world := GtWorld new.
+	[ KGExportButton installOn: world; installOn: world.
+	self assert: (world root query // KGExportButton) all size equals: 1.
+	KGExportButton uninstallFrom: world.
+	self assert: (world root query // KGExportButton) all size equals: 0 ]
+		ensure: [
+			KGExportButton uninstallFrom: world.
+			world close ]
+]
+
 { #category : 'tests - GUI hooks' }
 KGToolsTest >> testGuiHooksFilterTheExactRunRepository [
 	| exportPath environment previousExport |

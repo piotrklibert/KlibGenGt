@@ -214,6 +214,13 @@ a project-owned Bloc close-request policy for the managed world, so
 unrelated hidden spaces cannot bypass the prompt. This keeps automatic snapshot
 publication tied to an actual image save.
 
+The world toolbar includes a project-owned `Export (NN)` button. `NN` is the
+number of modified `KlibGenGt*` packages reported by Iceberg. Pressing it
+commits every pending change in the run-private export repository with a
+synthetic `Export KlibGenGt changes (NN)` title; the existing promotion bridge
+then copies committed project packages into `src/`. The button is rebuilt for
+fresh and resumed worlds and removes its image-change subscriptions on exit.
+
 Saving and quitting automatically publishes an immutable schema-v2 L06-tmp
 snapshot, verifies its component hashes, removes the source run, and advances
 the context's current pointer. A later `just gui` directly copies and launches

@@ -44,6 +44,8 @@ KlibGenGt package map:
   - {{gtClass:KGKotlinGrammar}} - PetitParser2 entry grammar for Kotlin source text.
   - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
 - Tools
+  - {{gtClass:KGExportTool}} - Counts modified KlibGenGt packages and commits live changes in a managed GUI export repository.
+  - {{gtClass:KGExportButton}} - Adds the live export count and commit action to the GT world toolbar.
   - {{gtClass:KGGuiSessionHooks}} - Controls GUI quit confirmation and emits lifecycle and exact-repository Iceberg commit events for host-side promotion.
   - {{gtClass:KGUiControlService}} - Serializes run-private filesystem requests into live scene inspection, waits, batches, Scripter actions, and explicit evaluation.
   - {{gtClass:KGUiSceneGraph}} - Enumerates instantiated Bloc scene nodes, records state, and maintains stable run-local handles.
