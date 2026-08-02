@@ -11,10 +11,13 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .core import BuildPaths, digest_json, platform_id
+from .json_models import parse_named_record, validate_named_record
 from .v2state import V2Paths
 
 
 def atomic_json(path: Path, value: dict[str, Any]) -> None:
+    if "schema" in value:
+        value = validate_named_record(value)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -44,7 +47,7 @@ class ArtifactStore:
         manifest_path = artifact / "manifest.json"
         if not manifest_path.is_file():
             raise ValueError(f"artifact manifest is missing: {manifest_path}")
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = parse_named_record(json.loads(manifest_path.read_text(encoding="utf-8"))).to_wire()
         if manifest.get("schema") != "klibgen.artifact/1":
             raise ValueError(f"unsupported artifact manifest: {manifest_path}")
         expected = self.artifact(manifest["artifactType"], manifest["outputKey"])

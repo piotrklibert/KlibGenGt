@@ -11,6 +11,7 @@ from typing import Any
 
 from .canonical import build_canonical
 from .core import BuildPaths
+from .json_models import SessionCompletionV1, SessionReadyV1, StagingV1
 from .processes import decode_output, run_command, start_command
 from .store import atomic_json
 from .staging import validate_staging_name
@@ -71,7 +72,7 @@ def execute_session(
     if staging_name is not None:
         staging_name = validate_staging_name(staging_name)
         staging = v2.root / "staging" / staging_name
-        staging_record = json.loads((staging / "staging.json").read_text(encoding="utf-8"))
+        staging_record = StagingV1.model_validate_json((staging / "staging.json").read_text(encoding="utf-8")).to_wire()
         inputs["sourceGit"] = staging_record["sourceGit"]
     manifest = {
         "schema": "klibgen.session/1", "schemaVersion": 1,
@@ -109,12 +110,12 @@ def execute_session(
             raise TimeoutError(f"session {session_id} exceeded {timeout} seconds")
         if not ready_path.is_file():
             raise RuntimeError("session exited without a readiness record")
-        ready = json.loads(ready_path.read_text(encoding="utf-8"))
+        ready = SessionReadyV1.model_validate_json(ready_path.read_text(encoding="utf-8")).to_wire()
         if ready.get("sessionId") != session_id or ready.get("schema") != "klibgen.session-ready/1":
             raise RuntimeError("session readiness record does not match its manifest")
         if not completion_path.is_file():
             raise RuntimeError("session exited without an authoritative completion record")
-        completion = json.loads(completion_path.read_text(encoding="utf-8"))
+        completion = SessionCompletionV1.model_validate_json(completion_path.read_text(encoding="utf-8")).to_wire()
         if completion.get("sessionId") != session_id or completion.get("schema") != "klibgen.session-completion/1":
             raise RuntimeError("session completion record does not match its manifest")
         response = json.loads(result_path.read_text(encoding="utf-8"))

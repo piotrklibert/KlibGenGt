@@ -18,12 +18,14 @@ from .host_tools import (
     wait_for_windows, window_data,
 )
 from .inventory_v2 import garbage_collect, inventory
+from .json_models import validate_named_record
 from .processes import ProcessExecutionError
 from .registered_tools import export_build_map_pngs
 from .resolution import recipe_catalog, resolve_target
 from .sessions import execute_agentic_session, execute_session
 from .staging import create_staging, list_staging, promote_staging, reset_staging
 from .store import ArtifactStore
+from .tonel_export import DEFAULT_PACKAGE, export_tonel
 from .ui_control import active_gui_sessions, selector_request, submit_ui_request, validate_regex_selector
 from .v2state import V2Paths
 from .workspaces import launch_gui_workspace, reset_workspace, workspace_status
@@ -229,6 +231,11 @@ def parser() -> argparse.ArgumentParser:
     png.add_argument("output", nargs="?", type=Path)
     png.add_argument("--force", action="store_true")
     png.add_argument("--json", action="store_true")
+    models = commands.add_parser("models")
+    model_commands = models.add_subparsers(dest="models_action", required=True)
+    export = model_commands.add_parser("export-tonel")
+    export.add_argument("--output", type=Path)
+    export.add_argument("--check", action="store_true")
     return result
 
 
@@ -348,6 +355,19 @@ def _status(paths: BuildPaths) -> dict[str, Any]:
 
 
 def _result(paths: BuildPaths, args: argparse.Namespace) -> dict[str, Any] | int:
+    if args.command == "models":
+        output = args.output or paths.root / "src" / DEFAULT_PACKAGE
+        if not output.is_absolute():
+            output = paths.root / output
+        drift = export_tonel(output, check=args.check)
+        if args.check and drift:
+            print("generated Tonel models are stale: " + ", ".join(drift), file=sys.stderr)
+            return 1
+        if args.check:
+            print(f"generated Tonel models are current ({output})")
+        else:
+            print(f"generated Tonel JSON models in {output}")
+        return 0
     if args.command == "host":
         return _host(paths, args)
     if args.command == "image":
@@ -412,6 +432,8 @@ def _result(paths: BuildPaths, args: argparse.Namespace) -> dict[str, Any] | int
 
 
 def emit(result: dict[str, Any], as_json: bool) -> None:
+    if "schema" in result:
+        result = validate_named_record(result)
     if as_json:
         print(json.dumps(result, indent=2, sort_keys=True))
         return

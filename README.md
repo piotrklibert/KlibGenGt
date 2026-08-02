@@ -53,6 +53,7 @@ keeps uv's cache under ignored `tmp/uv-cache`.
 | Path | Role | Versioned? |
 | --- | --- | --- |
 | `src/` | Authoritative Tonel source and project baseline. | Yes |
+| `src/KlibGenGt-JsonModels/` | Tracked Tonel records generated from the Pydantic wire-model catalog. | Yes |
 | `python/klibgen_build/` | Recipe, store, session, workspace, staging, inventory, and CLI services. | Yes |
 | `build/v2/` | Image-side build/session scripts and contracts. | Yes |
 | `build/locks/` | Exact external source and archive locks. | Yes |
@@ -141,7 +142,7 @@ schema-version-one response envelope:
 ```sh
 just code-search KGBuildMap class
 just code-class KGBuildMap
-just code-method KGBuildMap initializeFromDictionary:
+just code-method KGBuildMap initializeFromInventory:
 just lepiter-search session title
 just lepiter-export <page-uid>
 ```
@@ -166,6 +167,22 @@ active operations, and explicit pins. It may remove abandoned transient state,
 unreferenced artifacts, and rotated diagnostics; it never removes a workspace
 or staging area.
 
+## JSON models
+
+Named v0.2 build records are defined as frozen Pydantic models in
+`python/klibgen_build/json_models.py`. Regenerate the equivalent immutable
+Smalltalk records after changing that catalog, and verify that tracked Tonel is
+current:
+
+```sh
+just generate-json-models
+just check-json-models
+```
+
+The exporter owns only files carrying its generated marker and the marked JSON
+model subsection of the `KlibGenGt` class index. Handwritten Tonel in the same
+package is preserved.
+
 ## Verification
 
 Before finishing a change, run:
@@ -182,5 +199,6 @@ canonical artifact. For changes to build inputs, a stronger clean-root check is
 to move `.klibgen/v2/` aside temporarily, run `just build cli`, then restore or
 delete the disposable root after inspecting its manifests.
 
-Do not commit images, changes files, caches, logs, generated artifacts, or
-anything under `tmp/`.
+Do not commit images, changes files, caches, logs, generated runtime artifacts,
+or anything under `tmp/`. Generated Tonel JSON models are tracked source and
+must be committed with their Pydantic definitions.

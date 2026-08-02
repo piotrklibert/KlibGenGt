@@ -45,6 +45,57 @@ KlibGenGt package map:
   - {{gtClass:KGKotlinGrammar}} - PetitParser2 entry grammar for Kotlin source text.
   - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
 - Tools
+  - {{gtClass:KGJsonRecord}} - Provides shared validation and serialization for generated immutable JSON records.
+  - {{gtClass:KGJsonModelRegistry}} - Dispatches named build JSON schemas to their generated record classes.
+  - GENERATED-JSON-MODELS-BEGIN
+  - {{gtClass:KGArtifactListV1}} - Generated immutable JSON record for `ArtifactListV1`.
+  - {{gtClass:KGArtifactV1}} - Generated immutable JSON record for `ArtifactV1`.
+  - {{gtClass:KGArtifactVerificationV1}} - Generated immutable JSON record for `ArtifactVerificationV1`.
+  - {{gtClass:KGBuildResultV1}} - Generated immutable JSON record for `BuildResultV1`.
+  - {{gtClass:KGBuildStatusV1}} - Generated immutable JSON record for `BuildStatusV1`.
+  - {{gtClass:KGDoctorV1}} - Generated immutable JSON record for `DoctorV1`.
+  - {{gtClass:KGGcPlanV1}} - Generated immutable JSON record for `GcPlanV1`.
+  - {{gtClass:KGInventoryV2}} - Generated immutable JSON record for `InventoryV2`.
+  - {{gtClass:KGJsonErrorRecord}} - Generated immutable JSON record for `ErrorRecord`.
+  - {{gtClass:KGJsonInvalidArtifactRecord}} - Generated immutable JSON record for `InvalidArtifactRecord`.
+  - {{gtClass:KGJsonInventoryEdgeRecord}} - Generated immutable JSON record for `InventoryEdgeRecord`.
+  - {{gtClass:KGJsonInventoryNodeRecord}} - Generated immutable JSON record for `InventoryNodeRecord`.
+  - {{gtClass:KGJsonInventoryRecipeRecord}} - Generated immutable JSON record for `InventoryRecipeRecord`.
+  - {{gtClass:KGJsonInventoryStepRecord}} - Generated immutable JSON record for `InventoryStepRecord`.
+  - {{gtClass:KGJsonInventoryTargetRecord}} - Generated immutable JSON record for `InventoryTargetRecord`.
+  - {{gtClass:KGJsonLaunchPresetRecord}} - Generated immutable JSON record for `LaunchPresetRecord`.
+  - {{gtClass:KGJsonMalformedRecord}} - Generated immutable JSON record for `MalformedRecord`.
+  - {{gtClass:KGJsonMeasurementStorageRecord}} - Generated immutable JSON record for `MeasurementStorageRecord`.
+  - {{gtClass:KGJsonPathDigestFileRecord}} - Generated immutable JSON record for `PathDigestFileRecord`.
+  - {{gtClass:KGJsonPathDigestRecord}} - Generated immutable JSON record for `PathDigestRecord`.
+  - {{gtClass:KGJsonPathStorageRecord}} - Generated immutable JSON record for `PathStorageRecord`.
+  - {{gtClass:KGJsonPromotionRecord}} - Generated immutable JSON record for `PromotionRecord`.
+  - {{gtClass:KGJsonPublishedArtifactRecord}} - Generated immutable JSON record for `PublishedArtifactRecord`.
+  - {{gtClass:KGJsonRecipeCatalogTargetRecord}} - Generated immutable JSON record for `RecipeCatalogTargetRecord`.
+  - {{gtClass:KGJsonRenameRecord}} - Generated immutable JSON record for `RenameRecord`.
+  - {{gtClass:KGJsonResolvedStepRecord}} - Generated immutable JSON record for `ResolvedStepRecord`.
+  - {{gtClass:KGJsonSessionPathsRecord}} - Generated immutable JSON record for `SessionPathsRecord`.
+  - {{gtClass:KGJsonStagingChangesRecord}} - Generated immutable JSON record for `StagingChangesRecord`.
+  - {{gtClass:KGJsonStepImplementationRecord}} - Generated immutable JSON record for `StepImplementationRecord`.
+  - {{gtClass:KGJsonStorageRecord}} - Generated immutable JSON record for `StorageRecord`.
+  - {{gtClass:KGJsonSuffixStorageRecord}} - Generated immutable JSON record for `SuffixStorageRecord`.
+  - {{gtClass:KGJsonToolCheckRecord}} - Generated immutable JSON record for `ToolCheckRecord`.
+  - {{gtClass:KGMeasurementV1}} - Generated immutable JSON record for `MeasurementV1`.
+  - {{gtClass:KGRecipeCatalogV1}} - Generated immutable JSON record for `RecipeCatalogV1`.
+  - {{gtClass:KGReferenceV1}} - Generated immutable JSON record for `ReferenceV1`.
+  - {{gtClass:KGResolvedRecipeV1}} - Generated immutable JSON record for `ResolvedRecipeV1`.
+  - {{gtClass:KGSessionCompletionV1}} - Generated immutable JSON record for `SessionCompletionV1`.
+  - {{gtClass:KGSessionReadyV1}} - Generated immutable JSON record for `SessionReadyV1`.
+  - {{gtClass:KGSessionV1}} - Generated immutable JSON record for `SessionV1`.
+  - {{gtClass:KGSourceLockV1}} - Generated immutable JSON record for `SourceLockV1`.
+  - {{gtClass:KGStagingListV1}} - Generated immutable JSON record for `StagingListV1`.
+  - {{gtClass:KGStagingResultV1}} - Generated immutable JSON record for `StagingResultV1`.
+  - {{gtClass:KGStagingV1}} - Generated immutable JSON record for `StagingV1`.
+  - {{gtClass:KGStatusListV1}} - Generated immutable JSON record for `StatusListV1`.
+  - {{gtClass:KGWorkspaceResetV1}} - Generated immutable JSON record for `WorkspaceResetV1`.
+  - {{gtClass:KGWorkspaceStatusV1}} - Generated immutable JSON record for `WorkspaceStatusV1`.
+  - {{gtClass:KGWorkspaceV1}} - Generated immutable JSON record for `WorkspaceV1`.
+  - GENERATED-JSON-MODELS-END
   - {{gtClass:KGSession}} - Holds immutable launch state and the installed process capabilities.
   - {{gtClass:KGSessionBootstrap}} - Validates session manifests and authors lifecycle records.
   - {{gtClass:KGOperationResult}} - Normalizes operation results into the stable response envelope.
@@ -83,6 +134,7 @@ KlibGenGt package map:
   - {{gtClass:KGCheckTypePragmasTest}} - Tests for the documentation type checker.
   - {{gtClass:KGSQLite3ExamplesTest}} - Exercises SQLite3 diagnostics and round trips through the project baseline.
   - {{gtClass:KGKotlinParserTest}} - Tests for the Kotlin sample parser and fixture comparison.
+  - {{gtClass:KGJsonModelsTest}} - Tests generated v0.2 JSON validation, round trips, and registry dispatch.
   - {{gtClass:KGToolsTest}} - Tests structured code search, Lepiter access, evaluation, and profiling.
 "
 Class {

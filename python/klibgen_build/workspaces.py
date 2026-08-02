@@ -11,6 +11,7 @@ from typing import Any, Iterator
 
 from .canonical import _dependency_repository, _git_bridge, build_canonical
 from .core import BuildPaths
+from .json_models import WorkspaceV1, validate_named_record
 from .processes import run_command, start_command
 from .store import atomic_json
 from .v2state import V2Paths
@@ -68,9 +69,9 @@ def _initialize(paths: BuildPaths, v2: V2Paths, workspace: Path, build: dict[str
 def workspace_status(paths: BuildPaths) -> dict[str, Any]:
     workspace = V2Paths.for_build(paths).root / "workspaces" / WORKSPACE_NAME
     if not (workspace / "workspace.json").is_file():
-        return {"schema": "klibgen.workspace-status/1", "schemaVersion": 1, "operation": "v2.workspace.status", "exists": False, "name": WORKSPACE_NAME}
-    value = json.loads((workspace / "workspace.json").read_text(encoding="utf-8"))
-    return {"schema": "klibgen.workspace-status/1", "schemaVersion": 1, "operation": "v2.workspace.status", "exists": True, "workspace": value, "path": str(workspace)}
+        return validate_named_record({"schema": "klibgen.workspace-status/1", "schemaVersion": 1, "operation": "v2.workspace.status", "exists": False, "name": WORKSPACE_NAME})
+    value = WorkspaceV1.model_validate_json((workspace / "workspace.json").read_text(encoding="utf-8")).to_wire()
+    return validate_named_record({"schema": "klibgen.workspace-status/1", "schemaVersion": 1, "operation": "v2.workspace.status", "exists": True, "workspace": value, "path": str(workspace)})
 
 
 def reset_workspace(paths: BuildPaths, confirmed: bool) -> dict[str, Any]:
@@ -81,7 +82,7 @@ def reset_workspace(paths: BuildPaths, confirmed: bool) -> dict[str, Any]:
     with workspace_lock(v2):
         if workspace.exists():
             v2.remove_tree(workspace)
-    return {"schema": "klibgen.workspace-reset/1", "schemaVersion": 1, "operation": "v2.workspace.reset", "name": WORKSPACE_NAME, "removed": True}
+    return validate_named_record({"schema": "klibgen.workspace-reset/1", "schemaVersion": 1, "operation": "v2.workspace.reset", "name": WORKSPACE_NAME, "removed": True})
 
 
 def launch_gui_workspace(paths: BuildPaths, fresh: bool = False) -> int:
@@ -96,7 +97,7 @@ def launch_gui_workspace(paths: BuildPaths, fresh: bool = False) -> int:
         if fresh and workspace.exists():
             v2.remove_tree(workspace)
         initialized = not (workspace / "workspace.json").is_file()
-        record = _initialize(paths, v2, workspace, build) if initialized else json.loads((workspace / "workspace.json").read_text(encoding="utf-8"))
+        record = _initialize(paths, v2, workspace, build) if initialized else WorkspaceV1.model_validate_json((workspace / "workspace.json").read_text(encoding="utf-8")).to_wire()
         if record.get("state") == "active" and not Path(f"/proc/{record.get('pid', -1)}").exists():
             record["state"] = "ready"
             record.pop("pid", None)

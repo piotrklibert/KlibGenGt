@@ -26,32 +26,39 @@ KGSessionBootstrap class >> runFromEnvironment [
 { #category : 'running' }
 KGSessionBootstrap class >> runManifest: manifest [
 	<arg: #manifest type: #(Dictionary<String, Any>)> <return: #Integer>
-	| paths request runner response state completion sessionId |
-	self installManifest: manifest.
-	sessionId := manifest at: 'sessionId'.
-	paths := manifest at: 'paths'.
-	KGAtomicJsonWriter write: (OrderedDictionary new at: 'schema' put: 'klibgen.session-ready/1'; at: 'sessionId' put: sessionId; at: 'ready' put: true; yourself) to: (paths at: 'ready').
-	request := STONJSON fromString: (paths at: 'request') asFileReference contents.
+	| paths request runner response state completion session sessionId |
+	session := self installManifest: manifest.
+	sessionId := session id.
+	paths := session manifest paths.
+	KGAtomicJsonWriter
+		write: (KGSessionReadyV1 fromDictionary: (OrderedDictionary new
+			at: 'schema' put: 'klibgen.session-ready/1';
+			at: 'sessionId' put: sessionId;
+			at: 'ready' put: true;
+			yourself))
+		to: paths ready.
+	request := STONJSON fromString: paths request asFileReference contents.
 	runner := Smalltalk at: #KGToolRunner.
 	response := runner new run: request.
-	KGAtomicJsonWriter write: response to: (paths at: 'result').
+	KGAtomicJsonWriter write: response to: paths result.
 	state := (response at: 'ok') ifTrue: [ 'succeeded' ] ifFalse: [ 'failed' ].
-	completion := OrderedDictionary new at: 'schema' put: 'klibgen.session-completion/1'; at: 'sessionId' put: sessionId; at: 'state' put: state; at: 'ok' put: (response at: 'ok'); yourself.
-	KGAtomicJsonWriter write: completion to: (paths at: 'completion').
+	completion := KGSessionCompletionV1 fromDictionary: (OrderedDictionary new at: 'schema' put: 'klibgen.session-completion/1'; at: 'sessionId' put: sessionId; at: 'state' put: state; at: 'ok' put: (response at: 'ok'); yourself).
+	KGAtomicJsonWriter write: completion to: paths completion.
 	^ (response at: 'ok') ifTrue: [ 0 ] ifFalse: [ 1 ]
 ]
 
 { #category : 'installation' }
 KGSessionBootstrap class >> installManifest: manifest [
 	<arg: #manifest type: #(Dictionary<String, Any>)> <return: #KGSession>
-	| preset source persistence |
-	(manifest at: 'schema' ifAbsent: [ '' ]) = 'klibgen.session/1' ifFalse: [ self error: 'Unsupported session manifest schema' ].
-	KGBuildProvenance verifyProjectKey: (manifest at: 'projectKey').
-	preset := manifest at: 'preset'.
-	source := self sourceChangesNamed: (preset at: 'sourceChanges').
-	persistence := self persistenceNamed: (preset at: 'persistence').
+	| typedManifest preset source persistence |
+	typedManifest := KGJsonModelRegistry parseDictionary: manifest.
+	(typedManifest isKindOf: KGSessionV1) ifFalse: [ self error: 'Unsupported session manifest schema' ].
+	KGBuildProvenance verifyProjectKey: typedManifest projectKey.
+	preset := typedManifest preset.
+	source := self sourceChangesNamed: preset sourceChanges.
+	persistence := self persistenceNamed: preset persistence.
 	KGSession reset.
-	^ KGSession installManifest: manifest sourceChanges: source persistence: persistence
+	^ KGSession installManifest: typedManifest sourceChanges: source persistence: persistence
 ]
 
 { #category : 'private - capabilities' }

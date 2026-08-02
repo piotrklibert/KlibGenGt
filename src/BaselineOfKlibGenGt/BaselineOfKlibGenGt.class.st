@@ -29,10 +29,11 @@ BaselineOfKlibGenGt >> baseline: spec [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Environment' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
+            package: 'KlibGenGt-JsonModels';
             package: 'KlibGenGt-Kotlin' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Session' with: [
-                spec requires: #( 'KlibGenGt-BuildSupport' ) ];
+                spec requires: #( 'KlibGenGt-BuildSupport' 'KlibGenGt-JsonModels' ) ];
             package: 'KlibGenGt-Tools' with: [
                 spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-Session' ) ];
             package: 'KlibGenGt-Tests' with: [
@@ -44,12 +45,13 @@ BaselineOfKlibGenGt >> baseline: spec [
             group: 'DB' with: #( 'KlibGenGt-DB' );
             group: 'Examples' with: #( 'KlibGenGt-Examples' );
             group: 'Environment' with: #( 'KlibGenGt-Environment' );
+            group: 'JsonModels' with: #( 'KlibGenGt-JsonModels' );
             group: 'Kotlin' with: #( 'KlibGenGt-Kotlin' );
             group: 'Session' with: #( 'KlibGenGt-Session' );
             group: 'Tools' with: #( 'KlibGenGt-Tools' );
             group: 'Tests' with: #( 'KlibGenGt-Tests' );
             group: 'default' with: #( 'Core' 'DB' 'Examples' 'Tools' );
-            group: 'dev' with: #( 'BuildSupport' 'Core' 'DB' 'Examples' 'Environment' 'Kotlin' 'Session' 'Tools' 'Tests' );
+            group: 'dev' with: #( 'BuildSupport' 'Core' 'DB' 'Examples' 'Environment' 'JsonModels' 'Kotlin' 'Session' 'Tools' 'Tests' );
             group: 'CI' with: #( 'dev' ) ]
 ]
 

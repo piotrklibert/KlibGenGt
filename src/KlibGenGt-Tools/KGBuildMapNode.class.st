@@ -1,7 +1,7 @@
 "A typed node in a host-generated build inventory.
 
 - Slots
-  - `record` (`#(Dictionary<String, Any>)`, `accessing`) - Versioned JSON-compatible node data produced by the host collector.
+  - `record` (`#KGJsonInventoryNodeRecord`, `accessing`) - Typed node data produced by the host collector.
   - `buildMap` (`#KGBuildMap`, `accessing`) - Owning map used to resolve relationships.
 - Public API
   - {{gtMethod:KGBuildMapNode class>>#from:in:}}
@@ -28,7 +28,7 @@ Class {
 
 { #category : 'instance creation' }
 KGBuildMapNode class >> from: aRecord in: aBuildMap [
-	<arg: #aRecord type: #(Dictionary<String, Any>)>
+	<arg: #aRecord type: #KGJsonInventoryNodeRecord>
 	<arg: #aBuildMap type: #KGBuildMap>
 	<return: #KGBuildMapNode>
 	^ self new
@@ -40,7 +40,7 @@ KGBuildMapNode class >> from: aRecord in: aBuildMap [
 { #category : 'accessing' }
 KGBuildMapNode >> allocatedBytes [
 	<return: #Integer>
-	^ record at: 'allocatedBytes' ifAbsent: [ 0 ]
+	^ record allocatedBytes
 ]
 
 { #category : 'accessing' }
@@ -53,25 +53,25 @@ KGBuildMapNode >> buildMap: aBuildMap [
 { #category : 'accessing' }
 KGBuildMapNode >> id [
 	<return: #String>
-	^ record at: 'id'
+	^ record id
 ]
 
 { #category : 'accessing' }
 KGBuildMapNode >> kind [
 	<return: #String>
-	^ record at: 'kind'
+	^ record kind
 ]
 
 { #category : 'accessing' }
 KGBuildMapNode >> label [
 	<return: #String>
-	^ record at: 'label'
+	^ record label
 ]
 
 { #category : 'accessing' }
 KGBuildMapNode >> logicalBytes [
 	<return: #Integer>
-	^ record at: 'logicalBytes' ifAbsent: [ 0 ]
+	^ record logicalBytes
 ]
 
 { #category : 'printing' }
@@ -89,28 +89,28 @@ KGBuildMapNode >> printOn: aStream [
 
 { #category : 'accessing' }
 KGBuildMapNode >> record [
-	<return: #(Dictionary<String, Any>)>
+	<return: #KGJsonInventoryNodeRecord>
 	^ record
 ]
 
 { #category : 'accessing' }
 KGBuildMapNode >> record: aRecord [
-	<arg: #aRecord type: #(Dictionary<String, Any>)>
+	<arg: #aRecord type: #KGJsonInventoryNodeRecord>
 	<return: #KGBuildMapNode>
 	record := aRecord
 ]
 
 { #category : 'accessing' }
 KGBuildMapNode >> relationships [
-	<return: #(OrderedCollection<(Dictionary<String, Any>)>)>
+	<return: #(Array<KGJsonInventoryEdgeRecord>)>
 	^ buildMap edges select: [ :each |
-		(each at: 'source') = self id or: [ (each at: 'target') = self id ] ]
+		each source = self id or: [ each target = self id ] ]
 ]
 
 { #category : 'accessing' }
 KGBuildMapNode >> status [
 	<return: #String>
-	^ record at: 'status'
+	^ record status
 ]
 
 { #category : 'views' }
@@ -121,7 +121,7 @@ KGBuildMapNode >> gtCharacteristicsFor: aView [
 	^ aView textEditor
 		title: 'Characteristics';
 		priority: 20;
-		text: [ STONJSON toStringPretty: (record at: 'characteristics') ]
+		text: [ STONJSON toStringPretty: record characteristics ]
 ]
 
 { #category : 'views' }
@@ -132,7 +132,7 @@ KGBuildMapNode >> gtComponentsFor: aView [
 	^ aView columnedList
 		title: 'Components';
 		priority: 10;
-		items: [ record at: 'components' ifAbsent: [ #() ] ];
+		items: [ record asDictionary at: 'components' ifAbsent: [ #() ] ];
 		column: 'Name' text: [ :each | each at: 'name' ];
 		column: 'Logical' text: [ :each | buildMap humanBytes: (each at: 'logicalBytes') ];
 		column: 'Allocated' text: [ :each | buildMap humanBytes: (each at: 'allocatedBytes') ];
@@ -149,9 +149,9 @@ KGBuildMapNode >> gtRelationshipsFor: aView [
 		title: 'Relationships';
 		priority: 15;
 		items: [ self relationships ];
-		column: 'Kind' text: [ :each | each at: 'kind' ];
-		column: 'From' text: [ :each | each at: 'source' ];
-		column: 'To' text: [ :each | each at: 'target' ]
+		column: 'Kind' text: #kind;
+		column: 'From' text: #source;
+		column: 'To' text: #target
 ]
 
 { #category : 'views' }
@@ -167,8 +167,8 @@ KGBuildMapNode >> gtSummaryFor: aView [
 			'Status' -> self status.
 			'Logical size' -> (buildMap humanBytes: self logicalBytes).
 			'Allocated size' -> (buildMap humanBytes: self allocatedBytes).
-			'Files' -> (record at: 'fileCount' ifAbsent: [ 0 ]).
-			'Path' -> (record at: 'path' ifAbsent: [ '' ]) } ];
+			'Files' -> record fileCount.
+			'Path' -> (record path ifNil: [ '' ]) } ];
 		column: 'Characteristic' text: #key;
 		column: 'Value' text: [ :each | each value asString ]
 ]

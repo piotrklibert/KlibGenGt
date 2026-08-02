@@ -151,7 +151,13 @@ lepiter-export uid:
 profile command:
     uv run klibgen-build host profile -- sh -c {{quote(command)}}
 
-test-build-tools:
+test-build-tools: check-json-models
     uv run python -m unittest discover -s build/tests -v
+
+generate-json-models:
+    uv run klibgen-build models export-tonel
+
+check-json-models:
+    uv run klibgen-build models export-tonel --check
 
 check: test-build-tools doctor check-type-pragmas test

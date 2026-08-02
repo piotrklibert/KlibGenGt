@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+from .json_models import validate_named_record
+
 
 TRACKED_SUFFIXES = {".image", ".changes", ".so", ".dylib", ".dll"}
 
@@ -34,7 +36,7 @@ def measure(operation: str, state_root: Path, action: Callable[[], int]) -> dict
     exit_code = action()
     elapsed = time.monotonic() - started
     after = storage_metrics(state_root)
-    return {
+    return validate_named_record({
         "schema": "klibgen.measurement/1",
         "schemaVersion": 1,
         "operation": operation,
@@ -44,7 +46,7 @@ def measure(operation: str, state_root: Path, action: Callable[[], int]) -> dict
         "after": after,
         "logicalByteDelta": after["logicalBytes"] - before["logicalBytes"],
         "allocatedByteDelta": after["allocatedBytes"] - before["allocatedBytes"],
-    }
+    })
 
 
 __all__ = ["measure", "storage_metrics"]

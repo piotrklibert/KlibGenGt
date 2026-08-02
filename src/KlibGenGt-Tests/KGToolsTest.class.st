@@ -19,10 +19,13 @@ KGToolsTest >> setUp [
 	super setUp.
 	root := FileLocator workingDirectory / 'tmp' / 'test-run'.
 	KGSession reset; installManifest: (Dictionary new
+		at: 'schema' put: 'klibgen.session/1';
+		at: 'schemaVersion' put: 1;
 		at: 'sessionId' put: 'tools-test';
-		at: 'preset' put: (Dictionary new at: 'startMode' put: 'fresh'; yourself);
+		at: 'projectKey' put: 'test-project';
+		at: 'preset' put: (Dictionary new at: 'name' put: 'gui'; at: 'frontend' put: 'gui'; at: 'sourceChanges' put: 'disabled'; at: 'persistence' put: 'discard'; at: 'startMode' put: 'fresh'; yourself);
 		at: 'inputs' put: (Dictionary new at: 'sourceGit' put: (root / 'export/.git') fullName; yourself);
-		at: 'paths' put: (Dictionary new at: 'eventJournal' put: (root / 'events.jsonl') fullName; yourself);
+		at: 'paths' put: (Dictionary new at: 'completion' put: (root / 'completion.json') fullName; at: 'eventJournal' put: (root / 'events.jsonl') fullName; yourself);
 		yourself)
 		sourceChanges: KGDisabledSourceChanges new
 		persistence: KGDiscardPersistence new
@@ -40,6 +43,7 @@ KGToolsTest >> buildMapFixture [
 	^ KGBuildMap fromDictionary: (Dictionary new
 		at: 'schema' put: 'klibgen.inventory/2';
 		at: 'schemaVersion' put: 2;
+		at: 'operation' put: 'inventory';
 		at: 'generatedAt' put: '2026-08-01T00:00:00Z';
 		at: 'nodes' put: {
 			Dictionary new
@@ -93,6 +97,18 @@ KGToolsTest >> buildMapFixture [
 				at: 'target' put: 'artifact:one';
 				at: 'characteristics' put: Dictionary new;
 				yourself };
+		at: 'warnings' put: #();
+		at: 'stateRoot' put: '/tmp/state';
+		at: 'recipes' put: #();
+		at: 'targets' put: #();
+		at: 'artifacts' put: #();
+		at: 'references' put: #();
+		at: 'workspaces' put: #();
+		at: 'stagingAreas' put: #();
+		at: 'activeSessions' put: #();
+		at: 'statuses' put: #();
+		at: 'locks' put: #();
+		at: 'storage' put: (Dictionary new at: 'logicalBytes' put: 110; at: 'allocatedBytes' put: 12288; at: 'fileCount' put: 3; yourself);
 		yourself)
 ]
 

@@ -5,7 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from .core import BuildPaths
+from .json_models import parse_named_record, validate_named_record, validation_message
 from .recipes import DEFAULT_RECIPES, DEFAULT_TARGETS
 from .resolution import resolve_target
 from .store import ArtifactStore
@@ -30,8 +33,11 @@ def _records(root: Path, pattern: str) -> list[dict[str, Any]]:
     values = []
     for path in sorted(root.glob(pattern)) if root.is_dir() else ():
         try:
-            values.append(json.loads(path.read_text(encoding="utf-8")) | {"path": str(path.parent), "storage": _size(path.parent)})
-        except (OSError, json.JSONDecodeError) as error:
+            record = json.loads(path.read_text(encoding="utf-8")) | {"path": str(path.parent), "storage": _size(path.parent)}
+            values.append(parse_named_record(record).to_wire())
+        except (OSError, json.JSONDecodeError, ValueError, ValidationError) as error:
+            if isinstance(error, ValidationError):
+                error = ValueError(validation_message(error))
             values.append({"path": str(path), "malformed": True, "error": str(error)})
     return values
 
@@ -86,7 +92,7 @@ def inventory(paths: BuildPaths) -> dict[str, Any]:
             node_id = f"{kind}:{record['name']}"
             nodes.append({"id": node_id, "kind": kind, "label": record["name"], "status": record["state"], "path": record["path"], "characteristics": record, **record["storage"]})
             edges.append({"id": f"edge:{node_id}", "kind": f"{kind}-artifact", "source": node_id, "target": f"artifact:{record['projectKey']}", "characteristics": {}})
-    return {
+    return validate_named_record({
         "schema": "klibgen.inventory/2", "schemaVersion": 2, "operation": "inventory",
         "generatedAt": datetime.now(timezone.utc).isoformat(), "nodes": nodes, "edges": edges, "warnings": [],
         "stateRoot": str(v2.root), "recipes": recipes, "targets": targets,
@@ -98,7 +104,7 @@ def inventory(paths: BuildPaths) -> dict[str, Any]:
         "statuses": _records(v2.root / "status", "*.json"),
         "locks": [str(path) for path in sorted((v2.root / "locks").rglob("*.lock"))],
         "storage": _size(v2.root),
-    }
+    })
 
 
 def _root_keys(v2: V2Paths) -> tuple[set[str], list[str]]:
@@ -161,12 +167,12 @@ def garbage_collect(paths: BuildPaths, apply: bool = False) -> dict[str, Any]:
     if apply and not warnings:
         for path in unique:
             v2.remove_tree(path)
-    return {
+    return validate_named_record({
         "schema": "klibgen.gc-plan/1", "schemaVersion": 1, "operation": "gc",
         "mode": "apply" if apply else "dry-run", "roots": sorted(roots),
         "remove": [{"path": str(path), "storage": _size(path)} for path in unique],
         "warnings": warnings, "applied": bool(apply and not warnings),
-    }
+    })
 
 
 __all__ = ["garbage_collect", "inventory"]

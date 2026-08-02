@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping
 
 from .core import BuildPaths, digest_json, read_json
+from .json_models import SourceLockV1, validate_named_record
 from .processes import run_command
 from .recipes import DEFAULT_TARGETS, Recipe, Target, json_value
 
@@ -17,6 +18,10 @@ SOURCE_LOCK_SCHEMA = "klibgen.source-lock/1"
 
 
 def validate_lock(value: dict[str, Any]) -> None:
+    try:
+        SourceLockV1.model_validate(value)
+    except ValueError as error:
+        raise ValueError(f"lock must use {SOURCE_LOCK_SCHEMA} with schemaVersion 1 and a sources array") from error
     if value.get("schema") != SOURCE_LOCK_SCHEMA or value.get("schemaVersion") != 1 or not isinstance(value.get("sources"), list):
         raise ValueError(f"lock must use {SOURCE_LOCK_SCHEMA} with schemaVersion 1 and a sources array")
     for source in value["sources"]:
@@ -198,7 +203,7 @@ def resolve_recipe(paths: BuildPaths, target: Target, recipe: Recipe | None = No
             "origin": step.origin,
         })
         parent_key = output_key
-    return {
+    return validate_named_record({
         "schema": RESOLVED_RECIPE_SCHEMA,
         "schemaVersion": 1,
         "operation": "v2.recipe.resolve",
@@ -207,7 +212,7 @@ def resolve_recipe(paths: BuildPaths, target: Target, recipe: Recipe | None = No
         "preset": target.preset.as_dict(),
         "steps": steps,
         "outputKey": parent_key,
-    }
+    })
 
 
 def resolve_target(paths: BuildPaths, name: str, through: str | None = None) -> dict[str, Any]:
@@ -222,7 +227,7 @@ def resolve_target(paths: BuildPaths, name: str, through: str | None = None) -> 
 
 
 def recipe_catalog() -> dict[str, Any]:
-    return {
+    return validate_named_record({
         "schema": "klibgen.recipe-catalog/1",
         "schemaVersion": 1,
         "operation": "v2.recipe.list",
@@ -235,7 +240,7 @@ def recipe_catalog() -> dict[str, Any]:
             }
             for target in sorted(DEFAULT_TARGETS.values(), key=lambda item: item.name)
         ],
-    }
+    })
 
 
 __all__ = [

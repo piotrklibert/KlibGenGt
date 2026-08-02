@@ -45,7 +45,7 @@ KGGuiSessionHooks class >> appendEventRecord: record [
 	| output eventPath stream |
 	output := STONJSON toString: record.
 	Stdio stdout nextPutAll: 'KLIBGEN_GUI_EVENT '; nextPutAll: output; lf; flush.
-	eventPath := (KGSession current manifest at: 'paths') at: 'eventJournal' ifAbsent: [ ^ self ].
+	eventPath := KGSession current manifest paths eventJournal ifNil: [ ^ self ].
 	eventPath asFileReference parent ensureCreateDirectory.
 	eventPath asFileReference ensureCreateFile.
 	stream := eventPath asFileReference binaryWriteStream.
@@ -61,7 +61,7 @@ KGGuiSessionHooks class >> emitEvent: eventName [
 		at: 'schemaVersion' put: 1;
 		at: 'event' put: eventName;
 		at: 'sessionId' put: KGSession current id;
-		at: 'startMode' put: ((KGSession current manifest at: 'preset') at: 'startMode' ifAbsent: [ 'unknown' ]);
+		at: 'startMode' put: (KGSession current manifest preset startMode ifNil: [ 'unknown' ]);
 		yourself)
 ]
 
@@ -73,7 +73,7 @@ KGGuiSessionHooks class >> emitIcebergCommittedForRepositoryPath: repositoryPath
 		at: 'schemaVersion' put: 1;
 		at: 'event' put: 'iceberg-committed';
 		at: 'sessionId' put: KGSession current id;
-		at: 'startMode' put: ((KGSession current manifest at: 'preset') at: 'startMode' ifAbsent: [ 'unknown' ]);
+		at: 'startMode' put: (KGSession current manifest preset startMode ifNil: [ 'unknown' ]);
 		at: 'repositoryPath' put: repositoryPath asFileReference fullName;
 		yourself)
 ]
@@ -119,7 +119,7 @@ KGGuiSessionHooks class >> handlesRepositoryPath: repositoryPath [
 	<arg: #repositoryPath type: #String>
 	<return: #Boolean>
 	| gitPath |
-	gitPath := ((KGSession current manifest at: 'inputs') at: 'sourceGit' ifAbsent: [ ^ false ]).
+	gitPath := (KGSession current manifest inputs at: 'sourceGit' ifAbsent: [ ^ false ]).
 	^ repositoryPath asFileReference fullName
 		= gitPath asFileReference parent fullName
 ]
@@ -157,7 +157,7 @@ KGGuiSessionHooks class >> noteRestorableState [
 KGGuiSessionHooks class >> rebindRepository [
 	<return: #KGGuiSessionHooks>
 	| gitDirectory repository |
-	gitDirectory := (((KGSession current manifest at: 'inputs') at: 'sourceGit') asFileReference) parent.
+	gitDirectory := ((KGSession current manifest inputs at: 'sourceGit') asFileReference) parent.
 	repository := IceRepository registry
 		detect: [ :each | [ each location basename = 'export' ] on: Error do: [ false ] ]
 		ifNone: [ nil ].
@@ -225,7 +225,7 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 	DidOpen := true.
 	HasRestorableState := false.
 	self rebindRepository; install.
-	mode := (KGSession current manifest at: 'preset') at: 'startMode' ifAbsent: [ 'fresh' ].
+	mode := KGSession current manifest preset startMode ifNil: [ 'fresh' ].
 	world := mode = 'fresh'
 		ifTrue: [
 			staleWorld := GtWorld defaultWorld.

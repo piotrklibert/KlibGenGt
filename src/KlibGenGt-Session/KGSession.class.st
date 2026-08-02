@@ -2,7 +2,7 @@
 Represent immutable launch-time state and installed capabilities for one process.
 
 - Slots
-  - `manifest` (`#(Dictionary<String, Any>)`, `provenance`) - Validated `klibgen.session/1` manifest.
+  - `manifest` (`#KGSessionV1`, `provenance`) - Validated `klibgen.session/1` manifest.
   - `sourceChanges` (`#Any`, `capabilities`) - Sole source mutation capability.
   - `persistence` (`#Any`, `capabilities`) - Sole image persistence capability.
   - `Current` (`#(KGSession?)`, class state, `installation`) - Process-global installed session.
@@ -32,14 +32,14 @@ Class {
 }
 
 { #category : 'installation' }
-KGSession class >> installManifest: aDictionary sourceChanges: aSourceCapability persistence: aPersistenceCapability [
-	<arg: #aDictionary type: #(Dictionary<String, Any>)>
+KGSession class >> installManifest: aManifest sourceChanges: aSourceCapability persistence: aPersistenceCapability [
+	<arg: #aManifest type: #(KGSessionV1 | Dictionary<String, Any>)>
 	<arg: #aSourceCapability type: #Any>
 	<arg: #aPersistenceCapability type: #Any>
 	<return: #KGSession>
 	Current ifNotNil: [ self error: 'A session is already installed' ].
 	Current := self new
-		initializeManifest: aDictionary
+		initializeManifest: aManifest
 		sourceChanges: aSourceCapability
 		persistence: aPersistenceCapability.
 	^ Current
@@ -60,12 +60,14 @@ KGSession class >> reset [
 ]
 
 { #category : 'initialization' }
-KGSession >> initializeManifest: aDictionary sourceChanges: aSourceCapability persistence: aPersistenceCapability [
-	<arg: #aDictionary type: #(Dictionary<String, Any>)>
+KGSession >> initializeManifest: aManifest sourceChanges: aSourceCapability persistence: aPersistenceCapability [
+	<arg: #aManifest type: #(KGSessionV1 | Dictionary<String, Any>)>
 	<arg: #aSourceCapability type: #Any>
 	<arg: #aPersistenceCapability type: #Any>
 	<return: #KGSession>
-	manifest := aDictionary copy.
+	manifest := (aManifest isKindOf: KGSessionV1)
+		ifTrue: [ aManifest ]
+		ifFalse: [ KGSessionV1 fromDictionary: aManifest ].
 	sourceChanges := aSourceCapability.
 	persistence := aPersistenceCapability.
 	^ self
@@ -74,13 +76,13 @@ KGSession >> initializeManifest: aDictionary sourceChanges: aSourceCapability pe
 { #category : 'accessing' }
 KGSession >> id [
 	<return: #String>
-	^ manifest at: 'sessionId'
+	^ manifest sessionId
 ]
 
 { #category : 'accessing' }
 KGSession >> manifest [
-	<return: #(Dictionary<String, Any>)>
-	^ manifest copy
+	<return: #KGSessionV1>
+	^ manifest
 ]
 
 { #category : 'accessing' }

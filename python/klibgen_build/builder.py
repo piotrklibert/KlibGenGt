@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .core import BuildPaths
+from .json_models import validate_named_record
 from .processes import run_command
 from .store import ArtifactStore, atomic_json
 
@@ -66,7 +67,7 @@ def build_resolved(paths: BuildPaths, resolved: dict[str, Any], executor: StepEx
                 shutil.rmtree(workspace, ignore_errors=True)
                 atomic_json(status_path, {"schema": "klibgen.build-status/1", "state": "failed", "outputKey": step["outputKey"], "error": {"class": type(error).__name__, "message": str(error)}, "failedAt": time.time(), "diagnosticPath": str(diagnostic)})
                 raise
-    return {"schema": "klibgen.build-result/1", "schemaVersion": 1, "operation": "v2.build", "target": resolved["target"], "outputKey": resolved["outputKey"], "artifacts": published}
+    return validate_named_record({"schema": "klibgen.build-result/1", "schemaVersion": 1, "operation": "v2.build", "target": resolved["target"], "outputKey": resolved["outputKey"], "artifacts": published})
 
 
 __all__ = ["StepExecutor", "build_resolved"]

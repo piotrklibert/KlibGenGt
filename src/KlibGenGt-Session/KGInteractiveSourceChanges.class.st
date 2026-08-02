@@ -45,7 +45,7 @@ KGInteractiveSourceChanges >> ensureGitIdentityFor: repository [
 KGInteractiveSourceChanges >> repository [
 	<return: #IceRepository>
 	| gitPath location |
-	gitPath := ((KGSession current manifest at: 'inputs') at: 'sourceGit') asFileReference.
+	gitPath := (KGSession current manifest inputs at: 'sourceGit') asFileReference.
 	location := gitPath parent fullName.
 	^ IceRepository registry detect: [ :each | [ each location fullName = location ] on: Error do: [ false ] ] ifNone: [ self error: 'The session source repository is not registered in Iceberg' ]
 ]

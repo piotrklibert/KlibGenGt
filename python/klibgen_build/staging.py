@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .core import BuildPaths
+from .json_models import StagingV1, validate_named_record
 from .processes import run_command
 from .resolution import resolve_target
 from .store import atomic_json
@@ -53,7 +54,7 @@ def _record(area: Path) -> dict[str, Any]:
     manifest = area / "staging.json"
     if not manifest.is_file():
         raise ValueError(f"unknown staging area {area.name!r}")
-    return json.loads(manifest.read_text(encoding="utf-8"))
+    return StagingV1.model_validate_json(manifest.read_text(encoding="utf-8")).to_wire()
 
 
 def create_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
@@ -82,7 +83,7 @@ def create_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
             "sourceGit": str(area / "overlay/.git"), "promotion": None,
         }
         atomic_json(area / "staging.json", value)
-    return {"schema": "klibgen.staging-result/1", "schemaVersion": 1, "operation": "staging.create", "staging": value, "path": str(area)}
+    return validate_named_record({"schema": "klibgen.staging-result/1", "schemaVersion": 1, "operation": "staging.create", "staging": value, "path": str(area)})
 
 
 def staging_changes(paths: BuildPaths, name: str) -> dict[str, Any]:
@@ -111,7 +112,7 @@ def list_staging(paths: BuildPaths) -> dict[str, Any]:
         for manifest in sorted((v2.root / "staging").glob("*/staging.json")):
             value = json.loads(manifest.read_text(encoding="utf-8"))
             values.append(value | {"path": str(manifest.parent), "changes": staging_changes(paths, value["name"])})
-    return {"schema": "klibgen.staging-list/1", "schemaVersion": 1, "operation": "staging.list", "stagingAreas": values}
+    return validate_named_record({"schema": "klibgen.staging-list/1", "schemaVersion": 1, "operation": "staging.list", "stagingAreas": values})
 
 
 def reset_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
@@ -156,7 +157,7 @@ def promote_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
         record["state"] = "promoted"
         record["promotion"] = {"ok": True, "changes": changes}
         atomic_json(area / "staging.json", record)
-    return {"schema": "klibgen.staging-result/1", "schemaVersion": 1, "operation": "staging.promote", "staging": record, "changes": changes, "path": str(area)}
+    return validate_named_record({"schema": "klibgen.staging-result/1", "schemaVersion": 1, "operation": "staging.promote", "staging": record, "changes": changes, "path": str(area)})
 
 
 __all__ = ["create_staging", "list_staging", "promote_staging", "reset_staging", "staging_changes", "validate_staging_name"]

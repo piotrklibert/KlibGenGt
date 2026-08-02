@@ -5,20 +5,21 @@ Write one JSON-compatible record through a same-directory temporary file.
   - none
 - Public API
   - {{gtMethod:KGAtomicJsonWriter class>>#write:to:}}
-    Atomically replace the target with one STON-JSON record.
+    Atomically replace the target with one dictionary or generated JSON record.
 "
 Class { #name : 'KGAtomicJsonWriter', #superclass : 'Object', #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }
 
 { #category : 'writing' }
-KGAtomicJsonWriter class >> write: aDictionary to: aPath [
-	<arg: #aDictionary type: #(Dictionary<String, Any>)>
+KGAtomicJsonWriter class >> write: aRecord to: aPath [
+	<arg: #aRecord type: #(KGJsonRecord | Dictionary<String, Any>)>
 	<arg: #aPath type: #(FileReference | String)>
 	<return: #FileReference>
-	| target temporary |
+	| target temporary dictionary |
+	dictionary := (aRecord isKindOf: KGJsonRecord) ifTrue: [ aRecord asDictionary ] ifFalse: [ aRecord ].
 	target := aPath asFileReference.
 	target parent ensureCreateDirectory.
 	temporary := target parent / ('.', target basename, '.', UUID new asString, '.tmp').
-	temporary writeStreamDo: [ :stream | stream nextPutAll: (STONJSON toString: aDictionary); lf ].
+	temporary writeStreamDo: [ :stream | stream nextPutAll: (STONJSON toString: dictionary); lf ].
 	target ensureDelete.
 	temporary moveTo: target.
 	^ target

@@ -1,7 +1,7 @@
 "A read-only graph of recipes, resolved steps, artifacts, references, workspaces, and staging areas.
 
 - Slots
-  - `inventory` (`#(Dictionary<String, Any>)`, `accessing`) - Host `klibgen.inventory/2` record.
+  - `inventory` (`#KGInventoryV2`, `accessing`) - Typed host `klibgen.inventory/2` record.
   - `nodesById` (`#(Dictionary<String, KGBuildMapNode>)`, `accessing`) - Stable node lookup.
   - `kindFilter` (`#(String?)`, `filtering`) - Optional entity-kind filter.
   - `statusFilter` (`#(String?)`, `filtering`) - Optional state filter.
@@ -10,6 +10,8 @@
     Load a versioned inventory from JSON.
   - {{gtMethod:KGBuildMap class>>#fromDictionary:}}
     Create a map from decoded inventory.
+  - {{gtMethod:KGBuildMap class>>#fromInventory:}}
+    Create a map from a validated typed inventory.
   - {{gtMethod:KGBuildMap>>#overviewMondrian}}
     Build the storage overview.
   - {{gtMethod:KGBuildMap>>#graphMondrian}}
@@ -20,30 +22,32 @@
 Class { #name : 'KGBuildMap', #superclass : 'Object', #instVars : [ 'inventory', 'nodesById', 'kindFilter', 'statusFilter' ], #category : 'KlibGenGt-Tools', #package : 'KlibGenGt-Tools' }
 
 { #category : 'instance creation' }
-KGBuildMap class >> fromDictionary: aDictionary [ <arg: #aDictionary type: #(Dictionary<String, Any>)> <return: #KGBuildMap> ^ self new initializeFromDictionary: aDictionary ]
+KGBuildMap class >> fromDictionary: aDictionary [ <arg: #aDictionary type: #(Dictionary<String, Any>)> <return: #KGBuildMap> ^ self fromInventory: (KGInventoryV2 fromDictionary: aDictionary) ]
 
 { #category : 'instance creation' }
-KGBuildMap class >> fromFile: aFileReference [ <arg: #aFileReference type: #(FileReference | String)> <return: #KGBuildMap> ^ self fromDictionary: (STONJSON fromString: aFileReference asFileReference contents) ]
+KGBuildMap class >> fromInventory: anInventory [ <arg: #anInventory type: #KGInventoryV2> <return: #KGBuildMap> ^ self new initializeFromInventory: anInventory ]
+
+{ #category : 'instance creation' }
+KGBuildMap class >> fromFile: aFileReference [ <arg: #aFileReference type: #(FileReference | String)> <return: #KGBuildMap> ^ self fromInventory: (KGInventoryV2 fromJson: aFileReference asFileReference contents) ]
 
 { #category : 'initialization' }
-KGBuildMap >> initializeFromDictionary: aDictionary [
-	<arg: #aDictionary type: #(Dictionary<String, Any>)> <return: #KGBuildMap>
-	(aDictionary at: 'schema' ifAbsent: [ '' ]) = 'klibgen.inventory/2' ifFalse: [ self error: 'unsupported build map schema' ].
-	inventory := aDictionary. nodesById := Dictionary new.
-	(aDictionary at: 'nodes') do: [ :record | | node | node := KGBuildMapNode from: record in: self. nodesById at: node id put: node ]. ^ self
+KGBuildMap >> initializeFromInventory: anInventory [
+	<arg: #anInventory type: #KGInventoryV2> <return: #KGBuildMap>
+	inventory := anInventory. nodesById := Dictionary new.
+	anInventory nodes do: [ :record | | node | node := KGBuildMapNode from: record in: self. nodesById at: node id put: node ]. ^ self
 ]
 
 { #category : 'accessing' }
-KGBuildMap >> inventory [ <return: #(Dictionary<String, Any>)> ^ inventory ]
+KGBuildMap >> inventory [ <return: #KGInventoryV2> ^ inventory ]
 
 { #category : 'accessing' }
-KGBuildMap >> generatedAt [ <return: #String> ^ inventory at: 'generatedAt' ]
+KGBuildMap >> generatedAt [ <return: #String> ^ inventory generatedAt ]
 
 { #category : 'accessing' }
 KGBuildMap >> nodes [ <return: #(Array<KGBuildMapNode>)> ^ nodesById values asArray sorted: [ :a :b | a id < b id ] ]
 
 { #category : 'accessing' }
-KGBuildMap >> edges [ <return: #(OrderedCollection<(Dictionary<String, Any>)>)> ^ inventory at: 'edges' ]
+KGBuildMap >> edges [ <return: #(Array<KGJsonInventoryEdgeRecord>)> ^ inventory edges ]
 
 { #category : 'accessing' }
 KGBuildMap >> nodeAt: nodeId [ <arg: #nodeId type: #String> <return: #(KGBuildMapNode?)> ^ nodesById at: nodeId ifAbsent: [ nil ] ]
@@ -51,7 +55,7 @@ KGBuildMap >> nodeAt: nodeId [ <arg: #nodeId type: #String> <return: #(KGBuildMa
 { #category : 'filtering' }
 KGBuildMap >> filteredByKind: aKind status: aStatus [
 	<arg: #aKind type: #(String?)> <arg: #aStatus type: #(String?)> <return: #KGBuildMap>
-	^ (self class fromDictionary: inventory) kindFilter: aKind; statusFilter: aStatus; yourself
+	^ (self class fromInventory: inventory) kindFilter: aKind; statusFilter: aStatus; yourself
 ]
 
 { #category : 'filtering' }
@@ -120,7 +124,7 @@ KGBuildMap >> highlightedNodeBorder [ <return: #BlBorder> ^ BlBorder paint: (Col
 { #category : 'private - visualization' }
 KGBuildMap >> targetsFrom: node [
 	<arg: #node type: #KGBuildMapNode> <return: #(OrderedCollection<KGBuildMapNode>)>
-	^ ((self edges select: [ :edge | (edge at: 'source') = node id ]) collect: [ :edge | self nodeAt: (edge at: 'target') ]) reject: #isNil
+	^ ((self edges select: [ :edge | edge source = node id ]) collect: [ :edge | self nodeAt: edge target ]) reject: #isNil
 ]
 
 { #category : 'visualization' }
