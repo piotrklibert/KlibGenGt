@@ -206,6 +206,14 @@ and launches the GUI sibling of the CLI runtime. The host's
 config/data, the complete image bundle, bridge dirty state, and logs persist;
 cache and tmp do not.
 
+`KGGuiSessionHooks` also owns GUI shutdown behavior. An unchanged start world
+can quit directly. Once the world contains restorable tool state, closing it
+with Alt+F4 and choosing Quit from the tools menu both show the same prompt:
+save and quit, quit without saving, or cancel. The native close is handled by
+a project-owned Bloc close-request policy for the managed world, so
+unrelated hidden spaces cannot bypass the prompt. This keeps automatic snapshot
+publication tied to an actual image save.
+
 Saving and quitting automatically publishes an immutable schema-v2 L06-tmp
 snapshot, verifies its component hashes, removes the source run, and advances
 the context's current pointer. A later `just gui` directly copies and launches

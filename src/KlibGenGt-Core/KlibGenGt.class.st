@@ -44,7 +44,9 @@ KlibGenGt package map:
   - {{gtClass:KGKotlinGrammar}} - PetitParser2 entry grammar for Kotlin source text.
   - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
 - Tools
-  - {{gtClass:KGGuiSessionHooks}} - Emits GUI lifecycle and exact-repository Iceberg commit events for host-side promotion.
+  - {{gtClass:KGGuiSessionHooks}} - Controls GUI quit confirmation and emits lifecycle and exact-repository Iceberg commit events for host-side promotion.
+  - {{gtClass:KGGuiWorldCloseEventHandler}} - Keeps native close requests inside the managed GUI world until restorable state is saved or discarded.
+  - {{gtClass:KGGuiTabAddedEventHandler}} - Marks a GUI run as changed when it gains restorable tool state.
   - {{gtClass:KGTestTool}} - Runs project SUnit tests with structured failure and error diagnostics.
   - {{gtClass:KGBuildMap}} - Models a timestamped host inventory and builds aggregate and relationship Mondrian views.
   - {{gtClass:KGBuildMapNode}} - Represents one clickable build entity with size, status, metadata, and relationship views.

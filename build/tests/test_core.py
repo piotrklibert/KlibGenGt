@@ -562,9 +562,13 @@ class CoreTest(unittest.TestCase):
             prepare.assert_not_called()
             resume.assert_called_once_with(paths, "saved")
 
-    def test_gui_startup_quits_when_the_world_closes(self):
+    def test_gui_startup_installs_controlled_quit_policy(self):
         startup = (ROOT / "src/KlibGenGt-Tools/KGGuiSessionHooks.class.st").read_text()
+        menu = (ROOT / "src/KlibGenGt-Tools/GtToolsMenu.extension.st").read_text()
+        self.assertIn("self ensureQuitPolicyOn: world.", startup)
+        self.assertIn("world addEventHandler: KGGuiWorldCloseEventHandler new.", startup)
         self.assertIn("world removeShutdownListener; addShutdownListener.", startup)
+        self.assertIn("KGGuiSessionHooks requestQuitFrom: button.", menu)
         self.assertIn("mode = 'resumed'", startup)
         self.assertIn("staleWorld ~~ world ifTrue: [ staleWorld close ]", startup)
         self.assertIn("ifFalse: [ GtWorld defaultWorld ifNil: [ GtWorld openDefault ] ]", startup)

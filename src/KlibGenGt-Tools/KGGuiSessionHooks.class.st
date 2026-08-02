@@ -2,6 +2,7 @@
 
 - Slots
   - `DidOpen` (`#Boolean`, class state, `system startup`) - Records whether startup already opened or reused the run world.
+  - `HasRestorableState` (`#Boolean`, class state, `shutdown`) - Stays true after this run adds a tool tab, even if that tab is later closed.
 - Public API
   - {{gtMethod:KGGuiSessionHooks class>>#install}}
     Install the Iceberg commit subscription idempotently.
@@ -11,6 +12,16 @@
     Append one named GUI lifecycle event to the host JSONL journal.
   - {{gtMethod:KGGuiSessionHooks class>>#handlesRepositoryPath:}}
     Answer whether a normalized path is the exact private export for this run.
+  - {{gtMethod:KGGuiSessionHooks class>>#ensureQuitPolicyOn:}}
+    Install exactly one confirmation handler and one post-close image shutdown listener.
+  - {{gtMethod:KGGuiSessionHooks class>>#requestQuitFrom:}}
+    Route a tools-menu Quit button through the same confirmation prompt as a window close.
+  - {{gtMethod:KGGuiSessionHooks class>>#requestQuitIn:}}
+    Show the save, discard, or cancel confirmation prompt in a GUI world.
+  - {{gtMethod:KGGuiSessionHooks class>>#shouldConfirmQuitIn:}}
+    Answer whether a world contains restorable tool state that should be saved or discarded explicitly.
+  - {{gtMethod:KGGuiSessionHooks class>>#noteRestorableState}}
+    Mark the current GUI run as containing state worth saving or explicitly discarding.
   - {{gtMethod:KGGuiSessionHooks class>>#startUp:}}
     Rebind the private repository, install the hook, and open or restore the run world.
   - {{gtMethod:KGGuiSessionHooks class>>#shutDown:}}
@@ -20,7 +31,8 @@ Class {
 	#name : 'KGGuiSessionHooks',
 	#superclass : 'Object',
 	#classVars : [
-		'DidOpen'
+		'DidOpen',
+		'HasRestorableState'
 	],
 	#category : 'KlibGenGt-Tools',
 	#package : 'KlibGenGt-Tools'
@@ -66,6 +78,21 @@ KGGuiSessionHooks class >> emitIcebergCommittedForRepositoryPath: repositoryPath
 		yourself)
 ]
 
+{ #category : 'public - shutdown' }
+KGGuiSessionHooks class >> ensureQuitPolicyOn: world [
+	<arg: #world type: #GtWorld>
+	<return: #KGGuiSessionHooks>
+	world removeEventHandlersSuchThat: [ :eachHandler |
+		(eachHandler isKindOf: GtWorldCloseEventHandler)
+			or: [ eachHandler isKindOf: KGGuiWorldCloseEventHandler ] ].
+	world addEventHandler: KGGuiWorldCloseEventHandler new.
+	world tabGroup viewModel removeEventHandlersSuchThat: [ :eachHandler |
+		eachHandler isKindOf: KGGuiTabAddedEventHandler ].
+	world tabGroup viewModel addEventHandler: KGGuiTabAddedEventHandler new.
+	world removeShutdownListener; addShutdownListener.
+	^ self
+]
+
 { #category : 'public - testing' }
 KGGuiSessionHooks class >> handlesRepositoryPath: repositoryPath [
 	<arg: #repositoryPath type: #String>
@@ -98,6 +125,13 @@ KGGuiSessionHooks class >> install [
 	^ self
 ]
 
+{ #category : 'public - shutdown' }
+KGGuiSessionHooks class >> noteRestorableState [
+	<return: #KGGuiSessionHooks>
+	HasRestorableState := true.
+	^ self
+]
+
 { #category : 'private - startup' }
 KGGuiSessionHooks class >> rebindRepository [
 	<return: #KGGuiSessionHooks>
@@ -110,6 +144,32 @@ KGGuiSessionHooks class >> rebindRepository [
 	^ self
 ]
 
+{ #category : 'public - shutdown' }
+KGGuiSessionHooks class >> requestQuitFrom: button [
+	<arg: #button type: #BrButton>
+	<return: #KGGuiSessionHooks>
+	| world |
+	world := button space.
+	button fireEvent: BrDropdownHideWish new.
+	world requestClose.
+	^ self
+]
+
+{ #category : 'public - shutdown' }
+KGGuiSessionHooks class >> requestQuitIn: world [
+	<arg: #world type: #GtWorld>
+	<return: #KGGuiSessionHooks>
+	world showShutdownPrompt.
+	^ self
+]
+
+{ #category : 'public - shutdown' }
+KGGuiSessionHooks class >> shouldConfirmQuitIn: world [
+	<arg: #world type: #GtWorld>
+	<return: #Boolean>
+	^ HasRestorableState = true or: [ world tabGroup tabs size > 1 ]
+]
+
 { #category : 'system startup' }
 KGGuiSessionHooks class >> shutDown: isImageQuitting [
 	<arg: #isImageQuitting type: #Boolean>
@@ -118,6 +178,7 @@ KGGuiSessionHooks class >> shutDown: isImageQuitting [
 		self emitEvent: 'stopping'.
 		self uninstall ].
 	DidOpen := false.
+	HasRestorableState := false.
 	^ self
 ]
 
@@ -129,6 +190,7 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 	isImageStarting ifFalse: [ ^ self ].
 	DidOpen = true ifTrue: [ ^ self ].
 	DidOpen := true.
+	HasRestorableState := false.
 	self rebindRepository; install.
 	mode := Smalltalk os environment at: 'KLIBGEN_GUI_START_MODE' ifAbsent: [ 'fresh' ].
 	world := mode = 'fresh'
@@ -138,7 +200,7 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 			staleWorld ifNotNil: [ staleWorld ~~ world ifTrue: [ staleWorld close ] ].
 			world ]
 		ifFalse: [ GtWorld defaultWorld ifNil: [ GtWorld openDefault ] ].
-	world removeShutdownListener; addShutdownListener.
+	self ensureQuitPolicyOn: world.
 	mode = 'fresh' ifTrue: [ world extent: 1600 @ 864 ].
 	self emitEvent: (mode = 'resumed' ifTrue: [ 'resumed' ] ifFalse: [ 'ready' ]).
 	^ self

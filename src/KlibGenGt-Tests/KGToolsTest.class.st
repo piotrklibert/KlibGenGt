@@ -313,6 +313,54 @@ KGToolsTest >> testGuiHooksInstallRepeatedlyAndCleanUp [
 		KGGuiSessionHooks install; uninstall ] raise: Error
 ]
 
+{ #category : 'tests - GUI hooks' }
+KGToolsTest >> testGuiHooksInstallQuitPolicyIdempotently [
+	| world closeHandlers shutdownListeners |
+	world := GtWorld new.
+	[ KGGuiSessionHooks
+		ensureQuitPolicyOn: world;
+		ensureQuitPolicyOn: world.
+	closeHandlers := OrderedCollection new.
+	shutdownListeners := OrderedCollection new.
+	world eventDispatcher handlersDo: [ :eachHandler |
+		(eachHandler isKindOf: KGGuiWorldCloseEventHandler)
+			ifTrue: [ closeHandlers add: eachHandler ].
+		(eachHandler isKindOf: BlSpaceShutdownOnCloseListener)
+			ifTrue: [ shutdownListeners add: eachHandler ] ].
+	self assert: closeHandlers size equals: 1.
+	self assert: shutdownListeners size equals: 1 ]
+		ensure: [
+			world removeShutdownListener.
+			world removeEventHandlersSuchThat: [ :eachHandler |
+				eachHandler isKindOf: KGGuiWorldCloseEventHandler ].
+			world close ]
+]
+
+{ #category : 'tests - GUI hooks' }
+KGToolsTest >> testGuiQuitMenuUsesSessionQuitPolicy [
+	| menuMethod |
+	menuMethod := GtToolsMenu >> #quitFrom:.
+	self assert: menuMethod package name equals: 'KlibGenGt-Tools'.
+	self assert: (menuMethod sourceCode includesSubstring: 'KGGuiSessionHooks requestQuitFrom: button')
+]
+
+{ #category : 'tests - GUI hooks' }
+KGToolsTest >> testGuiQuitPolicyConfirmsRestorableToolState [
+	| toolTab world |
+	world := GtWorld new.
+	[ KGGuiSessionHooks ensureQuitPolicyOn: world.
+	self deny: (KGGuiSessionHooks shouldConfirmQuitIn: world).
+	toolTab := BrTab new
+		aptitude: BrGlamorousTabAptitude;
+		label: 'Test tool';
+		stencil: [ BlElement new ].
+	world tabGroup addTab: toolTab.
+	self assert: (KGGuiSessionHooks shouldConfirmQuitIn: world).
+	world tabGroup removeTab: toolTab.
+	self assert: (KGGuiSessionHooks shouldConfirmQuitIn: world) ]
+		ensure: [ KGGuiSessionHooks shutDown: false ]
+]
+
 { #category : 'tests - test tool' }
 KGToolsTest >> testTestToolCapturesFailuresAndErrors [
 	| temporary failure error |
