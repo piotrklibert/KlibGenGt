@@ -5,13 +5,13 @@ description: Inspect, uniquely select, act on, and wait for instantiated element
 
 # Operate GT UI
 
-Drive the live Bloc scene through the run-private control service. Prefer this structured interface to screen coordinates.
+Drive the live Bloc scene through the GUI-workspace control service. Prefer this structured interface to screen coordinates.
 
 ## Follow the control loop
 
-1. Confirm a unique ready GUI with `klibgen-build ui status --context gui --json`. Pass `--run RUN_ID` whenever more than one managed GUI is active.
+1. Confirm the ready GUI workspace with `klibgen-build ui status --json`.
 2. Inspect with `ui spaces`, `ui tree`, or `ui query`. Narrow queries with `--space`, `--under`, `--class`, `--element-id`, text filters, and state filters.
-3. Require a unique target before mutation. Reuse its `nodeId` with `--node`; handles remain valid only for the reported run.
+3. Require a unique target before mutation. Reuse its `nodeId` with `--node`; handles remain valid only for the reported workspace session.
 4. Act with `ui act ACTION`, then use `ui wait STATE` and re-inspect to verify the resulting focus, text, visibility, or hierarchy.
 5. Use a batch for a bounded sequence whose later steps depend on earlier ones. Inspect the completed results and first-failure record.
 6. If visual evidence matters, use `$operate-gt-host` after structured verification to capture the exact managed window.
@@ -20,11 +20,11 @@ Example:
 
 ```sh
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build ui query \
-  --class BrButton --text Save --context gui --json
+  --class BrButton --text Save --json
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build ui act click \
-  --node node-42 --context gui --json
+  --node node-42 --json
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build ui wait visible \
-  --text-contains Saved --context gui --json
+  --text-contains Saved --json
 ```
 
 Use `ui eval EXPR|--file FILE|--stdin` only as an explicit diagnostic escape hatch in the live image. Keep ordinary interaction in inspect/query/action/wait operations, and never put eval in a batch.

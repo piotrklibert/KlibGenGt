@@ -51,12 +51,6 @@ KGBuildMapNode >> buildMap: aBuildMap [
 ]
 
 { #category : 'accessing' }
-KGBuildMapNode >> contextId [
-	<return: #(String?)>
-	^ record at: 'contextId' ifAbsent: [ nil ]
-]
-
-{ #category : 'accessing' }
 KGBuildMapNode >> id [
 	<return: #String>
 	^ record at: 'id'
@@ -171,7 +165,6 @@ KGBuildMapNode >> gtSummaryFor: aView [
 		items: [ {
 			'Kind' -> self kind.
 			'Status' -> self status.
-			'Context' -> (self contextId ifNil: [ '' ]).
 			'Logical size' -> (buildMap humanBytes: self logicalBytes).
 			'Allocated size' -> (buildMap humanBytes: self allocatedBytes).
 			'Files' -> (record at: 'fileCount' ifAbsent: [ 0 ]).

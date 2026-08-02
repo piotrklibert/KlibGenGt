@@ -40,13 +40,11 @@ KGExistingSpaceScripter >> act: actionName on: target request: aRequest [
 	position := target bounds inSpace center.
 	modifiers := BlKeyModifiers new.
 	actionName = 'click' ifTrue: [
-		self dispatch: { BlMouseDownEvent primary position: position. BlMouseUpEvent primary position: position } on: target ].
+		BlEvent fireEvent: (BlMouseUpEvent primary position: position) asClickEvent target: target ].
 	actionName = 'double-click' ifTrue: [
-		self dispatch: {
-			BlMouseDownEvent primary position: position. BlMouseUpEvent primary position: position.
-			BlMouseDownEvent primary position: position. BlMouseUpEvent primary position: position } on: target ].
+		BlEvent fireEvent: (BlMouseUpEvent primary position: position) asDoubleClickEvent target: target ].
 	actionName = 'secondary-click' ifTrue: [
-		self dispatch: { BlMouseDownEvent secondary position: position. BlMouseUpEvent secondary position: position } on: target ].
+		BlEvent fireEvent: (BlMouseUpEvent secondary position: position) asClickEvent target: target ].
 	actionName = 'hover' ifTrue: [ self dispatch: { BlMouseMoveEvent new position: position } on: target ].
 	actionName = 'focus' ifTrue: [ target requestFocus ].
 	actionName = 'type' ifTrue: [

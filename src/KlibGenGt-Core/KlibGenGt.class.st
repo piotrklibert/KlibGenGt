@@ -15,6 +15,7 @@ KlibGenGt package map:
   - {{gtMethod:KlibGenGt class>>#classHierarchyMondrian}} - Build the Mondrian inheritance visualization embedded above.
   - {{gtMethod:KlibGenGt class>>#exportClassHierarchyPngTo:}} - Export the inheritance visualization to a PNG file.
 - Core
+  - {{gtClass:KGBuildProvenance}} - Stores immutable construction provenance embedded in canonical images.
   - {{gtClass:KlibGenGt}} - Project anchor class and small package-level accessors.
   - {{gtClass:KGHtmlNode}} - Abstract base for simplified legacy HTML AST nodes.
   - {{gtClass:KGHtmlDocument}} - Root AST node that owns the parsed top-level nodes.
@@ -44,10 +45,24 @@ KlibGenGt package map:
   - {{gtClass:KGKotlinGrammar}} - PetitParser2 entry grammar for Kotlin source text.
   - {{gtClass:KGKotlinParser}} - Parser and declaration extractor for the Kotlin subset used by samples.
 - Tools
+  - {{gtClass:KGSession}} - Holds immutable launch state and the installed process capabilities.
+  - {{gtClass:KGSessionBootstrap}} - Validates session manifests and authors lifecycle records.
+  - {{gtClass:KGOperationResult}} - Normalizes operation results into the stable response envelope.
+  - {{gtClass:KGAtomicJsonWriter}} - Publishes lifecycle JSON records through same-directory replacement.
+  - {{gtClass:KGDisabledSourceChanges}} - Enforces read-only source behavior.
+  - {{gtClass:KGInteractiveSourceChanges}} - Exports GUI source changes through an explicit session repository.
+  - {{gtClass:KGStagedSourceChanges}} - Exports agentic changes into a durable staging repository.
+  - {{gtClass:KGDiscardPersistence}} - Enforces discard-only image persistence.
+  - {{gtClass:KGWorkspacePersistence}} - Enforces save-or-discard lifecycle for the mutable GUI workspace.
+  - {{gtClass:KGToolRegistration}} - Describes a versioned registered image tool.
+  - {{gtClass:KGToolRegistry}} - Resolves structured operations without equality-chain dispatch.
   - {{gtClass:KGExportTool}} - Counts modified KlibGenGt packages and commits live changes in a managed GUI export repository.
   - {{gtClass:KGExportButton}} - Adds the live export count and commit action to the GT world toolbar.
   - {{gtClass:KGGuiSessionHooks}} - Controls GUI quit confirmation and emits lifecycle and exact-repository Iceberg commit events for host-side promotion.
-  - {{gtClass:KGUiControlService}} - Serializes run-private filesystem requests into live scene inspection, waits, batches, Scripter actions, and explicit evaluation.
+  - {{gtClass:KGUiControlConnector}} - Defines connector-neutral UI-control transport lifecycle.
+  - {{gtClass:KGFileUiControlConnector}} - Exchanges UI-control envelopes through the default filesystem spool.
+  - {{gtClass:KGTcpUiControlConnector}} - Exchanges UI-control envelopes through loopback TCP NDJSON.
+  - {{gtClass:KGUiControlService}} - Validates connector-independent live scene requests, waits, batches, Scripter actions, and evaluation.
   - {{gtClass:KGUiSceneGraph}} - Enumerates instantiated Bloc scene nodes, records state, and maintains stable run-local handles.
   - {{gtClass:KGExistingSpaceScripter}} - Attaches Scripter to an existing Bloc space without reparenting its elements.
   - {{gtClass:KGGuiWorldCloseEventHandler}} - Keeps native close requests inside the managed GUI world until restorable state is saved or discarded.

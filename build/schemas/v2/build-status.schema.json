@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://klibgen.local/schemas/v2/build-status.schema.json","type":"object","required":["schema","state","outputKey"],"properties":{"schema":{"const":"klibgen.build-status/1"},"state":{"enum":["building","succeeded","failed"]},"outputKey":{"type":"string","pattern":"^[0-9a-f]{64}$"}},"additionalProperties":true}

@@ -5,22 +5,22 @@ description: Search documentation pages in Lepiter databases loaded by a fresh G
 
 # Search GT Lepiter
 
-Search in-image documentation instead of guessing GT APIs or relying only on web search. The default run includes every loaded database, including the GT Book and copied local Lepiter databases.
+Search in-image documentation instead of guessing GT APIs or relying only on web search. The disposable session includes every loaded database, including the GT Book and copied local Lepiter databases.
 
 ## Search, then export
 
 Start with text search unless the request names a page:
 
 ```sh
-just lepiter-search 'search filters' text default
-just lepiter-search 'Moldable Agent Harness' title default
+just lepiter-search 'search filters' text
+just lepiter-search 'Moldable Agent Harness' title
 ```
 
 Search results include database, UID, title, and a short preview. Use the complete CLI to restrict databases, bound results, or consume JSON:
 
 ```sh
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image lepiter search 'search filters' \
-  --in text --database 'Glamorous Toolkit Book' --limit 20 --context default --json
+  --in text --database 'Glamorous Toolkit Book' --limit 20 --json
 ```
 
 Use `--in title` for named pages and `--in text` for concepts or API fragments. Repeat `--database` to search several selected databases.
@@ -28,9 +28,9 @@ Use `--in title` for named pages and `--in text` for concepts or API fragments. 
 Export the full page after identifying the best result:
 
 ```sh
-just lepiter-export 5iztl0m2zpym86t35lxj1xovw default
+just lepiter-export 5iztl0m2zpym86t35lxj1xovw
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image lepiter export \
-  --uid 5iztl0m2zpym86t35lxj1xovw --context default --json
+  --uid 5iztl0m2zpym86t35lxj1xovw --json
 ```
 
 Exact titles are also accepted:
@@ -38,7 +38,7 @@ Exact titles are also accepted:
 ```sh
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image lepiter export \
   --title 'Querying with GT search filters by example' \
-  --database 'Glamorous Toolkit Book' --context default
+  --database 'Glamorous Toolkit Book'
 ```
 
 Prefer UID after discovery. If an exact title is ambiguous, use the candidate database/UID pairs from the error rather than guessing.

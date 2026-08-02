@@ -18,25 +18,24 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Do not commit images, changes files, caches, logs, or generated artifacts.
 
-- Source changes go under `src/`. A GUI run uses its own ignored private Git
-  bridge; committing `KlibGenGt-*` changes in Iceberg promotes those packages
-  immediately into `src/` without creating a JJ commit.
+- Source changes go under `src/`. Agentic and interactive changes pass through
+  named staging areas; promotion copies only conflict-free `KlibGenGt-*`
+  package changes into `src/` without creating a JJ commit.
 
 - Maintain a description of the current JJ change: for each completed task, add
   a line to the description. Do not create new JJ changes unless explicitly asked.
 
-- Review promoted GUI changes in the outer JJ working copy. The next ordinary
-  `just gui` refreshes from current `@` after the current session is saved.
-  `push-src-to-export` and `pull-export-to-src` are legacy compatibility
-  commands for the shared ignored `export/` bridge, not the layered GUI flow.
+- Review promoted changes in the outer JJ working copy. `just gui` resumes the
+  single saved workspace; `just gui-fresh` explicitly recreates it from the
+  current canonical project artifact.
 
-- For Smalltalk TDD, add or edit tests in `src/*-Tests`, run `just test-fresh`,
-  which pushes `src` into `export/` and runs the suite from a disposable GT
-  image unpacked under `artifacts/`.
+- For Smalltalk TDD, add or edit tests in `src/*-Tests` and run
+  `just test-fresh`, which uses a disposable session materialized from the
+  current canonical project artifact.
 
-- Use `just test-one TestClass testSelector [context]` for focused SUnit work.
-  Failed runs and build attempts persist structured diagnostics consumable with
-  `just test-diagnose <run-or-attempt-id>`.
+- Use `just test-one TestClass testSelector` for focused SUnit work. Failed
+  sessions retain bounded status, result, and log diagnostics without retaining
+  their image materialization.
   
 - Legacy post parsing work lives in `KlibGenGt-Core-LegacyHtml`. Keep the
   PetitParser2 grammar extensible: `KGHtmlParser` is the simplified HTML base,
@@ -107,9 +106,9 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Use `just test` before finishing changes.
 
-- Use `just gc-dry-run` for routine cache review. `just prune-dry-run` previews
-  the aggressive clone-like cleanup, which deletes stopped runs, snapshots,
-  build attempts, rebuild logs, and non-current/non-default artifacts.
+- Use `just gc-dry-run` for routine cache review. `just gc-apply` removes only
+  unrooted immutable artifacts, abandoned transient sessions/workspaces, and
+  rotated diagnostics; named workspace and staging state are preserved.
 
 - Use `just eval "Smalltalk expression"` for quick checks.
 
@@ -117,9 +116,9 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Use `just gui` only when a GUI is needed.
 
-- For coordinate-free interaction with an active managed GUI, use the
+- For coordinate-free interaction with the active managed GUI, use the
   repo-local `operate-gt-ui` skill and `klibgen-build ui`. Inspect first,
-  uniquely select a run-local node, act, then wait and re-inspect. Use live
+  uniquely select a workspace node, act, then wait and re-inspect. Use live
   `ui eval` only as an explicit diagnostic escape hatch. Scene inspection sees
   hidden/offscreen instantiated nodes, but not uninstantiated virtualized rows.
 

@@ -1,6 +1,6 @@
 {
+  "schema": "klibgen.source-lock/1",
   "schemaVersion": 1,
-  "contextId": "default",
   "sources": [
     {
       "sourceId": "gt-release",

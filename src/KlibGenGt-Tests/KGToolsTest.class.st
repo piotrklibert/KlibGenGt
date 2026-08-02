@@ -13,19 +13,40 @@ Class {
 	#package : 'KlibGenGt-Tests'
 }
 
+{ #category : 'running' }
+KGToolsTest >> setUp [
+	| root |
+	super setUp.
+	root := FileLocator workingDirectory / 'tmp' / 'test-run'.
+	KGSession reset; installManifest: (Dictionary new
+		at: 'sessionId' put: 'tools-test';
+		at: 'preset' put: (Dictionary new at: 'startMode' put: 'fresh'; yourself);
+		at: 'inputs' put: (Dictionary new at: 'sourceGit' put: (root / 'export/.git') fullName; yourself);
+		at: 'paths' put: (Dictionary new at: 'eventJournal' put: (root / 'events.jsonl') fullName; yourself);
+		yourself)
+		sourceChanges: KGDisabledSourceChanges new
+		persistence: KGDiscardPersistence new
+]
+
+{ #category : 'running' }
+KGToolsTest >> tearDown [
+	KGSession reset.
+	super tearDown
+]
+
 { #category : 'private - fixtures' }
 KGToolsTest >> buildMapFixture [
 	<return: #KGBuildMap>
 	^ KGBuildMap fromDictionary: (Dictionary new
-		at: 'schemaVersion' put: 1;
+		at: 'schema' put: 'klibgen.inventory/2';
+		at: 'schemaVersion' put: 2;
 		at: 'generatedAt' put: '2026-08-01T00:00:00Z';
 		at: 'nodes' put: {
 			Dictionary new
-				at: 'id' put: 'context:default';
-				at: 'kind' put: 'context';
-				at: 'label' put: 'default';
+				at: 'id' put: 'target:cli';
+				at: 'kind' put: 'target';
+				at: 'label' put: 'cli';
 				at: 'status' put: 'resolved';
-				at: 'contextId' put: 'default';
 				at: 'logicalBytes' put: 0;
 				at: 'allocatedBytes' put: 0;
 				at: 'fileCount' put: 0;
@@ -34,11 +55,10 @@ KGToolsTest >> buildMapFixture [
 				at: 'aggregate' put: false;
 				yourself.
 			Dictionary new
-				at: 'id' put: 'layer:L01';
-				at: 'kind' put: 'layer';
-				at: 'label' put: 'L01';
-				at: 'status' put: 'defined';
-				at: 'contextId' put: nil;
+				at: 'id' put: 'step:runtime';
+				at: 'kind' put: 'step';
+				at: 'label' put: 'runtime';
+				at: 'status' put: 'resolved';
 				at: 'logicalBytes' put: 10;
 				at: 'allocatedBytes' put: 4096;
 				at: 'fileCount' put: 1;
@@ -49,9 +69,8 @@ KGToolsTest >> buildMapFixture [
 			Dictionary new
 				at: 'id' put: 'artifact:one';
 				at: 'kind' put: 'artifact';
-				at: 'label' put: 'L01 abc';
-				at: 'status' put: 'current';
-				at: 'contextId' put: 'default';
+				at: 'label' put: 'runtime abc';
+				at: 'status' put: 'verified';
 				at: 'logicalBytes' put: 100;
 				at: 'allocatedBytes' put: 8192;
 				at: 'fileCount' put: 2;
@@ -61,23 +80,16 @@ KGToolsTest >> buildMapFixture [
 				yourself };
 		at: 'edges' put: {
 			Dictionary new
-				at: 'id' put: 'edge:context-layer';
-				at: 'kind' put: 'context-layer';
-				at: 'source' put: 'context:default';
-				at: 'target' put: 'layer:L01';
-				at: 'characteristics' put: Dictionary new;
-				yourself.
-			Dictionary new
-				at: 'id' put: 'edge:context-artifact';
-				at: 'kind' put: 'context-artifact';
-				at: 'source' put: 'context:default';
-				at: 'target' put: 'artifact:one';
+				at: 'id' put: 'edge:target-step';
+				at: 'kind' put: 'recipe-sequence';
+				at: 'source' put: 'target:cli';
+				at: 'target' put: 'step:runtime';
 				at: 'characteristics' put: Dictionary new;
 				yourself.
 			Dictionary new
 				at: 'id' put: 'edge:one';
-				at: 'kind' put: 'artifact-layer';
-				at: 'source' put: 'layer:L01';
+				at: 'kind' put: 'step-artifact';
+				at: 'source' put: 'step:runtime';
 				at: 'target' put: 'artifact:one';
 				at: 'characteristics' put: Dictionary new;
 				yourself };
@@ -146,10 +158,8 @@ KGToolsTest >> testBuildMapFiltersAndRelationships [
 	| map artifact filtered |
 	map := self buildMapFixture.
 	artifact := map nodeAt: 'artifact:one'.
-	self assert: artifact relationships size equals: 2.
-	self assert: (map linkedContextsFor: artifact) equals: #('default').
-	self assert: (map linkedContextsFor: (map nodeAt: 'layer:L01')) equals: #('default').
-	filtered := map filteredByContext: 'default' kind: 'artifact' status: 'current'.
+	self assert: artifact relationships size equals: 1.
+	filtered := map filteredByKind: 'artifact' status: 'verified'.
 	self assert: filtered visibleNodes size equals: 1.
 	self assert: filtered visibleNodes first id equals: 'artifact:one'.
 	self assert: (map humanBytes: 1073741824) equals: '1.0 GiB'
@@ -166,60 +176,15 @@ KGToolsTest >> testBuildMapMondrianPresentationsBuild [
 	tooltip := map nodeTooltipElementFor: (map nodeAt: 'artifact:one').
 	self assert: overview class equals: GtMondrian.
 	self assert: graph class equals: GtMondrian.
-	self assert: artifactElement text asString equals: 'L01 abc'.
+	self assert: artifactElement text asString equals: 'runtime abc'.
 	self assert: edgeElement class equals: BlLineElement.
 	self assert: edgeElement eventDispatcher handlers size >= 2.
-	self assert: tooltip children size equals: 4.
-	self assert: tooltip children first text asString equals: 'L01 abc'.
-	self assert: tooltip children second text asString equals: 'Status: current'.
-	self assert: tooltip children third text asString equals: 'Contexts: default'.
-	self assert: tooltip children fourth text asString equals: '100 B logical / 8.0 KiB allocated'.
-	self assert: overview topStep root graph nodeChildren size equals: 5.
+	self assert: tooltip children size equals: 3.
+	self assert: tooltip children first text asString equals: 'runtime abc'.
+	self assert: tooltip children second text asString equals: 'Status: verified'.
+	self assert: tooltip children third text asString equals: '100 B logical / 8.0 KiB allocated'.
+	self assert: overview topStep root graph nodeChildren size equals: 3.
 	self assert: graph topStep root graph nodeChildren size equals: 3
-]
-
-{ #category : 'tests - build map' }
-KGToolsTest >> testBuildMapLayeredLayoutsAlignLayersAndCanHideContexts [
-	| map layered withoutContexts elements layer artifact context positions |
-	map := self buildMapFixture.
-	layered := map layeredGraphMondrian.
-	withoutContexts := map layeredGraphWithoutContextsMondrian.
-	elements := layered topStep root graph nodeChildren.
-	layer := elements detect: [ :each | each graph model kind = 'layer' ].
-	artifact := elements detect: [ :each | each graph model kind = 'artifact' ].
-	context := elements detect: [ :each | each graph model kind = 'context' ].
-	positions := map layeredPositionsFor: (map layeredNodesIncludingContexts: true).
-
-	self
-		assert: elements size = 3
-		description: 'layered node count: ', elements size asString.
-	self
-		assert: withoutContexts topStep root graph nodeChildren size = 2
-		description: 'context-free node count: ', withoutContexts topStep root graph nodeChildren size asString.
-	self assert: layered topStep root graph edgeChildren size equals: 2.
-	self assert: withoutContexts topStep root graph edgeChildren size equals: 1.
-	self
-		assert: (positions at: layer graph model) x = (positions at: artifact graph model) x
-		description: 'layer and artifact columns'.
-	self
-		assert: (positions at: context graph model) x < (positions at: layer graph model) x
-		description: 'context at left edge'.
-	self
-		assert: (positions at: layer graph model) y < (positions at: artifact graph model) y
-		description: 'layer header above artifacts'
-]
-
-{ #category : 'tests - build map' }
-KGToolsTest >> testBuildMapGraphsOmitOnlyContextLayerEdges [
-	| map graph targets |
-	map := self buildMapFixture.
-	graph := map graphMondrian.
-	targets := map targetsFrom: (map nodeAt: 'context:default').
-
-	self assert: graph topStep root graph edgeChildren size equals: 2.
-	self assert: targets size equals: 1.
-	self assert: targets first id equals: 'artifact:one'.
-	self assert: (map linkedContextsFor: (map nodeAt: 'layer:L01')) equals: #('default')
 ]
 
 { #category : 'tests - build map' }
@@ -270,7 +235,7 @@ KGToolsTest >> testGuiHooksAppendCommitEventRecord [
 	environment := Smalltalk os environment.
 	previousEvent := environment at: 'KLIBGEN_GUI_EVENT_PATH' ifAbsent: [ nil ].
 	previousExport := environment at: 'KLIBGEN_EXPORT_GIT' ifAbsent: [ nil ].
-	eventPath := FileLocator workingDirectory / 'tmp' / UUID new asString / 'events.jsonl'.
+	eventPath := FileLocator workingDirectory / 'tmp' / 'test-run' / 'events.jsonl'.
 	exportPath := FileLocator workingDirectory / 'tmp' / 'test-run' / 'export'.
 	[ environment
 		at: 'KLIBGEN_GUI_EVENT_PATH' put: eventPath fullName;
@@ -416,11 +381,11 @@ KGToolsTest >> testUiSceneHandlesAreStableAndDetachedHandlesFail [
 KGToolsTest >> testUiControlRejectsInvalidEnvelopeAndContinues [
 	| service request response |
 	service := KGUiControlService new.
-	service instVarNamed: 'runId' put: 'test-run'.
+	service instVarNamed: 'sessionId' put: 'test-session'.
 	request := Dictionary new
 		at: 'schemaVersion' put: 9;
 		at: 'requestId' put: 'bad';
-		at: 'runId' put: 'test-run';
+		at: 'sessionId' put: 'test-session';
 		at: 'operation' put: 'ui.status';
 		at: 'deadlineUnixMs' put: DateAndTime now asUnixTime * 1000 + 5000;
 		yourself.
@@ -435,10 +400,10 @@ KGToolsTest >> testUiControlRejectsInvalidEnvelopeAndContinues [
 KGToolsTest >> testUiControlBatchStopsAtFirstFailure [
 	| service request result |
 	service := KGUiControlService new.
-	service instVarNamed: 'runId' put: 'test-run'.
+	service instVarNamed: 'sessionId' put: 'test-session'.
 	request := Dictionary new
 		at: 'requestId' put: 'batch';
-		at: 'runId' put: 'test-run';
+		at: 'sessionId' put: 'test-session';
 		at: 'deadlineUnixMs' put: DateAndTime now asUnixTime * 1000 + 5000;
 		at: 'steps' put: {
 			Dictionary new at: 'operation' put: 'ui.status'; yourself.
@@ -465,6 +430,45 @@ KGToolsTest >> testUiControlLiveEvaluationSuccessAndTimeout [
 		at: 'expression' put: '(Delay forMilliseconds: 200) wait';
 		at: 'deadlineUnixMs' put: DateAndTime now asUnixTime * 1000 + 10.
 	self should: [ service perform: #evaluate: with: request ] raise: Error
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testUiControlDefaultsToFileConnector [
+	| service |
+	service := KGUiControlService new.
+	self assert: service connector class equals: KGFileUiControlConnector
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testUiControlSerializedRequestReturnsStructuredFailure [
+	| service response |
+	service := KGUiControlService new.
+	service instVarNamed: 'sessionId' put: 'test-session'.
+	response := service responseForSerializedRequest: '{' defaultRequestId: 'fallback'.
+	self deny: (response at: 'ok').
+	self assert: (response at: 'requestId') equals: 'fallback'.
+	self assert: (response at: 'sessionId') equals: 'test-session'
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testTcpUiControlConnectorSupportsEndpointLifecycle [
+	| connector |
+	connector := KGTcpUiControlConnector onPort: 0.
+	connector instVarNamed: 'boundPort' put: 4242.
+	[
+	self assert: connector boundPort equals: 4242.
+	self assert: (connector endpoint at: 'host') equals: '127.0.0.1'.
+	self assert: (connector endpoint at: 'framing') equals: 'ndjson' ]
+		ensure: [ connector stop ].
+	self assert: connector boundPort equals: 0
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testTcpUiControlConnectorBoundsRequestLines [
+	| connector stream |
+	connector := KGTcpUiControlConnector new. connector instVarNamed: 'maxRequestBytes' put: 4.
+	stream := #[1 2 3 4 5 10] readStream.
+	self should: [ connector perform: #readLineFrom: with: stream ] raise: Error
 ]
 
 { #category : 'tests - GUI hooks' }

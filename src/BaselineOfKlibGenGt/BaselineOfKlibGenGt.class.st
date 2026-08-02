@@ -8,15 +8,20 @@ Class {
 { #category : 'baselines' }
 BaselineOfKlibGenGt >> baseline: spec [
     <baseline>
+	| sqliteRepository |
+	sqliteRepository := Smalltalk os environment
+		at: 'KLIBGEN_SQLITE_REPOSITORY'
+		ifAbsent: [ 'github://pharo-rdbms/Pharo-SQLite3:44dee155676f9ac9be1c7ffac8caef90024968c4/src' ].
 
     spec for: #common do: [
         spec
             baseline: 'SQLite3' with: [
                 spec
-					repository: 'github://pharo-rdbms/Pharo-SQLite3:44dee155676f9ac9be1c7ffac8caef90024968c4/src';
+				repository: sqliteRepository;
                     loads: 'Core' ].
 
         spec
+            package: 'KlibGenGt-BuildSupport';
             package: 'KlibGenGt-Core';
             package: 'KlibGenGt-DB' with: [
                 spec requires: #( 'KlibGenGt-Core' 'SQLite3' ) ];
@@ -26,21 +31,25 @@ BaselineOfKlibGenGt >> baseline: spec [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Kotlin' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
+            package: 'KlibGenGt-Session' with: [
+                spec requires: #( 'KlibGenGt-BuildSupport' ) ];
             package: 'KlibGenGt-Tools' with: [
-                spec requires: #( 'KlibGenGt-Core' ) ];
+                spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-Session' ) ];
             package: 'KlibGenGt-Tests' with: [
                 spec requires: #( 'KlibGenGt-Core' 'KlibGenGt-DB' 'KlibGenGt-Examples' 'KlibGenGt-Environment' 'KlibGenGt-Kotlin' 'KlibGenGt-Tools' ) ].
 
         spec
             group: 'Core' with: #( 'KlibGenGt-Core' );
+            group: 'BuildSupport' with: #( 'KlibGenGt-BuildSupport' );
             group: 'DB' with: #( 'KlibGenGt-DB' );
             group: 'Examples' with: #( 'KlibGenGt-Examples' );
             group: 'Environment' with: #( 'KlibGenGt-Environment' );
             group: 'Kotlin' with: #( 'KlibGenGt-Kotlin' );
+            group: 'Session' with: #( 'KlibGenGt-Session' );
             group: 'Tools' with: #( 'KlibGenGt-Tools' );
             group: 'Tests' with: #( 'KlibGenGt-Tests' );
             group: 'default' with: #( 'Core' 'DB' 'Examples' 'Tools' );
-            group: 'dev' with: #( 'Core' 'DB' 'Examples' 'Environment' 'Kotlin' 'Tools' 'Tests' );
+            group: 'dev' with: #( 'BuildSupport' 'Core' 'DB' 'Examples' 'Environment' 'Kotlin' 'Session' 'Tools' 'Tests' );
             group: 'CI' with: #( 'dev' ) ]
 ]
 

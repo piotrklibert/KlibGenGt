@@ -18,26 +18,19 @@ Class {
 KGToolRunner >> run: aRequest [
 	<arg: #aRequest type: #(Dictionary<String, Any>)>
 	<return: #(Dictionary<String, Any>)>
-	| operation |
+	| operation data |
 	operation := aRequest at: 'operation' ifAbsent: [ self error: 'request is missing operation' ].
-	^ [ self
-		successFor: operation
-		data: (self dispatch: operation request: aRequest) ]
+	^ [ data := self dispatch: operation request: aRequest.
+		((operation beginsWith: 'test.') and: [ (data at: 'successful' ifAbsent: [ true ]) not ])
+			ifTrue: [ OrderedDictionary new at: 'schemaVersion' put: 1; at: 'ok' put: false; at: 'operation' put: operation; at: 'data' put: data; yourself ]
+			ifFalse: [ self successFor: operation data: data ] ]
 		on: Exception
 		do: [ :error | self failureFor: operation exception: error ]
 ]
 
 { #category : 'private - dispatching' }
 KGToolRunner >> dispatch: operation request: aRequest [
-	operation = 'code.search' ifTrue: [ ^ KGCodeSearchTool new search: aRequest ].
-	operation = 'code.class' ifTrue: [ ^ KGCodeSearchTool new classDefinition: aRequest ].
-	operation = 'code.method' ifTrue: [ ^ KGCodeSearchTool new methodSource: aRequest ].
-	operation = 'lepiter.search' ifTrue: [ ^ KGLepiterTool new search: aRequest ].
-	operation = 'lepiter.export' ifTrue: [ ^ KGLepiterTool new export: aRequest ].
-	operation = 'eval' ifTrue: [ ^ KGEvaluationTool new evaluate: aRequest ].
-	operation = 'test.run' ifTrue: [ ^ KGTestTool new run: aRequest ].
-	operation = 'build-map.png' ifTrue: [ ^ KGBuildMapTool new exportPngs: aRequest ].
-	self error: 'unknown image tool operation: ' , operation
+	^ (KGToolRegistry default at: operation) execute: aRequest
 ]
 
 { #category : 'private - responses' }

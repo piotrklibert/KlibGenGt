@@ -18,15 +18,15 @@ Use the structured image tools before constructing ad hoc Smalltalk queries. The
 Use the `just` shortcut for the common search:
 
 ```sh
-just code-search 'KlibGenGt' all default
-just code-search 'projectName' method default
+just code-search 'KlibGenGt' all
+just code-search 'projectName' method
 ```
 
 Use the complete CLI for package restriction, limits, or JSON processing:
 
 ```sh
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image code search 'projectName' \
-  --kind method --package KlibGenGt-Core --limit 25 --context default --json
+  --kind method --package KlibGenGt-Core --limit 25 --json
 ```
 
 Choose `--kind class`, `method`, or `all`. Treat search results as candidates; retrieve exact source before drawing conclusions.
@@ -34,17 +34,17 @@ Choose `--kind class`, `method`, or `all`. Treat search results as candidates; r
 ## Retrieve exact source
 
 ```sh
-just code-class KlibGenGt default
-just code-method KlibGenGt projectName class default
+just code-class KlibGenGt
+just code-method KlibGenGt projectName class
 ```
 
 The complete forms support JSON envelopes:
 
 ```sh
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image code class KlibGenGt \
-  --context default --json
+  --json
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image code method KlibGenGt projectName \
-  --side class --context default --json
+  --side class --json
 ```
 
 Specify `--side instance` or `--side class`; do not infer the side when the search result already reports it.
@@ -55,7 +55,7 @@ Read [references/gt-search-filters.md](references/gt-search-filters.md) when the
 
 Use direct filter evaluation only as an escape hatch for a one-off investigation. If a search is recurring, broadly useful, or needs stable machine-readable output, extend the structured tool instead:
 
-1. Add a bounded JSON-compatible request/result contract to `KGCodeSearchTool` and dispatch it from `KGToolRunner`.
+1. Add a bounded JSON-compatible request/result contract to `KGCodeSearchTool` and register it in `KGToolRegistry`.
 2. Expose the operation or flags through `klibgen-build image code`.
 3. Add focused SUnit coverage and Python bridge/CLI coverage.
 4. Update this skill and the user-facing command documentation.

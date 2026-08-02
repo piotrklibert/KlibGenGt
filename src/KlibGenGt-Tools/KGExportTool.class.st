@@ -18,8 +18,7 @@ Class {
 { #category : 'public - accessing' }
 KGExportTool >> changeCount [
 	<return: #Integer>
-	^ self repository modifiedPackages count: [ :package |
-		package name asString beginsWith: 'KlibGenGt' ]
+	^ KGSession current sourceChanges changeCount
 ]
 
 { #category : 'public - accessing' }
@@ -31,62 +30,5 @@ KGExportTool >> commitTitle [
 { #category : 'public - actions' }
 KGExportTool >> exportChanges [
 	<return: #(IceCommit?)>
-	| count gitRepository repository commit |
-	count := self changeCount.
-	count = 0 ifTrue: [ ^ nil ].
-	repository := self repository.
-	self ensureGitIdentityFor: repository.
-	gitRepository := GtGitRepository fromIcebergRepository: repository.
-	commit := repository workingCopy
-		commitChanges: gitRepository workingCopyDiff
-		withMessage: ('Export KlibGenGt changes (' , count printString , ')').
-	Iceberg announcer
-		announce: (IceRepositoryModified for: repository);
-		announce: (IceCommited for: repository).
-	^ commit
-]
-
-{ #category : 'private - configuration' }
-KGExportTool >> ensureGitIdentityFor: repository [
-	<arg: #repository type: #IceRepository>
-	<return: #KGExportTool>
-	self
-		runGitConfiguration: { 'user.name'. 'KlibGenGt Export' }
-		for: repository.
-	self
-		runGitConfiguration: { 'user.email'. 'export@localhost' }
-		for: repository.
-	^ self
-]
-
-{ #category : 'private - accessing' }
-KGExportTool >> repository [
-	<return: #IceRepository>
-	| location |
-	location := (Smalltalk os environment
-		at: 'KLIBGEN_EXPORT_GIT'
-		ifAbsent: [ self error: 'This image is not attached to a managed GUI export repository' ])
-		asFileReference parent fullName.
-	^ IceRepository registry
-		detect: [ :each |
-			[ each location fullName = location ]
-				on: Error
-				do: [ false ] ]
-		ifNone: [ self error: 'The managed GUI export repository is not registered in Iceberg' ]
-]
-
-{ #category : 'private - configuration' }
-KGExportTool >> runGitConfiguration: arguments for: repository [
-	<arg: #arguments type: #(Array<String>)>
-	<arg: #repository type: #IceRepository>
-	<return: #KGExportTool>
-	| process |
-	process := GtSubprocessWithInMemoryOutput new
-		command: 'git';
-		arguments: { '-C'. repository location fullName. 'config' } , arguments;
-		runAndWait.
-	process isSuccess ifFalse: [
-		self error: 'Unable to configure the managed GUI export repository: '
-			, process stderr trimBoth ].
-	^ self
+	^ KGSession current sourceChanges exportChanges
 ]

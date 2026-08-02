@@ -1,31 +1,39 @@
-"Serialize filesystem requests into live scene inspection and Scripter actions.
+"Validate and execute connector-independent live UI control requests.
 
 - Slots
-  - `root` (`#FileReference`, `spool`) - Run-private `tmp/ui-control` directory.
-  - `requests` (`#FileReference`, `spool`) - Atomic incoming request directory.
-  - `responses` (`#FileReference`, `spool`) - Atomic response directory.
-  - `runId` (`#String`, `identity`) - Managed GUI run identifier accepted by this service.
+  - `connector` (`#KGUiControlConnector`, `transport`) - Supplies requests and returns responses.
+  - `sessionId` (`#String`, `identity`) - Managed GUI session identifier accepted by this service.
   - `scene` (`#KGUiSceneGraph`, `inspection`) - Stable handle registry and scene inspector.
-  - `worker` (`#(Process?)`, `lifecycle`) - Single serialized request worker.
-  - `running` (`#Boolean`, `lifecycle`) - Worker loop state.
+  - `requestMutex` (`#Mutex`, `requests`) - Serializes dispatch across connector clients.
+  - `running` (`#Boolean`, `lifecycle`) - Service lifecycle state.
 - Public API
   - {{gtMethod:KGUiControlService class>>#install}}
-    Start exactly one service for the current managed GUI run.
+    Start exactly one service for the current managed GUI session.
   - {{gtMethod:KGUiControlService class>>#uninstall}}
     Stop the service and clear request/readiness state idempotently.
   - {{gtMethod:KGUiControlService class>>#current}}
     Answer the installed service, if any.
   - {{gtMethod:KGUiControlService>>#start}}
-    Prepare the spool, publish readiness, and start the serialized worker.
+    Start the configured connector.
+  - {{gtMethod:KGUiControlService>>#startWithConnector:}}
+    Start with an explicitly supplied connector.
+  - {{gtMethod:KGUiControlService>>#connector}}
+    Answer the configured connector.
+  - {{gtMethod:KGUiControlService>>#sessionId}}
+    Answer the managed session identity.
   - {{gtMethod:KGUiControlService>>#stop}}
     Stop the worker and remove stale request/readiness files.
   - {{gtMethod:KGUiControlService>>#handle:}}
     Validate and execute one schema-version-one request.
+  - {{gtMethod:KGUiControlService>>#handleSerialized:}}
+    Serialize one decoded request across connector clients.
+  - {{gtMethod:KGUiControlService>>#responseForSerializedRequest:defaultRequestId:}}
+    Decode JSON and return success or structured failure.
 "
 Class {
 	#name : 'KGUiControlService',
 	#superclass : 'Object',
-	#instVars : [ 'root', 'requests', 'responses', 'runId', 'scene', 'worker', 'running' ],
+	#instVars : [ 'connector', 'sessionId', 'scene', 'requestMutex', 'running' ],
 	#classVars : [ 'Current' ],
 	#category : 'KlibGenGt-Tools',
 	#package : 'KlibGenGt-Tools'
@@ -41,7 +49,7 @@ KGUiControlService class >> current [
 KGUiControlService class >> install [
 	<return: #KGUiControlService>
 	Current ifNotNil: [ ^ Current ].
-	Current := self new start.
+	Current := self new startWithConnector: KGFileUiControlConnector new.
 	^ Current
 ]
 
@@ -57,86 +65,48 @@ KGUiControlService class >> uninstall [
 KGUiControlService >> initialize [
 	super initialize.
 	running := false.
+	connector := KGFileUiControlConnector new.
+	requestMutex := Mutex new.
 	scene := KGUiSceneGraph new
 ]
 
-{ #category : 'private - spool' }
-KGUiControlService >> deleteChildrenOf: aDirectory [
-	aDirectory exists ifTrue: [
-		aDirectory children do: [ :each | each isDirectory ifTrue: [ each deleteAll ] ifFalse: [ each delete ] ] ]
-]
+{ #category : 'accessing' }
+KGUiControlService >> connector [ <return: #(KGUiControlConnector?)> ^ connector ]
 
-{ #category : 'private - spool' }
-KGUiControlService >> writeJson: anObject atomicallyTo: destination [
-	| temporary stream output |
-	temporary := destination parent / ('.' , destination basename , '.tmp').
-	temporary ensureDelete.
-	output := STONJSON toString: anObject.
-	stream := temporary writeStream.
-	[ stream nextPutAll: output; flush ] ensure: [ stream close ].
-	destination ensureDelete.
-	temporary renameTo: destination basename
-]
+{ #category : 'accessing' }
+KGUiControlService >> sessionId [ <return: #String> ^ sessionId ]
 
 { #category : 'public - lifecycle' }
 KGUiControlService >> start [
 	<return: #KGUiControlService>
 	running ifTrue: [ ^ self ].
-	runId := Smalltalk os environment at: 'KLIBGEN_RUN_ID' ifAbsent: [ '' ].
-	root := (Smalltalk os environment at: 'TMPDIR') asFileReference / 'ui-control'.
-	requests := root / 'requests'.
-	responses := root / 'responses'.
-	requests ensureCreateDirectory.
-	responses ensureCreateDirectory.
-	self deleteChildrenOf: requests; deleteChildrenOf: responses.
-	self writeJson: (OrderedDictionary new
-		at: 'schemaVersion' put: 1;
-		at: 'runId' put: runId;
-		at: 'ready' put: true;
-		yourself) atomicallyTo: root / 'ready.json'.
+	connector ifNil: [ connector := KGFileUiControlConnector new ].
+	sessionId := KGSession current id.
 	running := true.
-	worker := [ self workerLoop ] forkAt: Processor userBackgroundPriority.
+	[ connector service: self; start ] on: Exception do: [ :error | running := false. error pass ].
 	^ self
+]
+
+{ #category : 'public - lifecycle' }
+KGUiControlService >> startWithConnector: aConnector [
+	<arg: #aConnector type: #KGUiControlConnector> <return: #KGUiControlService>
+	running ifTrue: [ self error: 'cannot replace a running UI control connector' ]. connector := aConnector. ^ self start
 ]
 
 { #category : 'public - lifecycle' }
 KGUiControlService >> stop [
 	<return: #KGUiControlService>
 	running := false.
-	worker ifNotNil: [ worker terminate ].
-	worker := nil.
-	requests ifNotNil: [ self deleteChildrenOf: requests ].
-	root ifNotNil: [ (root / 'ready.json') ensureDelete ].
+	connector ifNotNil: [ connector stop ].
 	^ self
 ]
 
-{ #category : 'private - spool' }
-KGUiControlService >> workerLoop [
-	[ running ] whileTrue: [
-		| files |
-		files := requests children select: [ :each | each extension = 'json' ].
-		files sorted do: [ :requestFile | self processFile: requestFile ].
-		(Delay forMilliseconds: 25) wait ]
-]
-
-{ #category : 'private - spool' }
-KGUiControlService >> processFile: requestFile [
-	| request requestId operation response |
-	requestId := requestFile basenameWithoutExtension.
-	operation := 'unknown'.
-	response := [
-		request := STONJSON fromString: requestFile contents.
-		requestId := request at: 'requestId' ifAbsent: [ requestId ].
-		operation := request at: 'operation' ifAbsent: [ operation ].
-		self handle: request ]
-		on: Exception
-		do: [ :error | self failureFor: error requestId: requestId operation: operation ].
-	[ [ self writeJson: response atomicallyTo: responses / (requestId , '.json') ]
-		on: Exception
-		do: [ :serializationError |
-			self writeJson: (self failureFor: serializationError requestId: requestId operation: operation)
-				atomicallyTo: responses / (requestId , '.json') ] ]
-		ensure: [ requestFile ensureDelete ]
+{ #category : 'public - requests' }
+KGUiControlService >> responseForSerializedRequest: serializedRequest defaultRequestId: defaultRequestId [
+	<arg: #serializedRequest type: #String> <arg: #defaultRequestId type: #String> <return: #(Dictionary<String, Any>)>
+	| request requestId operation |
+	requestId := defaultRequestId. operation := 'unknown'.
+	^ [ request := STONJSON fromString: serializedRequest. requestId := request at: 'requestId' ifAbsent: [ requestId ]. operation := request at: 'operation' ifAbsent: [ operation ]. self handleSerialized: request ] on: Exception do: [ :error | self failureFor: error requestId: requestId operation: operation ]
 ]
 
 { #category : 'private - responses' }
@@ -150,7 +120,7 @@ KGUiControlService >> failureFor: anError requestId: requestId operation: operat
 	^ OrderedDictionary new
 		at: 'schemaVersion' put: 1;
 		at: 'requestId' put: requestId;
-		at: 'runId' put: runId;
+		at: 'sessionId' put: sessionId;
 		at: 'operation' put: operation;
 		at: 'ok' put: false;
 		at: 'error' put: (OrderedDictionary new
@@ -167,7 +137,7 @@ KGUiControlService >> successFor: request data: data [
 	^ OrderedDictionary new
 		at: 'schemaVersion' put: 1;
 		at: 'requestId' put: (request at: 'requestId');
-		at: 'runId' put: runId;
+		at: 'sessionId' put: sessionId;
 		at: 'operation' put: (request at: 'operation');
 		at: 'ok' put: true;
 		at: 'data' put: data;
@@ -180,7 +150,7 @@ KGUiControlService >> handle: aRequest [
 	<return: #(Dictionary<String, Any>)>
 	| operation data |
 	(aRequest at: 'schemaVersion' ifAbsent: [ 0 ]) = 1 ifFalse: [ self error: 'unsupported UI control schema version' ].
-	(aRequest at: 'runId' ifAbsent: [ '' ]) = runId ifFalse: [ self error: 'UI control run mismatch' ].
+	(aRequest at: 'sessionId' ifAbsent: [ '' ]) = sessionId ifFalse: [ self error: 'UI control session mismatch' ].
 	(aRequest at: 'deadlineUnixMs' ifAbsent: [ 0 ]) < (DateAndTime now asUnixTime * 1000)
 		ifTrue: [ self error: 'expired UI control request' ].
 	operation := aRequest at: 'operation' ifAbsent: [ self error: 'request is missing operation' ].
@@ -188,9 +158,15 @@ KGUiControlService >> handle: aRequest [
 	^ self successFor: aRequest data: data
 ]
 
+{ #category : 'public - requests' }
+KGUiControlService >> handleSerialized: aRequest [
+	<arg: #aRequest type: #(Dictionary<String, Any>)> <return: #(Dictionary<String, Any>)>
+	^ requestMutex critical: [ self handle: aRequest ]
+]
+
 { #category : 'private - requests' }
 KGUiControlService >> dispatch: operation request: aRequest [
-	operation = 'ui.status' ifTrue: [ ^ OrderedDictionary new at: 'ready' put: true; at: 'runId' put: runId; yourself ].
+	operation = 'ui.status' ifTrue: [ ^ OrderedDictionary new at: 'ready' put: true; at: 'sessionId' put: sessionId; yourself ].
 	operation = 'ui.spaces' ifTrue: [ ^ scene spacesData ].
 	operation = 'ui.tree' ifTrue: [ ^ scene tree: aRequest ].
 	operation = 'ui.query' ifTrue: [ ^ scene query: aRequest ].

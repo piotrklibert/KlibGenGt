@@ -47,7 +47,7 @@ KGGuiSessionHooks class >> appendEventRecord: record [
 	| output eventPath stream |
 	output := STONJSON toString: record.
 	Stdio stdout nextPutAll: 'KLIBGEN_GUI_EVENT '; nextPutAll: output; lf; flush.
-	eventPath := Smalltalk os environment at: 'KLIBGEN_GUI_EVENT_PATH' ifAbsent: [ ^ self ].
+	eventPath := (KGSession current manifest at: 'paths') at: 'eventJournal' ifAbsent: [ ^ self ].
 	eventPath asFileReference parent ensureCreateDirectory.
 	eventPath asFileReference ensureCreateFile.
 	stream := eventPath asFileReference binaryWriteStream.
@@ -62,8 +62,8 @@ KGGuiSessionHooks class >> emitEvent: eventName [
 	^ self appendEventRecord: (Dictionary new
 		at: 'schemaVersion' put: 1;
 		at: 'event' put: eventName;
-		at: 'runId' put: (Smalltalk os environment at: 'KLIBGEN_RUN_ID' ifAbsent: [ '' ]);
-		at: 'startMode' put: (Smalltalk os environment at: 'KLIBGEN_GUI_START_MODE' ifAbsent: [ 'unknown' ]);
+		at: 'sessionId' put: KGSession current id;
+		at: 'startMode' put: ((KGSession current manifest at: 'preset') at: 'startMode' ifAbsent: [ 'unknown' ]);
 		yourself)
 ]
 
@@ -74,8 +74,8 @@ KGGuiSessionHooks class >> emitIcebergCommittedForRepositoryPath: repositoryPath
 	^ self appendEventRecord: (Dictionary new
 		at: 'schemaVersion' put: 1;
 		at: 'event' put: 'iceberg-committed';
-		at: 'runId' put: (Smalltalk os environment at: 'KLIBGEN_RUN_ID' ifAbsent: [ '' ]);
-		at: 'startMode' put: (Smalltalk os environment at: 'KLIBGEN_GUI_START_MODE' ifAbsent: [ 'unknown' ]);
+		at: 'sessionId' put: KGSession current id;
+		at: 'startMode' put: ((KGSession current manifest at: 'preset') at: 'startMode' ifAbsent: [ 'unknown' ]);
 		at: 'repositoryPath' put: repositoryPath asFileReference fullName;
 		yourself)
 ]
@@ -115,7 +115,7 @@ KGGuiSessionHooks class >> handlesRepositoryPath: repositoryPath [
 	<arg: #repositoryPath type: #String>
 	<return: #Boolean>
 	| gitPath |
-	gitPath := Smalltalk os environment at: 'KLIBGEN_EXPORT_GIT' ifAbsent: [ ^ false ].
+	gitPath := ((KGSession current manifest at: 'inputs') at: 'sourceGit' ifAbsent: [ ^ false ]).
 	^ repositoryPath asFileReference fullName
 		= gitPath asFileReference parent fullName
 ]
@@ -153,7 +153,7 @@ KGGuiSessionHooks class >> noteRestorableState [
 KGGuiSessionHooks class >> rebindRepository [
 	<return: #KGGuiSessionHooks>
 	| gitDirectory repository |
-	gitDirectory := (Smalltalk os environment at: 'KLIBGEN_EXPORT_GIT') asFileReference parent.
+	gitDirectory := (((KGSession current manifest at: 'inputs') at: 'sourceGit') asFileReference) parent.
 	repository := IceRepository registry
 		detect: [ :each | [ each location basename = 'export' ] on: Error do: [ false ] ]
 		ifNone: [ nil ].
@@ -176,7 +176,16 @@ KGGuiSessionHooks class >> requestQuitFrom: button [
 KGGuiSessionHooks class >> requestQuitIn: world [
 	<arg: #world type: #GtWorld>
 	<return: #KGGuiSessionHooks>
-	world showShutdownPrompt.
+	| prompt question save discard cancel worldElement |
+	worldElement := world root.
+	worldElement childWithId: GtWorldShutdownPromptId ifFound: [ ^ self ] ifNone: [ ].
+	prompt := BrHorizontalPane new hMatchParent; cellSpacing: 10; vFitContent; background: worldElement theme status errorBackgroundColor lighter lighter; alignCenterLeft; padding: (BlInsets top: 10 bottom: 10); id: GtWorldShutdownPromptId.
+	question := BrLabel new aptitude: BrGlamorousLabelAptitude; text: 'Save workspace before quitting?'.
+	save := BrButton new aptitude: BrGlamorousButtonWithLabelAptitude; beSmallSize; label: 'Save and quit'; action: [ :button | button disable. prompt removeFromParent. KGSession current persistence saveAndQuit ].
+	discard := BrButton new aptitude: BrGlamorousButtonWithLabelAptitude; beSmallSize; label: 'Just quit'; action: [ :button | button disable. prompt removeFromParent. KGSession current persistence discardAndQuit ].
+	cancel := BrButton new aptitude: BrGlamorousButtonWithLabelAptitude; beSmallSize; label: 'Don''t quit'; action: [ :button | prompt removeFromParent ].
+	prompt addChildren: { question. save. discard. cancel }.
+	worldElement addChildFirst: prompt.
 	^ self
 ]
 
@@ -194,7 +203,6 @@ KGGuiSessionHooks class >> shutDown: isImageQuitting [
 	isImageQuitting ifTrue: [
 		WidgetInstallProcess ifNotNil: [ :process | process terminate ].
 		WidgetInstallProcess := nil.
-		KGExportButton uninstallFrom: GtWorld defaultWorld.
 		KGUiControlService uninstall.
 		self emitEvent: 'stopping'.
 		self uninstall ].
@@ -209,11 +217,13 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 	<return: #KGGuiSessionHooks>
 	| mode world staleWorld |
 	isImageStarting ifFalse: [ ^ self ].
+	(Smalltalk os environment at: 'KLIBGEN_SESSION_MANIFEST' ifAbsent: [ nil ]) ifNotNil: [ :manifestPath |
+		KGSessionBootstrap installManifest: (STONJSON fromString: manifestPath asFileReference contents) ].
 	DidOpen = true ifTrue: [ ^ self ].
 	DidOpen := true.
 	HasRestorableState := false.
 	self rebindRepository; install.
-	mode := Smalltalk os environment at: 'KLIBGEN_GUI_START_MODE' ifAbsent: [ 'fresh' ].
+	mode := (KGSession current manifest at: 'preset') at: 'startMode' ifAbsent: [ 'fresh' ].
 	world := mode = 'fresh'
 		ifTrue: [
 			staleWorld := GtWorld defaultWorld.

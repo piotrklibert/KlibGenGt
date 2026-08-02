@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "klibgen-build"
-version = "0.1.0"
-description = "Host-side build coordinator for KlibGen-GT"
+version = "0.2.0"
+description = "Recipe, artifact, and session coordinator for KlibGen-GT"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

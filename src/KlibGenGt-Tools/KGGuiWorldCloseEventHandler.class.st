@@ -25,8 +25,7 @@ KGGuiWorldCloseEventHandler >> eventsToHandle [
 KGGuiWorldCloseEventHandler >> spaceCloseRequest: event [
 	<arg: #event type: #BlSpaceCloseRequest>
 	<return: #KGGuiWorldCloseEventHandler>
-	(KGGuiSessionHooks shouldConfirmQuitIn: event currentTarget)
-		ifFalse: [ ^ self ].
+	KGSession current persistence available ifFalse: [ ^ self ].
 	event shouldClose: false.
 	KGGuiSessionHooks requestQuitIn: event currentTarget.
 	^ self

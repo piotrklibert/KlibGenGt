@@ -1,1 +1,0 @@
-{"schemaVersion":1,"layerId":"L06","name":"project-dev","parents":["L05"],"profiles":["CLI","GUI","AGENTIC"],"mutationPolicy":"immutable"}
