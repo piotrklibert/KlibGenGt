@@ -50,8 +50,9 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 - [ ] Expand all methods in Coder
 
 
-- [ ] Verbose logging everywhere - Python and Smalltalk. Default to INFO. Have
-      TRACE.
+- [X] Common Python logging with stderr-only INFO defaults and per-command
+      TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL overrides.
+- [ ] Add the corresponding structured logging policy inside Smalltalk images.
 
 - [ ] Tonel lines to methods and classes in error reporting.
 
@@ -82,14 +83,3 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 - jj worktree integration? 
 
 - steps representation in Python?
-
-- what are our answers to the following workflows:
-
-  1. Adding an external dependency. SQlite3 is a good sample case: it requires a
-     native .so (which I think isn't captured in the manifest?). Let's imagine
-     that we depend on our own package that is developed concurrently and
-     contains Rust-written bindings to an external .so and src/ with Smalltalk
-     code... How do we add this dependency, including checkout, building, and
-     possible OS-wide package installation?
-
-  2. Updating the GT version. 

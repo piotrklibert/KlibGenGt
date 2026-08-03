@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -18,6 +19,9 @@ from .store import atomic_json
 from .staging import acquire_staging_lease, release_staging_lease, validate_staging_name
 from .tonel_lint import lint_git_source
 from .v2state import V2Paths
+
+
+logger = logging.getLogger(__name__)
 
 
 def _writable(root: Path) -> None:
@@ -38,6 +42,7 @@ def _retain_diagnostics(v2: V2Paths, operation: str, session: Path) -> Path:
             shutil.copytree(source, latest / relative)
         elif source.exists():
             shutil.copy2(source, latest / relative)
+    logger.warning("retained session diagnostics operation=%s path=%s", operation, latest)
     return latest
 
 
@@ -49,6 +54,8 @@ def execute_session(
     preset: str = "cli",
     staging_name: str | None = None,
 ) -> dict[str, Any]:
+    operation = request.get("operation", "unknown")
+    logger.info("starting image session operation=%s preset=%s staging=%s", operation, preset, staging_name)
     build = build_canonical(paths, "cli")
     artifact = Path(build["artifacts"][-1]["path"])
     artifact_manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
@@ -147,6 +154,7 @@ def execute_session(
     (session / "logs/session.log").write_text(decode_output(stdout) + decode_output(stderr), encoding="utf-8")
     try:
         if timed_out:
+            logger.error("image session timed out operation=%s session=%s timeout=%s", operation, session_id, timeout)
             raise TimeoutError(f"session {session_id} exceeded {timeout} seconds")
         if not ready_path.is_file():
             raise RuntimeError("session exited without a readiness record")
@@ -167,8 +175,13 @@ def execute_session(
         if not response.get("ok") or process.returncode != 0:
             diagnostic = _retain_diagnostics(v2, request.get("operation", "unknown"), session)
             response["diagnosticPath"] = str(diagnostic)
+            logger.warning("image session failed operation=%s session=%s exitCode=%s", operation, session_id, process.returncode)
+        else:
+            logger.info("image session complete operation=%s wallSeconds=%.3f", operation, wall)
         return response
-    except Exception:
+    except Exception as error:
+        logger.error("image session raised operation=%s session=%s error=%s", operation, session_id, error)
+        logger.debug("image session exception operation=%s session=%s", operation, session_id, exc_info=True)
         _retain_diagnostics(v2, request.get("operation", "unknown"), session)
         raise
     finally:

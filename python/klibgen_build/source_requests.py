@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 from .core import BuildPaths
 from .staging import promote_staging, reconcile_staging, validate_staging_lease
 from .store import atomic_json
+
+
+logger = logging.getLogger(__name__)
 
 
 MAX_SOURCE_REQUEST_BYTES = 64 * 1024
@@ -43,6 +47,7 @@ def service_source_requests(
             if operation not in ALLOWED_SOURCE_OPERATIONS:
                 raise ValueError(f"source operation is not allowed: {operation!r}")
             validate_staging_lease(paths, staging_name, session_id)
+            logger.debug("servicing source request operation=%s request=%s staging=%s", operation, request_id, staging_name)
             if operation == "source.promote":
                 data = promote_staging(paths, staging_name, context_id=session_id)
             else:
@@ -58,6 +63,7 @@ def service_source_requests(
                 "ok": True, "data": data,
             }
         except Exception as error:
+            logger.warning("source request failed request=%s error=%s", request_id, error)
             response = {
                 "schemaVersion": 1, "requestId": request_id,
                 "sessionId": session_id, "ok": False,
@@ -66,6 +72,8 @@ def service_source_requests(
         atomic_json(response_path, response)
         request_path.unlink(missing_ok=True)
         handled += 1
+    if handled:
+        logger.debug("serviced source request batch count=%d staging=%s", handled, staging_name)
     return handled
 
 

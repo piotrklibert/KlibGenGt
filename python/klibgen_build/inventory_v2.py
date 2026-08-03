@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,9 @@ from .recipes import DEFAULT_RECIPES, DEFAULT_TARGETS
 from .resolution import resolve_target
 from .store import ArtifactStore
 from .v2state import V2Paths
+
+
+logger = logging.getLogger(__name__)
 
 
 def _size(path: Path) -> dict[str, int]:
@@ -43,6 +47,7 @@ def _records(root: Path, pattern: str) -> list[dict[str, Any]]:
 
 
 def inventory(paths: BuildPaths) -> dict[str, Any]:
+    logger.info("collecting build inventory")
     v2 = V2Paths.for_build(paths)
     v2.initialize()
     recipes = [{"name": recipe.name, "roles": [step.role for step in recipe.steps]} for recipe in DEFAULT_RECIPES.values()]
@@ -92,7 +97,7 @@ def inventory(paths: BuildPaths) -> dict[str, Any]:
             node_id = f"{kind}:{record['name']}"
             nodes.append({"id": node_id, "kind": kind, "label": record["name"], "status": record["state"], "path": record["path"], "characteristics": record, **record["storage"]})
             edges.append({"id": f"edge:{node_id}", "kind": f"{kind}-artifact", "source": node_id, "target": f"artifact:{record['projectKey']}", "characteristics": {}})
-    return validate_named_record({
+    result = validate_named_record({
         "schema": "klibgen.inventory/2", "schemaVersion": 2, "operation": "inventory",
         "generatedAt": datetime.now(timezone.utc).isoformat(), "nodes": nodes, "edges": edges, "warnings": [],
         "stateRoot": str(v2.root), "recipes": recipes, "targets": targets,
@@ -105,6 +110,8 @@ def inventory(paths: BuildPaths) -> dict[str, Any]:
         "locks": [str(path) for path in sorted((v2.root / "locks").rglob("*.lock"))],
         "storage": _size(v2.root),
     })
+    logger.info("inventory complete artifacts=%d workspaces=%d stagingAreas=%d", len(artifacts), len(workspaces), len(staging_areas))
+    return result
 
 
 def _root_keys(v2: V2Paths) -> tuple[set[str], list[str]]:
@@ -131,6 +138,7 @@ def _root_keys(v2: V2Paths) -> tuple[set[str], list[str]]:
 
 
 def garbage_collect(paths: BuildPaths, apply: bool = False) -> dict[str, Any]:
+    logger.info("planning garbage collection mode=%s", "apply" if apply else "dry-run")
     v2 = V2Paths.for_build(paths)
     v2.initialize()
     roots, warnings = _root_keys(v2)
@@ -167,6 +175,11 @@ def garbage_collect(paths: BuildPaths, apply: bool = False) -> dict[str, Any]:
     if apply and not warnings:
         for path in unique:
             v2.remove_tree(path)
+        logger.info("garbage collection removed paths=%d", len(unique))
+    elif apply and warnings:
+        logger.warning("garbage collection withheld removals warnings=%d", len(warnings))
+    elif warnings:
+        logger.warning("garbage collection found protected malformed roots warnings=%d", len(warnings))
     return validate_named_record({
         "schema": "klibgen.gc-plan/1", "schemaVersion": 1, "operation": "gc",
         "mode": "apply" if apply else "dry-run", "roots": sorted(roots),

@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import platform
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+logger = logging.getLogger(__name__)
 
 
 def canonical_json(value: Any) -> str:
@@ -42,7 +46,9 @@ class BuildPaths:
         state = Path(configured)
         if not state.is_absolute():
             state = root / state
-        return cls(root=root, state=state.resolve())
+        result = cls(root=root, state=state.resolve())
+        logger.debug("discovered build paths root=%s state=%s", result.root, result.state)
+        return result
 
 def platform_id() -> str:
     return f"{platform.system().lower()}-{platform.machine().lower()}"

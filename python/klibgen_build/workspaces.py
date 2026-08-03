@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import logging
 import os
 import shutil
 import time
@@ -29,6 +30,7 @@ from .v2state import V2Paths
 
 
 WORKSPACE_NAME = "gui-default"
+logger = logging.getLogger(__name__)
 
 
 def _workspace_start_mode(initialized: bool, record: dict[str, Any]) -> str:
@@ -69,6 +71,7 @@ def _initialize(
     source: dict[str, Any],
     staging: dict[str, Any],
 ) -> dict[str, Any]:
+    logger.info("initializing GUI workspace name=%s staging=%s", WORKSPACE_NAME, staging["name"])
     artifact = Path(build["artifacts"][-1]["path"])
     workspace.mkdir(parents=True)
     run_command(["cp", "-a", "--reflink=auto", artifact / "payload/image", workspace / "image"])
@@ -109,6 +112,7 @@ def reset_workspace(paths: BuildPaths, confirmed: bool) -> dict[str, Any]:
                 release_staging_lease(paths, record["stagingArea"], WORKSPACE_NAME)
         if workspace.exists():
             v2.remove_tree(workspace)
+    logger.info("reset GUI workspace name=%s", WORKSPACE_NAME)
     return validate_named_record({"schema": "klibgen.workspace-reset/1", "schemaVersion": 1, "operation": "v2.workspace.reset", "name": WORKSPACE_NAME, "removed": True})
 
 
@@ -137,6 +141,7 @@ def launch_gui_workspace(
     staging_name: str = "gui-default",
 ) -> int:
     staging_name = validate_staging_name(staging_name)
+    logger.info("launching GUI workspace name=%s staging=%s fresh=%s", WORKSPACE_NAME, staging_name, fresh)
     build = build_canonical(paths, "gui")
     artifact = Path(build["artifacts"][-1]["path"])
     artifact_manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
@@ -174,7 +179,7 @@ def launch_gui_workspace(
             atomic_json(workspace / "workspace.json", record)
         stale = record["projectKey"] != build["outputKey"]
         if stale:
-            print(f"warning: GUI workspace is based on {record['projectKey']}, current project is {build['outputKey']}", file=os.sys.stderr)
+            logger.warning("GUI workspace project is stale workspaceKey=%s currentKey=%s", record["projectKey"], build["outputKey"])
         session_id = str(uuid.uuid4())
         staging = acquire_staging_lease(
             paths, staging_name, "gui", WORKSPACE_NAME, os.getpid(),
@@ -230,6 +235,7 @@ def launch_gui_workspace(
                 "GUI workspace has unexported source changes and cannot reload a changed staging generation"
             )
         if initialized or loaded_generation != current_generation:
+            logger.info("binding GUI workspace to staging name=%s generation=%s", staging_name, current_generation)
             result = run_command([cli, image, "st", paths.root / "build/v2/scripts/bind-workspace.st"], check=False, cwd=workspace, env=environment)
             (workspace / "logs/bind.log").write_text(result.stdout + result.stderr, encoding="utf-8")
             if result.returncode:
@@ -248,6 +254,7 @@ def launch_gui_workspace(
         record["pid"] = process.pid
         record["sessionId"] = session_id
         atomic_json(workspace / "workspace.json", record)
+        logger.info("GUI workspace active session=%s pid=%s", session_id, process.pid)
         try:
             while process.poll() is None:
                 service_source_requests(
@@ -273,6 +280,7 @@ def launch_gui_workspace(
             record.pop("sessionId", None)
             atomic_json(workspace / "workspace.json", record)
             release_staging_lease(paths, staging_name, session_id)
+            logger.error("GUI workspace exited abnormally session=%s exitCode=%s", session_id, exit_code)
             raise RuntimeError(f"GUI workspace exited without authoritative completion; logs: {workspace / 'logs'}")
         completed = json.loads(completion.read_text(encoding="utf-8"))
         if completed.get("sessionId") != session_id:
@@ -290,6 +298,7 @@ def launch_gui_workspace(
                 if completed.get("state") == "saved" else 0
             ),
         )
+        logger.info("GUI workspace complete session=%s state=%s exitCode=%s", session_id, completed["state"], exit_code)
         return exit_code
 
 

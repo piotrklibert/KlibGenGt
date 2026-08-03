@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import time
 from pathlib import Path
@@ -9,6 +10,7 @@ from .json_models import validate_named_record
 
 
 TRACKED_SUFFIXES = {".image", ".changes", ".so", ".dylib", ".dll"}
+logger = logging.getLogger(__name__)
 
 
 def storage_metrics(root: Path) -> dict[str, Any]:
@@ -31,12 +33,13 @@ def storage_metrics(root: Path) -> dict[str, Any]:
 
 
 def measure(operation: str, state_root: Path, action: Callable[[], int]) -> dict[str, Any]:
+    logger.info("starting measurement operation=%s", operation)
     before = storage_metrics(state_root)
     started = time.monotonic()
     exit_code = action()
     elapsed = time.monotonic() - started
     after = storage_metrics(state_root)
-    return validate_named_record({
+    result = validate_named_record({
         "schema": "klibgen.measurement/1",
         "schemaVersion": 1,
         "operation": operation,
@@ -47,6 +50,8 @@ def measure(operation: str, state_root: Path, action: Callable[[], int]) -> dict
         "logicalByteDelta": after["logicalBytes"] - before["logicalBytes"],
         "allocatedByteDelta": after["allocatedBytes"] - before["allocatedBytes"],
     })
+    logger.info("measurement complete operation=%s wallSeconds=%.3f exitCode=%d", operation, elapsed, exit_code)
+    return result
 
 
 __all__ = ["measure", "storage_metrics"]

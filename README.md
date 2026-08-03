@@ -89,6 +89,22 @@ arguments pass through unchanged.
 Successful results exit 0, structured results with `ok: false` exit 1, and
 usage, validation, filesystem, process, timeout, or protocol failures exit 2.
 
+Python build services use one stderr-only logging policy. The default `INFO`
+level reports only major build, session, staging, GUI, lint, and maintenance
+lifecycle events. Override it for an individual invocation before the command:
+
+```sh
+uv run klibgen-build --log-level DEBUG staging rebase experiment
+uv run klibgen-build --log-level TRACE build cli
+KLIBGEN_LOG_LEVEL=WARNING just test
+```
+
+Supported levels are `TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`, and
+`CRITICAL`. DEBUG includes decisions, paths, process counts, and identifiers;
+TRACE additionally includes full subprocess argument vectors and should be
+used carefully. Logs never enter stdout, so `--json` output remains directly
+parseable.
+
 ## Authoritative and generated state
 
 | Path | Role | Versioned? |

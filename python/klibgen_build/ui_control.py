@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
@@ -12,6 +13,7 @@ from .core import BuildPaths
 
 
 SCHEMA_VERSION = 1
+logger = logging.getLogger(__name__)
 
 
 def process_is_alive(pid: int | None) -> bool:
@@ -44,8 +46,9 @@ def active_gui_sessions(paths: BuildPaths) -> list[dict[str, Any]]:
                     "pid": record["pid"], "workspacePath": str(workspace), "ready": ready,
                     "workspace": "gui-default",
                 })
-        except (OSError, json.JSONDecodeError):
-            pass
+        except (OSError, json.JSONDecodeError) as error:
+            logger.debug("ignored malformed GUI workspace state error=%s", error)
+    logger.debug("discovered active GUI sessions count=%d", len(result))
     return result
 
 
@@ -80,6 +83,7 @@ def submit_ui_request(
     requests = spool / "requests"
     responses = spool / "responses"
     request_id = str(uuid.uuid4())
+    logger.debug("submitting UI request operation=%s request=%s session=%s", request["operation"], request_id, session["sessionId"])
     deadline = time.monotonic() + timeout
     envelope = {
         "schemaVersion": SCHEMA_VERSION, "requestId": request_id,
@@ -103,6 +107,7 @@ def submit_ui_request(
             if response.get("requestId") != request_id:
                 raise RuntimeError("UI control returned a mismatched response")
             response.update({"workspacePath": str(workspace_path)})
+            logger.debug("received UI response operation=%s request=%s ok=%s", request["operation"], request_id, response.get("ok"))
             return response
         workspace_ready = (workspace_path / "workspace.json").is_file() and (spool / "ready.json").is_file()
         if not process_is_alive(session.get("pid")) and not workspace_ready:
@@ -112,6 +117,7 @@ def submit_ui_request(
         destination.unlink()
     except FileNotFoundError:
         pass
+    logger.warning("UI request timed out operation=%s request=%s timeout=%s", request["operation"], request_id, timeout)
     raise TimeoutError(f"UI control request {request_id} exceeded {timeout:g}s")
 
 

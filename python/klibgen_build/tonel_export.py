@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import types
 from pathlib import Path
 from typing import Any, Literal, Union, get_args, get_origin
@@ -9,6 +10,9 @@ from typing import Any, Literal, Union, get_args, get_origin
 from pydantic import BaseModel, JsonValue
 
 from .json_models import ALL_MODELS, WireModel
+
+
+logger = logging.getLogger(__name__)
 
 
 GENERATED_MARKER = "Generated from klibgen_build.json_models; DO NOT EDIT."
@@ -154,6 +158,7 @@ def _class_comment(model: type[WireModel], slots: list[tuple[str, str, str]]) ->
 
 
 def render_model(model: type[WireModel]) -> str:
+    logger.debug("rendering Tonel JSON model python=%s smalltalk=%s", model.__name__, model.smalltalk_name)
     slots: list[tuple[str, str, str]] = []
     specifications: list[str] = []
     for python_name, field in model.model_fields.items():
@@ -235,6 +240,8 @@ def _updated_index(contents: str) -> str:
 def export_tonel(output: Path, *, check: bool = False) -> list[str]:
     """Write generated model classes or report drift without changing files."""
 
+    logger.info("%s generated Tonel models output=%s", "checking" if check else "exporting", output)
+
     expected = expected_files()
     actual_generated: dict[str, str] = {}
     if output.is_dir():
@@ -252,6 +259,10 @@ def export_tonel(output: Path, *, check: bool = False) -> list[str]:
     if expected_index != index_contents:
         drift.append("KlibGenGt.class.st")
     if check:
+        if drift:
+            logger.warning("generated Tonel model drift files=%d", len(drift))
+        else:
+            logger.info("generated Tonel models are current files=%d", len(expected))
         return drift
     output.mkdir(parents=True, exist_ok=True)
     for name in actual_generated.keys() - expected.keys():
@@ -261,6 +272,7 @@ def export_tonel(output: Path, *, check: bool = False) -> list[str]:
             (output / name).write_text(contents, encoding="utf-8")
     if expected_index != index_contents:
         index_path.write_text(expected_index, encoding="utf-8")
+    logger.info("exported generated Tonel models changedFiles=%d", len(drift))
     return drift
 
 

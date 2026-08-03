@@ -1100,7 +1100,23 @@ available. Re-running updates the current diagnostic record.
 The common “write a test, fail, debug, fix, pass” loop MUST not leave full failed
 execution directories behind.
 
-### 20.3 Partial cleanup
+### 20.3 Coordinator logging
+
+All Python coordinator services use a common stderr-only logging configuration.
+The default level is `INFO` and is intentionally limited to important build,
+session, staging, GUI, source-validation, and maintenance lifecycle events.
+Each CLI invocation accepts an explicit level override, with an environment
+variable as a non-command-line equivalent. Supported levels include `TRACE`
+below `DEBUG` for the most detailed diagnostics.
+
+Structured command results remain exclusively on stdout. DEBUG records paths,
+identities, decisions, timings, process counts, and state transitions. TRACE
+may record complete subprocess argument vectors, but environment values and
+captured process output MUST NOT be logged generically. Failures logged by a
+boundary that will re-raise SHOULD retain exception context without replacing
+the bounded authoritative diagnostic records.
+
+### 20.4 Partial cleanup
 
 Cleanup happens after enough information has been extracted to diagnose the
 failure. A debug flag MAY temporarily preserve a build workspace until the next

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import platform
 import shutil
@@ -15,6 +16,7 @@ from .recipes import DEFAULT_TARGETS, Recipe, Target, json_value
 
 RESOLVED_RECIPE_SCHEMA = "klibgen.resolved-recipe/1"
 SOURCE_LOCK_SCHEMA = "klibgen.source-lock/1"
+logger = logging.getLogger(__name__)
 
 
 def validate_lock(value: dict[str, Any]) -> None:
@@ -80,7 +82,9 @@ def digest_paths(root: Path, paths: Iterable[str], exclude: Iterable[str] = ()) 
                     "mode": candidate.stat(follow_symlinks=False).st_mode & 0o777,
                     "sha256": _digest_file(candidate),
                 })
-    return {"digest": digest_json(records), "files": records}
+    result = {"digest": digest_json(records), "files": records}
+    logger.debug("digested declared paths root=%s files=%d digest=%s", root, len(records), result["digest"])
+    return result
 
 
 def git_worktree_identity(path: Path) -> dict[str, Any]:
@@ -104,10 +108,11 @@ def git_worktree_identity(path: Path) -> dict[str, Any]:
 def jj_tree_identity(root: Path, paths: Iterable[str], exclude: Iterable[str]) -> dict[str, Any]:
     selected_paths = tuple(paths)
     excluded_paths = tuple(exclude)
-    for _attempt in range(3):
+    for attempt in range(3):
         revision = read_jj_revision(root)
         content = digest_paths(root, selected_paths, excluded_paths)
         if read_jj_revision(root) == revision:
+            logger.debug("captured JJ source identity attempt=%d commit=%s digest=%s", attempt + 1, revision["commitId"], content["digest"])
             return {
                 "vcs": "jj",
                 "commitId": revision["commitId"],
@@ -190,6 +195,7 @@ def _key_configuration(resolved: Mapping[str, Any]) -> dict[str, Any]:
 
 def resolve_recipe(paths: BuildPaths, target: Target, recipe: Recipe | None = None) -> dict[str, Any]:
     selected = recipe or target.recipe
+    logger.debug("resolving recipe target=%s recipe=%s steps=%d", target.name, selected.name, len(selected.steps))
     parent_key: str | None = None
     steps: list[dict[str, Any]] = []
     for step in selected.steps:
@@ -230,6 +236,7 @@ def resolve_recipe(paths: BuildPaths, target: Target, recipe: Recipe | None = No
 
 
 def resolve_target(paths: BuildPaths, name: str, through: str | None = None) -> dict[str, Any]:
+    logger.debug("resolving target name=%s through=%s", name, through)
     try:
         target = DEFAULT_TARGETS[name]
     except KeyError as error:

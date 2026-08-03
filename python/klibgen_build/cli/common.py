@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sys
@@ -21,6 +22,7 @@ POSITIVE_INT = click.IntRange(min=1)
 TARGET = click.Choice(sorted(DEFAULT_TARGETS))
 ROLE = click.Choice(STANDARD_ROLES)
 JSON_OPTION = click.option("--json", "as_json", is_flag=True, help="Emit the structured result as JSON.")
+logger = logging.getLogger(__name__)
 
 
 class ArtifactKey(click.ParamType):
@@ -70,11 +72,13 @@ def _finish(ctx: click.Context, result: dict[str, Any], as_json: bool) -> None:
 
 
 def _run(ctx: click.Context, as_json: bool, operation: Callable[[], dict[str, Any]]) -> None:
+    logger.debug("dispatching CLI command path=%s json=%s", ctx.command_path, as_json)
     try:
         _finish(ctx, operation(), as_json)
     except click.exceptions.Exit:
         raise
     except ERRORS as error:
+        logger.debug("CLI command failed path=%s", ctx.command_path, exc_info=True)
         click.echo(f"{ctx.command_path}: {error}", err=True)
         ctx.exit(2)
 

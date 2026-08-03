@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import resource
@@ -10,6 +11,9 @@ from pathlib import Path
 from typing import Callable, Protocol, Sequence
 
 from .processes import CommandResult, decode_output, run_command, start_command
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -75,7 +79,9 @@ def process_list(pid: int | None = None, command_regex: str | None = None) -> li
         except (FileNotFoundError, PermissionError, ProcessLookupError, IndexError):
             continue
         result.append(ProcessInfo(process_pid, state, command))
-    return sorted(result, key=lambda each: each.pid)
+    result = sorted(result, key=lambda each: each.pid)
+    logger.debug("listed host processes count=%d pid=%s regex=%s", len(result), pid, command_regex)
+    return result
 
 
 class X11DesktopBackend:
@@ -94,6 +100,7 @@ class X11DesktopBackend:
             window = self._window(identifier)
             if window is not None:
                 result.append(window)
+        logger.debug("listed X11 windows count=%d", len(result))
         return result
 
     def _window(self, identifier: int) -> WindowInfo | None:
@@ -125,6 +132,7 @@ class X11DesktopBackend:
         )
 
     def screenshot(self, window: WindowInfo, output: Path) -> None:
+        logger.info("capturing window screenshot window=%s output=%s", window.id_hex, output)
         output.parent.mkdir(parents=True, exist_ok=True)
         captured = self._run(["import", "-window", window.id_hex, str(output)], check=False)
         if captured.returncode != 0:
@@ -133,11 +141,13 @@ class X11DesktopBackend:
             raise RuntimeError(f"screenshot was not created: {output}")
 
     def focus(self, window: WindowInfo) -> None:
+        logger.debug("focusing window id=%s", window.id_hex)
         focused = self._run(["xdotool", "windowactivate", "--sync", window.id_hex], check=False)
         if focused.returncode != 0:
             raise RuntimeError(focused.stderr.strip() or f"failed to focus window {window.id_hex}")
 
     def close(self, window: WindowInfo) -> None:
+        logger.info("requesting window close id=%s", window.id_hex)
         self.focus(window)
         closed = self._run(
             ["xdotool", "key", "--window", window.id_hex, "alt+F4"], check=False
@@ -182,6 +192,7 @@ def wait_until(predicate: Callable[[], bool], timeout: float, interval: float = 
 def wait_for_windows(
     backend: DesktopBackend, selector: WindowSelector, present: bool, timeout: float
 ) -> list[WindowInfo]:
+    logger.debug("waiting for windows present=%s timeout=%s", present, timeout)
     matches: list[WindowInfo] = []
 
     def ready() -> bool:
@@ -198,6 +209,7 @@ def wait_for_windows(
 def wait_for_processes(
     pid: int | None, command_regex: str | None, present: bool, timeout: float
 ) -> list[ProcessInfo]:
+    logger.debug("waiting for processes pid=%s regex=%s present=%s timeout=%s", pid, command_regex, present, timeout)
     matches: list[ProcessInfo] = []
 
     def ready() -> bool:
@@ -212,6 +224,7 @@ def wait_for_processes(
 
 
 def terminate_process(pid: int, timeout: float, force: bool) -> dict[str, object]:
+    logger.info("terminating process pid=%d force=%s", pid, force)
     if pid <= 0:
         raise ValueError("PID must be a positive integer")
     if pid == os.getpid():
@@ -234,12 +247,13 @@ def profile_command(command: Sequence[str], capture: bool) -> dict[str, object]:
     if not command:
         raise ValueError("profile requires a command after --")
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
+    logger.info("profiling command executable=%s capture=%s", command[0], capture)
     started = time.perf_counter_ns()
     process = start_command(command, capture_output=capture)
     stdout, stderr = process.communicate()
     elapsed = time.perf_counter_ns() - started
     after = resource.getrusage(resource.RUSAGE_CHILDREN)
-    return {
+    result = {
         "command": list(command),
         "exitCode": process.returncode,
         "stdout": decode_output(stdout),
@@ -250,6 +264,8 @@ def profile_command(command: Sequence[str], capture: bool) -> dict[str, object]:
             "systemCpuTimeNs": round((after.ru_stime - before.ru_stime) * 1_000_000_000),
         },
     }
+    logger.info("profile complete executable=%s exitCode=%s wallMs=%.3f", command[0], process.returncode, elapsed / 1_000_000)
+    return result
 
 
 def window_data(windows: Sequence[WindowInfo]) -> list[dict[str, object]]:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import logging
 import os
 import shutil
 import uuid
@@ -16,6 +17,9 @@ from .processes import run_command
 from .resolution import resolve_target
 from .store import atomic_json
 from .v2state import V2Paths
+
+
+logger = logging.getLogger(__name__)
 
 
 def validate_staging_name(name: str) -> str:
@@ -89,6 +93,7 @@ def _write_contents(root: Path, contents: Mapping[str, bytes]) -> None:
 def _replace_trees(replacements: list[tuple[Path, Path]]) -> None:
     """Replace directories and restore every original if any rename fails."""
     transaction = uuid.uuid4().hex
+    logger.debug("starting atomic tree replacement transaction=%s trees=%d", transaction, len(replacements))
     backups: list[tuple[Path, Path]] = []
     installed: list[Path] = []
     try:
@@ -99,7 +104,9 @@ def _replace_trees(replacements: list[tuple[Path, Path]]) -> None:
                 backups.append((destination, backup))
             os.replace(prepared, destination)
             installed.append(destination)
-    except Exception:
+    except Exception as error:
+        logger.error("rolling back atomic tree replacement transaction=%s error=%s", transaction, error)
+        logger.debug("atomic tree replacement exception transaction=%s", transaction, exc_info=True)
         for destination in reversed(installed):
             if destination.exists():
                 shutil.rmtree(destination)
@@ -115,6 +122,7 @@ def _commit_overlay(area: Path, message: str) -> str:
     run_command(["git", "-C", area / "overlay", "add", "-A", ".project", "src"])
     status = run_command(["git", "-C", area / "overlay", "status", "--porcelain"]).stdout
     if status:
+        logger.debug("committing staging overlay name=%s message=%s", area.name, message)
         run_command([
             "git", "-C", area / "overlay", "-c", "user.name=KlibGen Staging",
             "-c", "user.email=staging@localhost", "commit", "--quiet", "-m", message,
@@ -139,6 +147,7 @@ def _initial_record(
 
 
 def create_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
+    logger.info("creating staging area name=%s", name)
     v2 = V2Paths.for_build(paths)
     v2.initialize()
     area = _path(paths, name)
@@ -154,6 +163,7 @@ def create_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
         head = _commit_overlay(area, "Initialize staging area")
         value = _initial_record(name, area, source, project_key, head)
         atomic_json(area / "staging.json", value)
+    logger.info("created staging area name=%s generation=%s", name, value["generation"])
     return validate_named_record({
         "schema": "klibgen.staging-result/1", "schemaVersion": 1,
         "operation": "staging.create", "staging": value, "path": str(area),
@@ -168,6 +178,7 @@ def migrate_staging(
     project_key: str,
 ) -> dict[str, Any]:
     """Import a legacy GUI Git repository without altering or removing it."""
+    logger.info("migrating legacy staging area name=%s", name)
     v2 = V2Paths.for_build(paths)
     v2.initialize()
     area = _path(paths, name)
@@ -194,6 +205,7 @@ def migrate_staging(
         value = _initial_record(name, area, base_source, project_key, head)
         value["lastRebase"] = {"ok": True, "migration": "workspace-private-git"}
         atomic_json(area / "staging.json", value)
+        logger.info("migrated legacy staging area name=%s", name)
         return value
 
 
@@ -244,6 +256,7 @@ def _merge_contents(
 def _reconcile_head_locked(area: Path, record: dict[str, Any]) -> dict[str, Any]:
     head = _git_head(area)
     if record.get("headCommit") != head:
+        logger.debug("reconciling staging Git head name=%s old=%s new=%s", area.name, record.get("headCommit"), head)
         record["headCommit"] = head
         record["generation"] = int(record.get("generation", 0)) + 1
         record["state"] = "ready"
@@ -257,6 +270,7 @@ def _rebase_locked(paths: BuildPaths, area: Path, record: dict[str, Any]) -> dic
     overlay = _contents(area / "overlay/src")
     current = _contents(paths.root / "src")
     if base == current:
+        logger.debug("staging rebase already current name=%s", area.name)
         if record.get("state") == "conflicted":
             record["state"] = "ready"
             record["lastRebase"] = {"ok": True, "conflicts": []}
@@ -264,6 +278,7 @@ def _rebase_locked(paths: BuildPaths, area: Path, record: dict[str, Any]) -> dic
         return record
     merged, conflicts = _merge_contents(base, overlay, current)
     if conflicts:
+        logger.warning("staging rebase conflicted name=%s paths=%d", area.name, len(conflicts))
         record["state"] = "conflicted"
         record["lastRebase"] = {"ok": False, "conflicts": conflicts}
         atomic_json(area / "staging.json", record)
@@ -298,10 +313,12 @@ def _rebase_locked(paths: BuildPaths, area: Path, record: dict[str, Any]) -> dic
         "lastRebase": {"ok": True, "conflicts": []},
     })
     atomic_json(area / "staging.json", record)
+    logger.info("rebased staging area name=%s generation=%s", area.name, record["generation"])
     return record
 
 
 def rebase_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
+    logger.info("checking staging rebase name=%s", name)
     v2 = V2Paths.for_build(paths)
     area = _path(paths, name)
     with _lock(v2, name):
@@ -330,6 +347,7 @@ def acquire_staging_lease(
     *,
     session_id: str | None = None,
 ) -> dict[str, Any]:
+    logger.debug("acquiring staging lease name=%s contextKind=%s contextId=%s", name, context_kind, context_id)
     v2 = V2Paths.for_build(paths)
     area = _path(paths, name)
     with _lock(v2, name):
@@ -338,6 +356,7 @@ def acquire_staging_lease(
         same_context = lease and lease.get("contextKind") == context_kind and lease.get("contextId") == context_id
         if lease and not same_context and (lease.get("reserved") or _pid_alive(lease.get("pid"))):
             owner = f"{lease.get('contextKind')} {lease.get('contextId')}"
+            logger.warning("staging lease refused name=%s owner=%s", name, owner)
             raise RuntimeError(f"staging area {name!r} is exclusively owned by {owner}")
         if not (lease and same_context and lease.get("reserved")):
             record = _rebase_locked(paths, area, record)
@@ -349,6 +368,7 @@ def acquire_staging_lease(
             "sessionId": session_id or context_id,
         }
         atomic_json(area / "staging.json", record)
+        logger.debug("acquired staging lease name=%s generation=%s", name, record.get("generation"))
         return record
 
 
@@ -383,6 +403,7 @@ def release_staging_lease(
             else:
                 record["lease"] = None
             atomic_json(area / "staging.json", record)
+            logger.debug("released staging lease name=%s reserved=%s", name, bool(source_change_count))
         return record
 
 
@@ -414,6 +435,7 @@ def list_staging(paths: BuildPaths) -> dict[str, Any]:
 
 
 def reset_staging(paths: BuildPaths, name: str) -> dict[str, Any]:
+    logger.info("resetting staging area name=%s", name)
     v2 = V2Paths.for_build(paths)
     area = _path(paths, name)
     with _lock(v2, name):
@@ -440,6 +462,7 @@ def promote_staging(
     *,
     context_id: str | None = None,
 ) -> dict[str, Any]:
+    logger.info("promoting staging area name=%s", name)
     v2 = V2Paths.for_build(paths)
     area = _path(paths, name)
     promotion_lock = v2.root / "locks/staging/promotion.lock"
@@ -474,6 +497,8 @@ def promote_staging(
                 _apply_authoritative_tree(paths, authoritative_before)
             record["lastPromotion"] = {"ok": False, "error": str(error)}
             atomic_json(area / "staging.json", record)
+            logger.error("staging promotion failed name=%s error=%s", name, error)
+            logger.debug("staging promotion exception name=%s", name, exc_info=True)
             raise
         promotion = {"ok": True, "changes": changes}
         record.update({
@@ -481,6 +506,8 @@ def promote_staging(
             "promotion": promotion, "lastPromotion": promotion,
         })
         atomic_json(area / "staging.json", record)
+    changed_count = sum(len(changes[key]) for key in ("additions", "modifications", "removals", "renames"))
+    logger.info("promoted staging area name=%s changes=%d", name, changed_count)
     return validate_named_record({
         "schema": "klibgen.staging-result/1", "schemaVersion": 1,
         "operation": "staging.promote", "staging": record,

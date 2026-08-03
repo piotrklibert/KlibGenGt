@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import logging
 import os
 import shutil
 import stat
@@ -15,6 +16,9 @@ from .json_models import parse_named_record, validate_named_record
 from .v2state import V2Paths
 
 
+logger = logging.getLogger(__name__)
+
+
 def atomic_json(path: Path, value: dict[str, Any]) -> None:
     if "schema" in value:
         value = validate_named_record(value)
@@ -22,6 +26,7 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(temporary, path)
+    logger.debug("wrote atomic JSON path=%s schema=%s", path, value.get("schema"))
 
 
 class ArtifactStore:
@@ -44,6 +49,7 @@ class ArtifactStore:
             yield
 
     def verify(self, artifact: Path) -> dict[str, Any]:
+        logger.debug("verifying artifact path=%s", artifact)
         manifest_path = artifact / "manifest.json"
         if not manifest_path.is_file():
             raise ValueError(f"artifact manifest is missing: {manifest_path}")
@@ -71,6 +77,7 @@ class ArtifactStore:
     def publish_locked(self, workspace: Path, manifest: dict[str, Any]) -> tuple[Path, bool]:
         target = self.artifact(manifest["artifactType"], manifest["outputKey"])
         if target.exists():
+            logger.debug("artifact publication reused key=%s", manifest["outputKey"])
             self.verify(target)
             shutil.rmtree(workspace, ignore_errors=True)
             return target, True
@@ -87,6 +94,7 @@ class ArtifactStore:
         target.parent.mkdir(parents=True, exist_ok=True)
         os.replace(workspace, target)
         self._make_read_only(target)
+        logger.debug("artifact publication installed key=%s path=%s", manifest["outputKey"], target)
         return target, False
 
     def publish(self, workspace: Path, manifest: dict[str, Any]) -> tuple[Path, bool]:
@@ -104,6 +112,7 @@ class ArtifactStore:
             "artifactType": artifact_type, "outputKey": key, "artifactPath": str(artifact),
             "producingRole": manifest["producingRole"],
         })
+        logger.debug("wrote artifact reference name=%s key=%s", name, key)
         return path
 
     def artifacts(self) -> list[dict[str, Any]]:

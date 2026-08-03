@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import uuid
@@ -14,6 +15,9 @@ from .processes import run_command
 from .resolution import resolve_target
 from .store import ArtifactStore
 from .tonel_lint import verify_tonel_roundtrip
+
+
+logger = logging.getLogger(__name__)
 
 
 def _set_writable(root: Path) -> None:
@@ -42,17 +46,20 @@ def _run_image(paths: BuildPaths, payload: Path, script: Path, name: str, additi
     logs.mkdir(exist_ok=True)
     launcher = payload / "runtime/bin/GlamorousToolkit-cli"
     image = payload / "image/GlamorousToolkit.image"
+    logger.debug("running canonical image step=%s script=%s", name, script)
     result = run_command(
         [launcher, image, "st", script], check=False, cwd=workspace,
         env=_private_environment(workspace, additions),
     )
     (logs / f"{name}.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     if result.returncode:
+        logger.error("canonical image step failed step=%s log=%s", name, logs / f"{name}.log")
         raise RuntimeError(f"{name} failed; log: {logs / f'{name}.log'}")
 
 
 def _extract_clean_image(paths: BuildPaths, destination: Path) -> None:
     archive = paths.root / "vendor/gt.zip"
+    logger.debug("extracting clean GT image archive=%s destination=%s", archive, destination)
     with zipfile.ZipFile(archive) as source:
         members = [name for name in source.namelist() if not name.endswith("/")]
         for name in members:
@@ -71,6 +78,7 @@ def _extract_clean_image(paths: BuildPaths, destination: Path) -> None:
 def _git_bridge(paths: BuildPaths, workspace: Path, relative_paths: Iterable[str], revision: str | None = None) -> Path:
     bridge = workspace / f"source-{uuid.uuid4().hex}"
     selected = tuple(relative_paths)
+    logger.debug("materializing source bridge paths=%s revision=%s", selected, revision)
     if revision is None:
         files = [
             path for relative in selected for path in (paths.root / relative).rglob("*")
@@ -113,6 +121,7 @@ class CanonicalExecutor:
 
     def __call__(self, step: dict[str, Any], payload: Path) -> None:
         role = step["role"]
+        logger.debug("executing canonical role=%s key=%s", role, step["outputKey"])
         workspace = payload.parent
         if role == "runtime":
             run_command([self.paths.root / "scripts/bootstrap-gt.sh"])
@@ -158,12 +167,14 @@ class CanonicalExecutor:
 
 
 def build_canonical(paths: BuildPaths, target: str, through: str | None = None) -> dict[str, Any]:
+    logger.debug("resolving canonical target=%s through=%s", target, through)
     resolved = resolve_target(paths, target, through)
     result = build_resolved(paths, resolved, CanonicalExecutor(paths, resolved))
     last = resolved["steps"][-1]
     artifact_type = last["implementation"]["outputType"]
     reference_name = "default-project" if last["role"] == "project-finalize" else f"default-{last['role']}"
     ArtifactStore(paths).write_reference(reference_name, artifact_type, last["outputKey"])
+    logger.debug("updated canonical reference name=%s key=%s", reference_name, last["outputKey"])
     return result | {"reference": reference_name}
 
 

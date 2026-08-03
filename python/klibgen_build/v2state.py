@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 import stat
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from .core import BuildPaths
 V2_DIRECTORIES = (
     "store", "refs", "status", "workspaces", "staging", "sessions", "logs", "locks", "tmp"
 )
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -25,6 +27,7 @@ class V2Paths:
         self.root.mkdir(parents=True, exist_ok=True)
         for name in V2_DIRECTORIES:
             (self.root / name).mkdir(exist_ok=True)
+        logger.debug("initialized v2 state root=%s", self.root)
 
     def owned(self, path: Path) -> Path:
         candidate = path.resolve()
@@ -38,6 +41,7 @@ class V2Paths:
 
     def remove_tree(self, path: Path) -> None:
         candidate = self.owned(path)
+        logger.debug("removing owned state path=%s", candidate)
         if candidate.is_symlink() or candidate.is_file():
             candidate.unlink(missing_ok=True)
         elif candidate.exists():

@@ -2,12 +2,22 @@ from __future__ import annotations
 
 import click
 
+from ..logging_config import LEVEL_NAMES, configure_logging
 from .common import emit
 
 
 @click.group()
-def cli() -> None:
+@click.option(
+    "--log-level",
+    type=click.Choice(LEVEL_NAMES, case_sensitive=False),
+    default="INFO",
+    show_default=True,
+    envvar="KLIBGEN_LOG_LEVEL",
+    help="Set build-script logging verbosity (written to stderr).",
+)
+def cli(log_level: str) -> None:
     """Build, inspect, test, and maintain KlibGen-GT project artifacts."""
+    configure_logging(log_level)
 
 
 # Import command families after defining the root group. Each module registers

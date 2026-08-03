@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import difflib
 import json
+import logging
 import shutil
 import uuid
 from pathlib import Path
@@ -11,6 +12,9 @@ from typing import Any
 
 from .core import BuildPaths
 from .processes import run_command
+
+
+logger = logging.getLogger(__name__)
 
 
 def _sources(root: Path) -> dict[str, bytes]:
@@ -54,6 +58,7 @@ def verify_tonel_roundtrip(source_root: Path, exported_root: Path) -> int:
     """Reject source whose exact bytes differ from the pinned Tonel export."""
     drift = tonel_drift(source_root, exported_root)
     if drift:
+        logger.error("Tonel round trip changed files=%d source=%s", len(drift), source_root)
         paths = ", ".join(item["path"] for item in drift[:20])
         if len(drift) > 20:
             paths += f", ... and {len(drift) - 20} more files"
@@ -63,7 +68,9 @@ def verify_tonel_roundtrip(source_root: Path, exported_root: Path) -> int:
             "Tonel source is not canonical; an export would rewrite: " + paths
             + ("\n" + details if details else "") + suffix
         )
-    return len(_sources(source_root))
+    count = len(_sources(source_root))
+    logger.info("Tonel round trip is canonical files=%d", count)
+    return count
 
 
 def export_tonel_source(
@@ -75,6 +82,7 @@ def export_tonel_source(
     if not source_git.is_dir() or not source_root.is_dir():
         raise ValueError(f"Tonel lint source repository is missing: {source_git}")
     temporary_root = paths.root / "tmp" / f"tonel-lint-{uuid.uuid4().hex}"
+    logger.debug("exporting Tonel for lint source=%s workspace=%s", source_root, temporary_root)
     payload = temporary_root / "payload"
     try:
         temporary_root.mkdir(parents=True)
@@ -113,6 +121,7 @@ def lint_git_source(paths: BuildPaths, source_git: Path, artifact: Path) -> dict
     source_git = source_git.resolve()
     source_root = source_git.parent / "src"
     exported = paths.root / "tmp" / f"tonel-output-{uuid.uuid4().hex}"
+    logger.info("checking staged Tonel source repository=%s", source_git.parent.name)
     try:
         export_tonel_source(paths, source_git, artifact, exported)
         count = verify_tonel_roundtrip(source_root, exported)
@@ -128,6 +137,7 @@ def lint_authoritative_source(paths: BuildPaths) -> dict[str, Any]:
     """Build through the source gate and report the checked authoritative tree."""
     from .canonical import build_canonical
 
+    logger.info("checking authoritative Tonel source")
     build = build_canonical(paths, "cli")
     return {
         "schemaVersion": 1, "ok": True, "operation": "source.lint",
