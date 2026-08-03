@@ -3,6 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
+source "${script_dir}/utils.sh"
 mode="${1:-}"
 
 case "${mode}" in
@@ -13,7 +14,7 @@ case "${mode}" in
         ;;
 esac
 
-build_root="${repo_root}/vendor/gt-build"
+build_root="$(shared_vendor_root "${repo_root}")/gt-build"
 sources_root="${build_root}/sources"
 workspaces_root="${build_root}/workspaces"
 sources_dir="${sources_root}/${mode}"

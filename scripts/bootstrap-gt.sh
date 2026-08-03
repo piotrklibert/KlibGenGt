@@ -3,8 +3,9 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
+source "${script_dir}/utils.sh"
 
-vendor_dir="${repo_root}/vendor"
+vendor_dir="$(shared_vendor_root "${repo_root}")"
 runtime_dir="${vendor_dir}/gt"
 archive="${vendor_dir}/gt.zip"
 launcher="${runtime_dir}/bin/GlamorousToolkit"

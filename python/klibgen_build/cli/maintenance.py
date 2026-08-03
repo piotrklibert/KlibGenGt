@@ -18,7 +18,7 @@ from ..workspaces import workspace_status
 
 def _doctor(paths: BuildPaths) -> dict[str, Any]:
     tools = [{"name": name, "path": shutil.which(name), "ok": shutil.which(name) is not None} for name in ("git", "jj", "uv", "unzip")]
-    checks = [{"path": str(path), "ok": path.exists()} for path in (paths.root / "src", paths.root / "vendor/gt.zip", paths.root / "build/locks/default.lock.json")]
+    checks = [{"path": str(path), "ok": path.exists()} for path in (paths.root / "src", paths.vendor / "gt.zip", paths.root / "build/locks/default.lock.json")]
     return {"schema": "klibgen.doctor/1", "schemaVersion": 1, "operation": "doctor", "ok": all(item["ok"] for item in tools + checks), "platform": platform_id(), "stateRoot": str(V2Paths.for_build(paths).root), "tools": tools, "checks": checks}
 
 
@@ -63,6 +63,4 @@ def gc(ctx: click.Context, dry_run: bool, apply: bool, as_json: bool) -> None:
 def build_map_png(ctx: click.Context, output: Path | None, force: bool, as_json: bool) -> None:
     """Render overview and full-graph PNG files in OUTPUT_DIR."""
     _run(ctx, as_json, lambda: export_build_map_pngs(_paths(), output, force))
-
-
 

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from klibgen_build.core import BuildPaths
 from klibgen_build.measurements import storage_metrics
@@ -38,6 +40,36 @@ class V2BaselineTest(unittest.TestCase):
             paths.remove_tree(paths.root)
         with self.assertRaisesRegex(ValueError, "outside"):
             paths.remove_tree(self.root / "unowned")
+
+    def test_secondary_jj_workspace_uses_primary_vendor_cache_but_local_state(self):
+        primary = self.root / "primary"
+        secondary = self.root / "secondary"
+        (primary / ".jj/repo").mkdir(parents=True)
+        (primary / "src").mkdir()
+        (primary / "justfile").write_text("")
+        (secondary / ".jj").mkdir(parents=True)
+        (secondary / "src").mkdir()
+        (secondary / "justfile").write_text("")
+        (secondary / ".jj/repo").write_text(str(primary / ".jj/repo"))
+
+        paths = BuildPaths(secondary, secondary / ".klibgen")
+
+        self.assertEqual(paths.vendor, primary / "vendor")
+        self.assertEqual(paths.state, secondary / ".klibgen")
+
+        shell = subprocess.run(
+            [
+                "bash", "-c", 'source "$1"; shared_vendor_root "$2"', "fixture",
+                str(ROOT / "scripts/utils.sh"), str(secondary),
+            ],
+            check=True, capture_output=True, text=True,
+        )
+        self.assertEqual(Path(shell.stdout.strip()), primary / "vendor")
+
+    def test_explicit_vendor_root_overrides_jj_workspace_discovery(self):
+        paths = BuildPaths(self.root, self.root / ".klibgen")
+        with patch.dict(os.environ, {"KLIBGEN_VENDOR_ROOT": "cache/vendor"}):
+            self.assertEqual(paths.vendor, (self.root / "cache/vendor").resolve())
 
     def test_storage_measurement_counts_images_and_allocated_bytes(self):
         (self.root / "one.image").write_bytes(b"image")

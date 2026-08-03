@@ -128,6 +128,11 @@ parseable.
 The outer repository uses JuJutsu. Git is used only for deliberately nested
 source bridges and upstream worktrees.
 
+Secondary JJ workspaces keep their own `.klibgen/` state but automatically use
+the primary workspace's ignored `vendor/` acquisition cache. Set
+`KLIBGEN_VENDOR_ROOT` to an absolute path, or a path relative to the current
+project root, to override that discovery.
+
 ## Recipes and artifacts
 
 The standard recipe has semantic roles rather than numbered layers:

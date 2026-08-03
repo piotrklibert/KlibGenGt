@@ -24,5 +24,6 @@ export/
 data/*
 !data/kotlin-samples/
 data/kotlin-samples/*
+!data/kotlin-samples/*.kt
 !data/kotlin-samples/defined-types.fixture.json
 legacy/klibert_pl/

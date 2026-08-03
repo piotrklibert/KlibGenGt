@@ -3,8 +3,9 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
+source "${script_dir}/utils.sh"
 
-tools_dir="${repo_root}/vendor/gt-build/tools"
+tools_dir="$(shared_vendor_root "${repo_root}")/gt-build/tools"
 installer="${tools_dir}/gt-installer"
 url_file="${repo_root}/.tool-versions-or-lock/gt-installer-linux-x86_64.url"
 sha_file="${repo_root}/.tool-versions-or-lock/gt-installer-linux-x86_64.sha256"

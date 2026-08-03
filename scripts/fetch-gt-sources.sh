@@ -3,6 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
+source "${script_dir}/utils.sh"
 mode="${1:-}"
 
 case "${mode}" in
@@ -13,7 +14,7 @@ case "${mode}" in
         ;;
 esac
 
-sources_dir="${repo_root}/vendor/gt-build/sources/${mode}"
+sources_dir="$(shared_vendor_root "${repo_root}")/gt-build/sources/${mode}"
 
 if [[ ! -d "${sources_dir}" ]]; then
     echo "GT source directory does not exist: ${sources_dir}" >&2

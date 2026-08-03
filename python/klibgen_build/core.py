@@ -31,6 +31,28 @@ class BuildPaths:
     root: Path
     state: Path
 
+    @property
+    def vendor(self) -> Path:
+        """Return the acquisition cache shared by workspaces of one JJ repository."""
+        configured = os.environ.get("KLIBGEN_VENDOR_ROOT")
+        if configured:
+            candidate = Path(configured)
+            return (candidate if candidate.is_absolute() else self.root / candidate).resolve()
+
+        repository_pointer = self.root / ".jj/repo"
+        if repository_pointer.is_file():
+            value = repository_pointer.read_text(encoding="utf-8").strip()
+            if value:
+                repository = Path(value)
+                if not repository.is_absolute():
+                    repository = repository_pointer.parent / repository
+                repository = repository.resolve()
+                if repository.name == "repo" and repository.parent.name == ".jj":
+                    primary_root = repository.parent.parent
+                    if (primary_root / "justfile").is_file() and (primary_root / "src").is_dir():
+                        return primary_root / "vendor"
+        return self.root / "vendor"
+
     @classmethod
     def discover(cls) -> "BuildPaths":
         working_directory = Path.cwd().resolve()

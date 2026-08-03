@@ -58,7 +58,7 @@ def _run_image(paths: BuildPaths, payload: Path, script: Path, name: str, additi
 
 
 def _extract_clean_image(paths: BuildPaths, destination: Path) -> None:
-    archive = paths.root / "vendor/gt.zip"
+    archive = paths.vendor / "gt.zip"
     logger.debug("extracting clean GT image archive=%s destination=%s", archive, destination)
     with zipfile.ZipFile(archive) as source:
         members = [name for name in source.namelist() if not name.endswith("/")]
@@ -105,7 +105,7 @@ def _git_bridge(paths: BuildPaths, workspace: Path, relative_paths: Iterable[str
 def _dependency_repository(paths: BuildPaths, step: dict[str, Any]) -> str:
     source = next(item for item in step["resolvedConfiguration"]["sources"] if item["sourceId"] == "sqlite3")
     commit = source["resolved"]["commit"]
-    worktree = paths.root / "vendor/gt-build/dependencies/sqlite3"
+    worktree = paths.vendor / "gt-build/dependencies/sqlite3"
     if not (worktree / ".git").is_dir():
         raise RuntimeError(f"pinned SQLite source cache is missing: {worktree}; clone {source['source']} at {commit}")
     actual = run_command(["git", "-C", worktree, "rev-parse", "HEAD"]).stdout.strip()
@@ -124,8 +124,10 @@ class CanonicalExecutor:
         logger.debug("executing canonical role=%s key=%s", role, step["outputKey"])
         workspace = payload.parent
         if role == "runtime":
-            run_command([self.paths.root / "scripts/bootstrap-gt.sh"])
-            runtime = self.paths.root / "vendor/gt"
+            environment = os.environ.copy()
+            environment["KLIBGEN_VENDOR_ROOT"] = str(self.paths.vendor)
+            run_command([self.paths.root / "scripts/bootstrap-gt.sh"], env=environment)
+            runtime = self.paths.vendor / "gt"
             (payload / "runtime").symlink_to(runtime, target_is_directory=True)
             return
         _set_writable(payload)
