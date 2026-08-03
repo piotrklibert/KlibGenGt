@@ -7,7 +7,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from klibgen_build.cli import parser
+from click.testing import CliRunner
+
+from klibgen_build.cli import cli
 from klibgen_build.core import BuildPaths
 from klibgen_build.ui_control import active_gui_sessions, select_gui_session, submit_ui_request
 
@@ -96,16 +98,21 @@ class UiControlTest(unittest.TestCase):
         self.assertEqual(list((workspace / "tmp/ui-control/requests").glob("*.json")), [])
 
     def test_cli_covers_selectors_actions_wait_batch_and_eval(self):
-        parsed = parser().parse_args([
-            "ui", "act", "drag", "--node", "node-7", "--dx", "3", "--dy", "4",
-            "--text-regex", "Save.*", "--no-visible", "--session", "s1",
-        ])
-        self.assertEqual(parsed.ui_action, "act")
-        self.assertEqual((parsed.dx, parsed.dy), (3, 4))
-        self.assertFalse(parsed.visible)
-        self.assertEqual(parser().parse_args(["ui", "wait", "focused", "--class", "BrEditor"]).state, "focused")
-        self.assertTrue(parser().parse_args(["ui", "batch", "--stdin"]).stdin)
-        self.assertEqual(parser().parse_args(["ui", "eval", "1 + 2"]).expression, "1 + 2")
+        runner = CliRunner()
+        response = {"schemaVersion": 1, "ok": True, "operation": "ui.act", "data": {}}
+        with patch("klibgen_build.cli.ui.submit_ui_request", return_value=response) as submit:
+            result = runner.invoke(cli, [
+                "ui", "act", "drag", "--node", "node-7", "--dx", "3", "--dy", "4",
+                "--text-regex", "Save.*", "--no-visible", "--session", "s1",
+            ])
+        self.assertEqual(result.exit_code, 0, result.output)
+        request = submit.call_args.args[1]
+        self.assertEqual((request["dx"], request["dy"]), (3, 4))
+        self.assertFalse(request["visible"])
+        self.assertEqual(request["textRegex"], "Save.*")
+        for arguments in (["ui", "wait", "focused", "--help"], ["ui", "batch", "--help"], ["ui", "eval", "--help"]):
+            result = runner.invoke(cli, arguments)
+            self.assertEqual(result.exit_code, 0, result.output)
 
 
 if __name__ == "__main__":

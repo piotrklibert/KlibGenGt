@@ -48,6 +48,46 @@ The Python coordinator is installed from `pyproject.toml` and locked by
 `uv.lock`. Use `uv add` and `uv lock` for dependency changes. The `justfile`
 keeps uv's cache under ignored `tmp/uv-cache`.
 
+## Command-line interface
+
+`klibgen-build` is a nested Click CLI. Run `klibgen-build --help` and then the
+`--help` of any group or leaf for its arguments, validated choices, ranges,
+defaults, state changes, and failure policy.
+
+The implementation is a `python/klibgen_build/cli/` package: command groups
+live in subsystem modules, while `common.py` owns shared validation, error
+translation, and result formatting. The package root exports only `cli`,
+`main`, and `emit` as its public CLI API.
+
+The command tree is:
+
+```text
+klibgen-build
+├── host windows … | processes … | profile -- COMMAND
+├── image code … | lepiter … | eval
+├── ui status | spaces | tree | query | get | act | wait | batch | eval
+├── recipe list | resolve
+├── artifact list | verify
+├── workspace status | reset
+├── staging list | create | reset | promote
+├── models export-tonel
+└── doctor | status | build | test | test-one | eval | load | smoke
+    | check-type-pragmas | gui | agentic | inventory | build-map
+    | build-map-png | gc
+```
+
+Options such as `--json` remain local to each command. `test --fresh` always
+uses a disposable session; `gui --fresh` deliberately replaces the saved GUI
+workspace, while `workspace reset` requires `--confirm`. UI selectors compose:
+all supplied selectors must match, and node-specific actions require a unique
+match. Boolean selectors are tri-state (`--visible`, `--no-visible`, or
+unspecified). Repeat `--database` to search multiple Lepiter databases. Use
+`host profile -- COMMAND` when the profiled command has options so all remaining
+arguments pass through unchanged.
+
+Successful results exit 0, structured results with `ok: false` exit 1, and
+usage, validation, filesystem, process, timeout, or protocol failures exit 2.
+
 ## Authoritative and generated state
 
 | Path | Role | Versioned? |

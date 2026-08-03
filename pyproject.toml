@@ -9,6 +9,7 @@ description = "Recipe, artifact, and session coordinator for KlibGen-GT"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "click>=8.4,<9",
     "plumbum>=1.10.0,<2",
     "pydantic>=2.13,<3",
 ]
@@ -18,4 +19,4 @@ klibgen-build = "klibgen_build.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "python"}
-packages = ["klibgen_build"]
+packages = ["klibgen_build", "klibgen_build.cli"]

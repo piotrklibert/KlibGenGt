@@ -176,7 +176,7 @@ scope.
 | `processes.py` | Plumbum-based synchronous and asynchronous process execution. |
 | `ui_control.py` | Filesystem request/response protocol for one active managed GUI. |
 | `host_tools.py` | Linux `/proc` inspection, X11 window operations, screenshots, termination, and profiling. |
-| `cli.py` | `argparse` command surface, compatibility context mapping, text/JSON output, and dispatch. |
+| `cli/` | Click command packages for shared validation/output and the host, image, UI, and project command families. |
 
 The package has one runtime dependency, Plumbum, and exposes the
 `klibgen-build` console entry point. `just` is a convenience frontend; Python

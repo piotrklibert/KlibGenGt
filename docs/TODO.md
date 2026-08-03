@@ -1,0 +1,64 @@
+================================================================================
+piątek, 31 lipca 2026 07/31/26 -- 10:54 
+================================================================================
+
+1. [X] We need Scripter-based Tool that can be used to perform actions, such as
+       clicks and inputting text - as well as allowing to inspect the UI
+       elements visible and invisible - in the live GUI image from outside,
+       through the CLI. Something like Android UI tests where you get XML
+       description (we can use JSON) of the UI and can perform actions on the
+       displayed app remotely. Please research the relevant lepiter docs and
+       APIs in the image and design a tool, its interface, and agentic
+       integration.
+
+- [X] RemoteRunner support
+
+- [ ] Parallel execution of eval, each in its own clone/artifact? 
+
+- [ ] Verify types in temp comments: 
+
+        [ :arg "#(String)" | chars "#(Stream<Character>)" c "#Character" | ]"^Character"
+
+- [X] Closing/quitting stopped asking if I want to save
+
+- [ ] Test runner / error reporter -> lines in files mapping
+
+- [X] One click export, plus pending modificatoins counter on the same button,
+      somewhere on top of BlSpace.
+
+- [X] Better code search: dumping all methods of a class, dumping a method body
+      along with all methods referenced by it, etc. Let's identify useful
+      classes of additional information that can be obtained by AST analysis,
+      GT-based tools, and Pharo mechanisms, and add them to the search tool.
+      
+- [X] Code search: exclude some packages by default, to know which, analyze
+      dependencies between packages in image, and select a default whitelist of
+      packages to search in, as well as several named secondary sets of packages
+      (including `all`), a separate specific packages filtering functionality
+      (`--exclude-package=P1,P2...`, `--include-package=P1,P2,...`). Include
+      info on which set of packages (one of the named lists + custom
+      exclusions/inclusions) was searched in the output, as well as the number
+      of entities found in packages not included in the search (and so not
+      displayed).
+
+
+- [ ] Full Smalltalk-side build model classes for programmatic access and JSON
+      reading/writing.
+
+- [ ] Debugger exposed to the CLI
+ 
+- [ ] Expand all methods in Coder
+
+
+- [ ] Verbose logging everywhere - Python and Smalltalk. Default to INFO. Have
+      TRACE.
+
+- [ ] Tonel lines to methods and classes in error reporting.
+
+- [ ] Add TCP Socket-based ui eval. Don't wire it to anything just yet, but refactor the code so that it's connector-type agnostic, and keep the current file-based protocol as one option, and add TCP Socket as another.
+
+- [ ] don't copy .so files! link/mount instead!
+
+- [X] Pydantic data classes for inventory.py
+
+

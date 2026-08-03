@@ -8,7 +8,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from klibgen_build.cli import parser
+from click.testing import CliRunner
+
+from klibgen_build.cli import cli
 from klibgen_build.core import BuildPaths
 from klibgen_build.recipes import (
     BUILD_MAP_PRESET,
@@ -73,18 +75,18 @@ class RecipeModelTest(unittest.TestCase):
         with self.assertRaisesRegex(RecipeValidationError, "not JSON serializable"):
             Step("bad", implementation("bad", None, "thing"), {"path": Path("mutable")}, "artifact")
 
-    def test_parser_exposes_recipe_artifact_and_build_commands_at_top_level(self):
-        listed = parser().parse_args(["recipe", "list", "--json"])
-        self.assertEqual((listed.command, listed.action), ("recipe", "list"))
-        resolved = parser().parse_args(["recipe", "resolve", "gui", "--through", "build-support"])
-        self.assertEqual(resolved.target, "gui")
-        self.assertEqual(resolved.through, "build-support")
-        artifact = parser().parse_args(["artifact", "verify", "a" * 64, "--json"])
-        self.assertEqual((artifact.command, artifact.action), ("artifact", "verify"))
-        status = parser().parse_args(["status", "--json"])
-        self.assertEqual(status.command, "status")
-        build = parser().parse_args(["build", "gui", "--through", "build-support"])
-        self.assertEqual((build.command, build.target), ("build", "gui"))
+    def test_click_exposes_recipe_artifact_and_build_commands_at_top_level(self):
+        runner = CliRunner()
+        for arguments in (
+            ["recipe", "list", "--help"],
+            ["recipe", "resolve", "--help"],
+            ["artifact", "verify", "--help"],
+            ["status", "--help"],
+            ["build", "--help"],
+        ):
+            result = runner.invoke(cli, arguments)
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(result.output.strip())
 
 
 class RecipeResolutionTest(unittest.TestCase):

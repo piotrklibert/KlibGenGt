@@ -115,21 +115,6 @@ def submit_ui_request(
     raise TimeoutError(f"UI control request {request_id} exceeded {timeout:g}s")
 
 
-def selector_request(args: Any) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    mapping = {
-        "space": "space", "node": "node", "under": "under", "class_name": "class",
-        "element_id": "elementId", "text": "text", "text_contains": "textContains",
-        "text_regex": "textRegex", "visible": "visible", "enabled": "enabled",
-        "focused": "focused",
-    }
-    for attribute, key in mapping.items():
-        value = getattr(args, attribute, None)
-        if value is not None:
-            result[key] = value
-    return result
-
-
 def validate_regex_selector(request: dict[str, Any]) -> None:
     if "textRegex" in request:
         re.compile(request["textRegex"])
