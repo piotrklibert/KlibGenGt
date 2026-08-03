@@ -1,5 +1,5 @@
 "
-SUnit coverage for structured code, Lepiter, and evaluation CLI tools.
+SUnit coverage for structured code search and formatting, Lepiter, and evaluation CLI tools.
 
 - Slots
   - none
@@ -234,6 +234,41 @@ KGToolsTest >> testCodePackageScopeNamedSetsAndOverrides [
 		at: 'packageSet' put: 'project';
 		at: 'includePackages' put: #('Definitely-Unknown-Package');
 		yourself) ] raise: Error
+]
+
+{ #category : 'tests' }
+KGToolsTest >> testCodeFormatterFormatsMethodBodyAndIsIdempotent [
+	| tool result secondResult expected |
+	tool := KGCodeFormatterTool new.
+	result := tool format: (Dictionary new
+		at: 'source' put: '| temporary |temporary:=1.temporary+2';
+		yourself).
+	expected := '| temporary |', String lf, 'temporary := 1.', String lf, 'temporary + 2'.
+	self assert: (result at: 'text') equals: expected.
+	self assert: (result at: 'mode') equals: 'method-body'.
+	self assert: (result at: 'formatter') equals: RBProgramNode formatterClass name asString.
+	self assert: (result at: 'changed').
+	secondResult := tool format: (Dictionary new
+		at: 'source' put: expected;
+		yourself).
+	self deny: (secondResult at: 'changed')
+]
+
+{ #category : 'tests' }
+KGToolsTest >> testCodeFormatterIsRegisteredAndReportsParseErrors [
+	| response errorResponse |
+	response := KGToolRunner new run: (Dictionary new
+		at: 'operation' put: 'code.format';
+		at: 'source' put: '1+2';
+		yourself).
+	self assert: (response at: 'ok').
+	self assert: ((response at: 'data') at: 'text') equals: '1 + 2'.
+	errorResponse := KGToolRunner new run: (Dictionary new
+		at: 'operation' put: 'code.format';
+		at: 'source' put: '1 +';
+		yourself).
+	self deny: (errorResponse at: 'ok').
+	self assert: ((errorResponse at: 'error') at: 'class') equals: 'CodeError'
 ]
 
 { #category : 'tests' }

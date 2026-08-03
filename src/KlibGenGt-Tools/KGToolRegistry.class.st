@@ -69,6 +69,7 @@ KGToolRegistry >> installStandardTools [
 		registerIdentifier: 'code.senders' handler: [ :request | KGCodeSearchTool new senders: request ];
 		registerIdentifier: 'code.references' handler: [ :request | KGCodeSearchTool new references: request ];
 		registerIdentifier: 'code.pragmas' handler: [ :request | KGCodeSearchTool new pragmas: request ];
+		registerIdentifier: 'code.format' handler: [ :request | KGCodeFormatterTool new format: request ];
 		registerIdentifier: 'lepiter.search' handler: [ :request | KGLepiterTool new search: request ];
 		registerIdentifier: 'lepiter.export' handler: [ :request | KGLepiterTool new export: request ];
 		registerIdentifier: 'eval' handler: [ :request | KGEvaluationTool new evaluate: request ];

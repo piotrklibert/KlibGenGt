@@ -40,7 +40,33 @@ KGSessionTest >> testDisabledCapabilitiesEnforceReadOnlyDiscardPolicy [
 
 { #category : 'tests' }
 KGSessionTest >> testRegistryContainsEveryCurrentStructuredTool [
-	self assert: KGToolRegistry default identifiers equals: #('build-map.png' 'code.analyze' 'code.class' 'code.class-info' 'code.class-methods' 'code.implementors' 'code.method' 'code.package-info' 'code.package-sets' 'code.pragmas' 'code.references' 'code.search' 'code.senders' 'eval' 'lepiter.export' 'lepiter.search' 'refactor.applicable' 'refactor.apply' 'refactor.catalog' 'refactor.describe' 'refactor.preview' 'test.all' 'test.run')
+	self assert: KGToolRegistry default identifiers sorted
+         equals: #(
+            'build-map.png'
+            'code.analyze'
+            'code.class'
+            'code.class-info'
+            'code.class-methods'
+            'code.format'
+            'code.implementors'
+            'code.method'
+            'code.package-info'
+            'code.package-sets'
+            'code.pragmas'
+            'code.references'
+            'code.search'
+            'code.senders'
+            'eval'
+            'lepiter.export'
+            'lepiter.search'
+            'refactor.applicable'
+            'refactor.apply'
+            'refactor.catalog'
+            'refactor.describe'
+            'refactor.preview'
+            'test.all'
+            'test.run'
+        ) sorted
 ]
 
 { #category : 'tests' }
