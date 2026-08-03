@@ -61,4 +61,7 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 
 - [X] Pydantic data classes for inventory.py
 
+- [ ] depth in tree ui query
 
+- [ ] `#(Dictionary<String, Any> | nil)` and `#(Dictionary<String, Any)?)`
+      support in pragma checker

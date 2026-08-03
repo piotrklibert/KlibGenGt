@@ -46,6 +46,19 @@ KGJsonModelsTest >> testGeneratedRecordRoundTripsAndProtectsCollections [
 ]
 
 { #category : 'tests' }
+KGJsonModelsTest >> testGuiCompletionRecordsPendingSourceChanges [
+	| completion |
+	completion := KGSessionCompletionV1 fromDictionary: (Dictionary new
+		at: 'schema' put: 'klibgen.session-completion/1';
+		at: 'sessionId' put: 'gui-session';
+		at: 'state' put: 'saved';
+		at: 'ok' put: true;
+		at: 'sourceChangeCount' put: 2;
+		yourself).
+	self assert: completion sourceChangeCount equals: 2
+]
+
+{ #category : 'tests' }
 KGJsonModelsTest >> testNamedRegistryContainsEveryV02Schema [
 	self assert: KGJsonModelRegistry rebuild keys asSet equals: #(
 		'klibgen.artifact-list/1'

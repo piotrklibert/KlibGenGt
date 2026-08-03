@@ -1,6 +1,10 @@
 # Important gaps and friction
 
-## 1. JJ identity causes content-equivalent rebuilds
+## 1. Resolved: JJ identity caused content-equivalent rebuilds
+
+**Status:** Resolved by using the effective selected-tree digest as artifact
+key material while retaining JJ commit/change IDs as provenance. The remainder
+of this section records the original problem and rationale.
 
 This is the clearest daily-workflow problem.
 
@@ -25,17 +29,23 @@ The design currently treats JJ identity as both provenance and content-key mater
 - Preserve JJ change/commit IDs in the manifest as provenance.
 - Optionally retain a strict mode when exact revision identity genuinely matters.
 
-## 2. GUI export is not an end-to-end promotion workflow
+## 2. Resolved: GUI export lacked an end-to-end promotion workflow
 
-The GUI export button commits changes into the workspace’s private Git repository and emits an `iceberg-committed` journal event.
+**Status:** Resolved by attaching the GUI to `gui-default` (or `gui --staging
+NAME`), keeping Export and Promote as separate actions, and servicing promotion
+through the same lease-validated host staging service used by agentic work.
 
-The host launcher does not consume that event to create/promote a staging plan, and there is no `workspace promote` command. The existing `staging promote` service only accepts named areas under `.klibgen/v2/staging/`.
+The former workspace-private Git bridge is migrated automatically and retained
+until an explicit workspace reset.
 
-Therefore the README statement that interactive exports pass through the conflict-checked staging/promotion path is stronger than the implementation.
+## 3. Resolved: staging base and canonical image could diverge
 
-Today, a GUI export is durable inside the workspace bridge, but getting it into `src/` requires manual Git/source work.
+**Status:** Resolved by automatic file-level three-way rebase before attachment
+and promotion. Conflict-free current source is incorporated into the overlay;
+overlapping changes preserve the original staging trees, mark the area
+conflicted, and refuse execution.
 
-## 3. Staging base and canonical image can diverge
+The remainder of this section records the former failure mode.
 
 An agentic session always builds the current canonical CLI artifact, but then loads the staging area’s entire Git repository over it.
 
@@ -144,7 +154,8 @@ These are not accidental omissions in v0.2:
 - no remote/distributed artifact store
 - no hermetic OS/container build guarantee
 - no long-term binary artifact archive
-- no automatic reconciliation of a saved GUI with changed source
+- clean saved GUI images reconcile changed staging generations automatically;
+  dirty images intentionally refuse handoff
 - no multiple-writer GUI or staging support
 - no completed release/distribution pipeline
 
@@ -152,11 +163,12 @@ These are not accidental omissions in v0.2:
 
 I would tackle the next work in this order:
 
-1. **Fix source identity and stale-state reporting.**  
-   Make effective tree content determine project artifact reuse, retain JJ IDs as provenance, and make `status` explicitly compare resolved, referenced, workspace, and staging identities.
+1. **Improve stale-state reporting.**  
+   Source identity now uses effective tree content for artifact reuse and retains JJ IDs as provenance. Make `status` explicitly compare resolved, referenced, workspace, and staging identities.
 
-2. **Complete source workflow integrity.**  
-   Add GUI export → named staging/import → conflict-checked promotion, and reject or explicitly rebase stale agentic staging before execution.
+2. **Extend source workflow ergonomics.**
+   The named-staging integrity path is complete; add richer conflict inspection
+   and guided resolution if daily use shows it is needed.
 
 3. **Expose derived recipes as a supported user feature.**  
    Add a small committed or local recipe-definition format plus CLI support for replacements, local worktrees, truncation, target/preset selection, and non-default refs.
@@ -170,4 +182,8 @@ I would tackle the next work in this order:
 6. **Optimize physical storage and concurrency.**  
    Share native/source payloads explicitly, measure reflink fallback behavior, and add bounded parallel session execution if actual workloads justify it.
 
-If the immediate priority is daily developer experience, items 1 and 2 offer the largest return. If the immediate goal is experimenting with patched GT/Pharo/dependency stacks, item 3 should move to the front—but I would still fix the JJ identity issue first because it affects every subsequent measurement and cache result.
+If the immediate priority is daily developer experience, items 1 and 2 offer the
+largest return. If the immediate goal is experimenting with patched
+GT/Pharo/dependency stacks, item 3 should move to the front—but I would still
+fix the JJ identity issue first because it affects every subsequent measurement
+and cache result.

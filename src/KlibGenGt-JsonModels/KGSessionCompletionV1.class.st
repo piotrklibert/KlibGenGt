@@ -10,6 +10,7 @@ Immutable JSON record generated from `SessionCompletionV1`.
   - `ok` (`#Boolean`, `accessing`) - Value of JSON field `ok`.
   - `exitCode` (`#(Integer | UndefinedObject)`, `accessing`) - Value of JSON field `exitCode`.
   - `error` (`#(KGJsonErrorRecord | UndefinedObject)`, `accessing`) - Value of JSON field `error`.
+  - `sourceChangeCount` (`#(Integer | UndefinedObject)`, `accessing`) - Value of JSON field `sourceChangeCount`.
 - Public API
   - {{gtMethod:KGSessionCompletionV1>>#schemaValue}}
     Answer the immutable `schemaValue` field value.
@@ -24,7 +25,9 @@ Immutable JSON record generated from `SessionCompletionV1`.
   - {{gtMethod:KGSessionCompletionV1>>#exitCode}}
     Answer the immutable `exitCode` field value.
   - {{gtMethod:KGSessionCompletionV1>>#error}}
-    Answer the immutable `error` field value."
+    Answer the immutable `error` field value.
+  - {{gtMethod:KGSessionCompletionV1>>#sourceChangeCount}}
+    Answer the immutable `sourceChangeCount` field value."
 Class {
 	#name : 'KGSessionCompletionV1',
 	#superclass : 'KGJsonRecord',
@@ -35,7 +38,8 @@ Class {
 		'state',
 		'ok',
 		'exitCode',
-		'error'
+		'error',
+		'sourceChangeCount'
 	],
 	#category : 'KlibGenGt-JsonModels',
 	#package : 'KlibGenGt-JsonModels'
@@ -57,7 +61,8 @@ KGSessionCompletionV1 class >> jsonFieldSpecifications [
 		#('state' 'state' true #(#literal #('succeeded' 'failed' 'saved' 'discarded' 'cancelled' 'abnormal'))).
 		#('ok' 'ok' true #(#boolean)).
 		#('exitCode' 'exitCode' false #(#union #(#(#integer) #(#nil)))).
-		#('error' 'error' false #(#union #(#(#model #KGJsonErrorRecord) #(#nil)))) }
+		#('error' 'error' false #(#union #(#(#model #KGJsonErrorRecord) #(#nil)))).
+		#('sourceChangeCount' 'sourceChangeCount' false #(#constrained #(#union #(#(#integer) #(#nil))) #(#(#ge 0)))) }
 ]
 
 { #category : 'json schema' }
@@ -106,4 +111,10 @@ KGSessionCompletionV1 >> exitCode [
 KGSessionCompletionV1 >> error [
 	<return: #(KGJsonErrorRecord | UndefinedObject)>
 	^ self defensiveJsonValue: error
+]
+
+{ #category : 'accessing' }
+KGSessionCompletionV1 >> sourceChangeCount [
+	<return: #(Integer | UndefinedObject)>
+	^ self defensiveJsonValue: sourceChangeCount
 ]

@@ -11,6 +11,11 @@ Immutable JSON record generated from `StagingV1`.
   - `projectKey` (`#String`, `accessing`) - Value of JSON field `projectKey`.
   - `sourceGit` (`#String`, `accessing`) - Value of JSON field `sourceGit`.
   - `promotion` (`#(KGJsonPromotionRecord | UndefinedObject)`, `accessing`) - Value of JSON field `promotion`.
+  - `generation` (`#(Integer | UndefinedObject)`, `accessing`) - Value of JSON field `generation`.
+  - `headCommit` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `headCommit`.
+  - `lease` (`#((Dictionary<String, Any>) | UndefinedObject)`, `accessing`) - Value of JSON field `lease`.
+  - `lastRebase` (`#((Dictionary<String, Any>) | UndefinedObject)`, `accessing`) - Value of JSON field `lastRebase`.
+  - `lastPromotion` (`#((Dictionary<String, Any>) | UndefinedObject)`, `accessing`) - Value of JSON field `lastPromotion`.
   - `path` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `path`.
   - `changes` (`#(KGJsonStagingChangesRecord | UndefinedObject)`, `accessing`) - Value of JSON field `changes`.
   - `storage` (`#(KGJsonStorageRecord | UndefinedObject)`, `accessing`) - Value of JSON field `storage`.
@@ -31,6 +36,16 @@ Immutable JSON record generated from `StagingV1`.
     Answer the immutable `sourceGit` field value.
   - {{gtMethod:KGStagingV1>>#promotion}}
     Answer the immutable `promotion` field value.
+  - {{gtMethod:KGStagingV1>>#generation}}
+    Answer the immutable `generation` field value.
+  - {{gtMethod:KGStagingV1>>#headCommit}}
+    Answer the immutable `headCommit` field value.
+  - {{gtMethod:KGStagingV1>>#lease}}
+    Answer the immutable `lease` field value.
+  - {{gtMethod:KGStagingV1>>#lastRebase}}
+    Answer the immutable `lastRebase` field value.
+  - {{gtMethod:KGStagingV1>>#lastPromotion}}
+    Answer the immutable `lastPromotion` field value.
   - {{gtMethod:KGStagingV1>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGStagingV1>>#changes}}
@@ -49,6 +64,11 @@ Class {
 		'projectKey',
 		'sourceGit',
 		'promotion',
+		'generation',
+		'headCommit',
+		'lease',
+		'lastRebase',
+		'lastPromotion',
 		'path',
 		'changes',
 		'storage'
@@ -75,6 +95,11 @@ KGStagingV1 class >> jsonFieldSpecifications [
 		#('projectKey' 'projectKey' true #(#string)).
 		#('sourceGit' 'sourceGit' true #(#string)).
 		#('promotion' 'promotion' true #(#union #(#(#model #KGJsonPromotionRecord) #(#nil)))).
+		#('generation' 'generation' false #(#constrained #(#union #(#(#integer) #(#nil))) #(#(#ge 1)))).
+		#('headCommit' 'headCommit' false #(#union #(#(#string) #(#nil)))).
+		#('lease' 'lease' false #(#union #(#(#dictionary #(#any)) #(#nil)))).
+		#('lastRebase' 'lastRebase' false #(#union #(#(#dictionary #(#any)) #(#nil)))).
+		#('lastPromotion' 'lastPromotion' false #(#union #(#(#dictionary #(#any)) #(#nil)))).
 		#('path' 'path' false #(#union #(#(#string) #(#nil)))).
 		#('changes' 'changes' false #(#union #(#(#model #KGJsonStagingChangesRecord) #(#nil)))).
 		#('storage' 'storage' false #(#union #(#(#model #KGJsonStorageRecord) #(#nil)))) }
@@ -132,6 +157,36 @@ KGStagingV1 >> sourceGit [
 KGStagingV1 >> promotion [
 	<return: #(KGJsonPromotionRecord | UndefinedObject)>
 	^ self defensiveJsonValue: promotion
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> generation [
+	<return: #(Integer | UndefinedObject)>
+	^ self defensiveJsonValue: generation
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> headCommit [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: headCommit
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> lease [
+	<return: #((Dictionary<String, Any>) | UndefinedObject)>
+	^ self defensiveJsonValue: lease
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> lastRebase [
+	<return: #((Dictionary<String, Any>) | UndefinedObject)>
+	^ self defensiveJsonValue: lastRebase
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> lastPromotion [
+	<return: #((Dictionary<String, Any>) | UndefinedObject)>
+	^ self defensiveJsonValue: lastPromotion
 ]
 
 { #category : 'accessing' }

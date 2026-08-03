@@ -91,10 +91,14 @@ session_command("check-type-pragmas", "Validate all project documentation type p
 
 @cli.command("gui")
 @click.option("--fresh", is_flag=True, help="Replace the saved GUI workspace from the current canonical artifact.")
+@click.option("--staging", "staging_name", default="gui-default", show_default=True, help="Attach the GUI to named source staging area NAME.")
 @click.pass_context
-def gui(ctx: click.Context, fresh: bool) -> None:
+def gui(ctx: click.Context, fresh: bool, staging_name: str) -> None:
     """Resume the single saved GUI workspace, or initialize it when absent."""
-    _run(ctx, False, lambda: launch_gui_workspace(_paths(), fresh))
+    def operation() -> dict[str, Any]:
+        exit_code = launch_gui_workspace(_paths(), fresh, staging_name)
+        return {"operation": "gui", "ok": exit_code == 0, "exitCode": exit_code}
+    _run(ctx, False, operation)
 
 
 @cli.command("agentic")
@@ -113,5 +117,3 @@ def agentic(ctx: click.Context, name: str, expression: str | None, test: bool, a
         result["operation"] = "agentic"
         return result
     _run(ctx, as_json, operation)
-
-

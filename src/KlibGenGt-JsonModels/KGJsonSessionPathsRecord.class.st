@@ -8,6 +8,8 @@ Immutable JSON record generated from `SessionPathsRecord`.
   - `completion` (`#String`, `accessing`) - Value of JSON field `completion`.
   - `result` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `result`.
   - `eventJournal` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `eventJournal`.
+  - `sourceRequests` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `sourceRequests`.
+  - `sourceResponses` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `sourceResponses`.
 - Public API
   - {{gtMethod:KGJsonSessionPathsRecord>>#request}}
     Answer the immutable `request` field value.
@@ -18,7 +20,11 @@ Immutable JSON record generated from `SessionPathsRecord`.
   - {{gtMethod:KGJsonSessionPathsRecord>>#result}}
     Answer the immutable `result` field value.
   - {{gtMethod:KGJsonSessionPathsRecord>>#eventJournal}}
-    Answer the immutable `eventJournal` field value."
+    Answer the immutable `eventJournal` field value.
+  - {{gtMethod:KGJsonSessionPathsRecord>>#sourceRequests}}
+    Answer the immutable `sourceRequests` field value.
+  - {{gtMethod:KGJsonSessionPathsRecord>>#sourceResponses}}
+    Answer the immutable `sourceResponses` field value."
 Class {
 	#name : 'KGJsonSessionPathsRecord',
 	#superclass : 'KGJsonRecord',
@@ -27,7 +33,9 @@ Class {
 		'ready',
 		'completion',
 		'result',
-		'eventJournal'
+		'eventJournal',
+		'sourceRequests',
+		'sourceResponses'
 	],
 	#category : 'KlibGenGt-JsonModels',
 	#package : 'KlibGenGt-JsonModels'
@@ -47,7 +55,9 @@ KGJsonSessionPathsRecord class >> jsonFieldSpecifications [
 		#('ready' 'ready' false #(#union #(#(#string) #(#nil)))).
 		#('completion' 'completion' true #(#string)).
 		#('result' 'result' false #(#union #(#(#string) #(#nil)))).
-		#('eventJournal' 'eventJournal' false #(#union #(#(#string) #(#nil)))) }
+		#('eventJournal' 'eventJournal' false #(#union #(#(#string) #(#nil)))).
+		#('sourceRequests' 'sourceRequests' false #(#union #(#(#string) #(#nil)))).
+		#('sourceResponses' 'sourceResponses' false #(#union #(#(#string) #(#nil)))) }
 ]
 
 { #category : 'json schema' }
@@ -84,4 +94,16 @@ KGJsonSessionPathsRecord >> result [
 KGJsonSessionPathsRecord >> eventJournal [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: eventJournal
+]
+
+{ #category : 'accessing' }
+KGJsonSessionPathsRecord >> sourceRequests [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: sourceRequests
+]
+
+{ #category : 'accessing' }
+KGJsonSessionPathsRecord >> sourceResponses [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: sourceResponses
 ]

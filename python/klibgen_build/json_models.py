@@ -244,6 +244,8 @@ class SessionPathsRecord(WireModel):
     completion: str
     result: str | None = None
     event_journal: str | None = Field(default=None, alias="eventJournal")
+    source_requests: str | None = Field(default=None, alias="sourceRequests")
+    source_responses: str | None = Field(default=None, alias="sourceResponses")
 
 
 class SessionV1(WireModel):
@@ -281,6 +283,7 @@ class SessionCompletionV1(ClosedWireModel):
     ok: bool
     exit_code: int | None = Field(default=None, alias="exitCode")
     error: ErrorRecord | None = None
+    source_change_count: int | None = Field(default=None, alias="sourceChangeCount", ge=0)
 
 
 class WorkspaceV1(WireModel):
@@ -297,6 +300,8 @@ class WorkspaceV1(WireModel):
     last_completion: SessionCompletionV1 | None = Field(alias="lastCompletion")
     pid: int | None = None
     session_id: str | None = Field(default=None, alias="sessionId")
+    staging_area: str | None = Field(default=None, alias="stagingArea")
+    staging_generation: int | None = Field(default=None, alias="stagingGeneration", ge=1)
     path: str | None = None
     storage: StorageRecord | None = None
 
@@ -356,6 +361,11 @@ class StagingV1(WireModel):
     project_key: str = Field(alias="projectKey")
     source_git: str = Field(alias="sourceGit")
     promotion: PromotionRecord | None
+    generation: int | None = Field(default=None, ge=1)
+    head_commit: str | None = Field(default=None, alias="headCommit")
+    lease: dict[str, JsonValue] | None = None
+    last_rebase: dict[str, JsonValue] | None = Field(default=None, alias="lastRebase")
+    last_promotion: dict[str, JsonValue] | None = Field(default=None, alias="lastPromotion")
     path: str | None = None
     changes: StagingChangesRecord | None = None
     storage: StorageRecord | None = None

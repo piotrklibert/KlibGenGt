@@ -42,7 +42,7 @@ KGSessionBootstrap class >> runManifest: manifest [
 	response := runner new run: request.
 	KGAtomicJsonWriter write: response to: paths result.
 	state := (response at: 'ok') ifTrue: [ 'succeeded' ] ifFalse: [ 'failed' ].
-	completion := KGSessionCompletionV1 fromDictionary: (OrderedDictionary new at: 'schema' put: 'klibgen.session-completion/1'; at: 'sessionId' put: sessionId; at: 'state' put: state; at: 'ok' put: (response at: 'ok'); yourself).
+	completion := KGSessionCompletionV1 fromDictionary: (OrderedDictionary new at: 'schema' put: 'klibgen.session-completion/1'; at: 'sessionId' put: sessionId; at: 'state' put: state; at: 'ok' put: (response at: 'ok'); at: 'sourceChangeCount' put: session sourceChanges changeCount; yourself).
 	KGAtomicJsonWriter write: completion to: paths completion.
 	^ (response at: 'ok') ifTrue: [ 0 ] ifFalse: [ 1 ]
 ]
@@ -55,7 +55,7 @@ KGSessionBootstrap class >> installManifest: manifest [
 	(typedManifest isKindOf: KGSessionV1) ifFalse: [ self error: 'Unsupported session manifest schema' ].
 	KGBuildProvenance verifyProjectKey: typedManifest projectKey.
 	preset := typedManifest preset.
-	source := self sourceChangesNamed: preset sourceChanges.
+	source := self sourceChangesNamed: preset sourceChanges manifest: typedManifest.
 	persistence := self persistenceNamed: preset persistence.
 	KGSession reset.
 	^ KGSession installManifest: typedManifest sourceChanges: source persistence: persistence
@@ -69,9 +69,12 @@ KGSessionBootstrap class >> persistenceNamed: aString [
 ]
 
 { #category : 'private - capabilities' }
-KGSessionBootstrap class >> sourceChangesNamed: aString [
+KGSessionBootstrap class >> sourceChangesNamed: aString manifest: aManifest [
+	<arg: #aString type: #String>
+	<arg: #aManifest type: #KGSessionV1>
+	<return: #Any>
 	aString = 'disabled' ifTrue: [ ^ KGDisabledSourceChanges new ].
-	aString = 'staged' ifTrue: [ ^ KGStagedSourceChanges new ].
-	aString = 'interactive' ifTrue: [ ^ KGInteractiveSourceChanges new ].
+	aString = 'staged' ifTrue: [ ^ KGStagedSourceChanges new initializeManifest: aManifest ].
+	aString = 'interactive' ifTrue: [ ^ KGInteractiveSourceChanges new initializeManifest: aManifest ].
 	self error: 'Unknown source capability: ', aString
 ]

@@ -143,7 +143,7 @@ V0.2 does not require:
 - distributed or remote artifact storage;
 - long-term binary artifact archival;
 - automatic preservation of multiple GUI workspace generations;
-- automatically reconciling a saved GUI image with changed repository source;
+- merging unexported GUI image changes with a changed staging generation;
 - resumable agentic images;
 - concurrent writers to the same GUI workspace or staging area;
 - a general package manager replacing Metacello/Iceberg;
@@ -413,7 +413,7 @@ parent output key, if any
 step implementation identity/version
 normalized resolved configuration
 digests of declared scripts and files
-resolved source revisions or dirty-tree digests
+resolved effective source identities or dirty-tree digests
 relevant platform, VM ABI, and host facts
 declared tool versions and environment values
 ```
@@ -426,6 +426,14 @@ It MUST NOT include:
 - context/target name;
 - paths whose contents and semantics are otherwise captured; or
 - a digest of the entire Python package.
+
+Resolved configuration MAY contain additional metadata needed to materialize
+an input or explain its provenance. Such metadata MUST enter the step key only
+when it can change the constructed output. In particular, a JJ project source
+key MUST be derived from the effective selected-tree content. Its commit ID,
+change ID, selector paths, and exclusions MUST remain recorded as provenance,
+but MUST NOT produce distinct artifact keys when the effective selected tree is
+identical.
 
 Every executable script, Smalltalk script, template, schema, or Python function
 whose behavior can change the output MUST be represented in that step's
@@ -599,14 +607,17 @@ manifest containing at least:
   "processPolicy": "auto",
   "workspace": null,
   "stagingArea": null,
-  "inputs": {},
-  "paths": {},
+  "inputs": {"stagingArea": null, "stagingGeneration": null},
+  "paths": {"sourceRequests": null, "sourceResponses": null},
   "protocolVersion": 1
 }
 ```
 
 Paths MUST be explicit. The manifest MUST distinguish immutable presented paths,
 private transient paths, durable workspace paths, and durable staging paths.
+Writable sessions use session-scoped atomic source request/response spool paths.
+The launcher services only bounded envelopes whose session ID, staging name,
+lease, and operation match the active manifest.
 
 ### 12.4 Smalltalk session object
 
@@ -655,7 +666,7 @@ Multiple CLI sessions MAY execute concurrently against the same artifact.
 
 ### 13.3 Agentic preset
 
-Agentic sessions use the canonical project image and a named private staging
+Agentic sessions use the canonical project image and a named staging
 area. Their durable state is source-form staging plus logs/results, not a saved
 image.
 
@@ -665,9 +676,11 @@ the canonical project artifact plus the staging overlay.
 
 ### 13.4 GUI preset
 
-The normal GUI workbench owns a mutable workspace. The workspace is exclusive
-while active. Its source-change capability is interactive and its persistence
-capability supports save, discard, and cancel.
+The normal GUI workbench owns a mutable workspace and attaches exclusively to a
+named staging area (`gui-default` by default). Its source-change capability is
+interactive and its persistence capability supports save, discard, and cancel.
+The same area MAY pass sequentially between GUI and agentic contexts, but MUST
+NOT have concurrent writers.
 
 ### 13.5 Disposable GUI-tool preset
 
@@ -680,12 +693,14 @@ persistence, a registered entrypoint, and explicit input resources.
 ### 14.1 Source-change capability
 
 All KlibGen operations that export, refactor, promote, or otherwise modify
-project source MUST go through one installed capability interface. The initial
+project source MUST go through one installed capability interface. The
 implementations are:
 
 - `KGDisabledSourceChanges` for CLI and read-only tools;
-- `KGStagedSourceChanges` for agentic sessions; and
-- `KGInteractiveSourceChanges` for the GUI workbench.
+- `KGStagingSourceChanges`, containing repository lookup, change counting,
+  export, and host promotion requests; and
+- `KGStagedSourceChanges` and `KGInteractiveSourceChanges` as compatibility
+  subclasses selecting the common named-staging behavior.
 
 Conceptual protocol:
 
@@ -734,17 +749,29 @@ V0.2 MUST document this limitation and MUST NOT imply OS-level sandboxing.
 ### 15.1 Canonical project loading
 
 The project-source step MUST load source materialized from one exact repository
-identity. For JJ, that includes commit/change identity and the effective tree
-digest needed to distinguish dirty working-copy content.
+snapshot. For JJ, the resolved record MUST include the commit/change identity
+used for exact materialization and provenance, together with a deterministic
+digest of the effective selected tree. Artifact identity MUST use that tree
+digest rather than commit/change identity, so metadata-only revision rewrites
+reuse the same artifact.
 
 The build bridge is temporary. It MUST NOT be copied into every later session.
 
 ### 15.2 Staging overlay
 
-A staging area stores source-form changes, base identity, changed-package
-metadata, tool results, and promotion status. Repeated agentic experiments load
-the canonical image plus the overlay, run tools/tests, and export back into the
-same overlay.
+A staging area stores source-form changes, base identity, Git head, generation,
+exclusive lease, changed-package metadata, rebase result, and promotion status.
+Every attachment first reconciles a changed Git HEAD, then performs a file-level
+three-way rebase across recorded base, overlay, and current authoritative
+source. Unchanged staged paths adopt current source; unchanged authoritative
+paths keep staged content; equal changes merge trivially. Overlapping
+add/modify/delete/rename changes mark the area conflicted without rewriting its
+base or overlay and prevent attachment and promotion.
+
+One lease records context kind, session/workspace identifier, host PID, and
+generation. A live or dirty-reserved lease rejects a second writer. An
+abandoned PID lease MAY be recovered. A saved GUI with unexported source changes
+retains a reservation until it exports or explicitly discards those changes.
 
 Staging MUST NOT require rebuilding the canonical project image after every
 experimental edit. Promotion into authoritative source is the event that makes
@@ -762,15 +789,22 @@ Host-side promotion MUST:
 - leave reviewable repository working-copy changes; and
 - record the promoted staging identity and result.
 
+Filesystem application MUST be prepared completely and rolled back on I/O
+failure. After success the staging base advances to the promoted overlay without
+rewriting the Git repository of an attached context. Promotion does not create
+a JJ change or commit.
+
 The existing package-scoped conflict checks are a foundation to retain. V0.2
 does not require the coordinator to create a JJ commit automatically.
 
 ### 15.4 GUI export
 
-The GUI's interactive export action MAY combine “export to private staging” and
-“request host promotion” into one user-visible operation. The boundary remains
-explicit: Smalltalk writes only through its capability, and the host performs
-conflict-checked authoritative promotion.
+The GUI MUST expose two distinct actions. **Export** commits image changes to
+the attached staging Git repository. **Promote** sends a structured request to
+the host, which validates session ID, staging name, lease, and operation before
+performing conflict-checked authoritative promotion. A failed export
+notification does not discard its Git commit; host status, attachment, rebase,
+or promotion reconciles the changed HEAD into the staging record.
 
 ## 16. GUI workspace lifecycle
 
@@ -785,10 +819,14 @@ workspaces/gui-default/
   home/
   config/
   data/
-  staging/
-  provenance.json
-  state.json
+  session.json
+  workspace.json
 ```
+
+The writable Git repository lives under the named staging area, not under the
+workspace. Workspace records include `stagingArea` and `stagingGeneration`.
+The legacy schema-v1 private repository is migrated automatically into
+`gui-default`; its original files remain until explicit workspace reset.
 
 Runtime/native data SHOULD be linked from the immutable store rather than
 copied into the workspace.
@@ -803,12 +841,12 @@ backup policy.
 
 ### 16.3 Resume
 
-Ordinary `just gui` SHOULD resume `gui-default` when it exists. If repository or
-canonical project provenance has changed, the GUI still resumes but MUST show a
-clear stale-provenance warning containing both identities.
-
-V0.2 MUST NOT automatically reload repository changes into a resumed GUI while
-attempting to preserve arbitrary UI/image state.
+Ordinary `just gui` SHOULD resume `gui-default` when it exists. If its staging
+generation changed and the saved image reports `sourceChangeCount = 0`, the
+coordinator reloads the safe rebased overlay while preserving saved tools and
+layout. If the image has unexported changes, handoff or reload MUST be refused.
+Selecting a different staging name for an existing workspace requires
+`--fresh`.
 
 ### 16.4 Save and close
 
@@ -966,6 +1004,7 @@ Smalltalk writes a structured completion record containing:
 - entrypoint/tool result location;
 - save result where applicable;
 - staging/export result where applicable;
+- pending `sourceChangeCount` where source changes are enabled;
 - timestamps; and
 - protocol/schema version.
 
@@ -1183,8 +1222,8 @@ An implementation conforming to v0.2 MUST maintain these invariants:
 9. Only a persistent workspace may retain mutable saved image state by default.
 10. A disposable failure retains diagnostics, not a complete execution image.
 11. Smalltalk emits authoritative orderly completion/save state.
-12. GUI resume against changed source is allowed only with explicit stale
-    provenance visible to the user.
+12. GUI resume reloads a changed staging generation only from a clean exported
+    image; unexported changes reserve the staging area and refuse handoff.
 13. Read-only sessions may run concurrently without copying immutable runtime
     and native bundles.
 14. Build-map and other tools dispatch through a generic registry and explicit
@@ -1200,69 +1239,76 @@ From an empty v2 state root, building `project` constructs and validates the
 runtime/native, base, dependency/setup, and project checkpoints. Manifests and
 in-image provenance agree. A second build performs no image transformation.
 
-### 27.2 Project-source edit
+### 27.2 JJ metadata-only rewrite
+
+Changing only JJ metadata, including a working-copy description or change
+boundary, preserves the project artifact key when the effective selected tree
+is unchanged. The newly resolved commit and change IDs remain visible as
+current source provenance, and an existing GUI workspace is not reported stale.
+
+### 27.3 Project-source edit
 
 After changing a file under authoritative project source, building `project`
 reuses runtime, base, and dependency/setup artifacts. Only project-source and
 project-finalize execute, and one new project image is published.
 
-### 27.3 Shared launch presets
+### 27.4 Shared launch presets
 
 CLI, agentic, fresh GUI, and build-map resolve the same project artifact key.
 No preset-specific canonical image appears in the store.
 
-### 27.4 CLI denial
+### 27.5 CLI denial
 
 Direct and indirect calls to the KlibGen export API in a CLI session return
 `readOnlySession`; authoritative source and staging remain unchanged. The
 attempt is diagnosable.
 
-### 27.5 Agentic iteration
+### 27.6 Agentic iteration
 
 An agent exports edits to staging, restarts or reuses its disposable process,
 loads the overlay, and retests without rebuilding the canonical project image.
 Promotion performs conflict checks and changes authoritative source only after
 success.
 
-### 27.6 GUI save/resume
+### 27.7 GUI save/resume
 
 Fresh GUI initializes `gui-default`. Save updates that workspace without
 creating an immutable snapshot history. Ordinary `just gui` resumes it. If the
 repository changed, the image opens with a stale-provenance warning.
 
-### 27.7 Disposable build-map
+### 27.8 Disposable build-map
 
 With no compatible GUI running, build-map generates inventory and starts GT
 once on the canonical image. It creates no source bridge and retains no image on
 close. With a compatible GUI running, the tool opens through structured IPC
 without a new VM.
 
-### 27.8 Parallel read-only operations
+### 27.9 Parallel read-only operations
 
 Two tests and a build-map input generation can run concurrently against the
 same project/runtime artifacts. Their transient paths and result records do not
 collide.
 
-### 27.9 Failed project rebuild
+### 27.10 Failed project rebuild
 
 A broken project edit fails its contract. The previous project artifact remains
 referenced and usable. The latest failure record points to logs/structured
 diagnostics, and the partial image is removed.
 
-### 27.10 Alternative GT
+### 27.11 Alternative GT
 
 A local recipe replaces `gt-patches` or `pharo-gt` with a worktree-backed step.
 The alternative builds from the lowest changed key and can launch any preset.
 The default target and its artifacts remain unchanged until the default recipe
 is explicitly updated.
 
-### 27.11 Native bundle sharing
+### 27.12 Native bundle sharing
 
 Multiple artifacts and concurrent sessions present one immutable GT native
 library bundle through the selected link strategy. Inventory reports the bundle
 once, and session cleanup does not delete it.
 
-### 27.12 Failure-loop storage bound
+### 27.13 Failure-loop storage bound
 
 Repeatedly failing and rerunning one test updates/rotates bounded diagnostics.
 It does not create a sequence of retained full image/run directories.

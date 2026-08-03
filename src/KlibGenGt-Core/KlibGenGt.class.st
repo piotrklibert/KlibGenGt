@@ -102,6 +102,7 @@ KlibGenGt package map:
   - {{gtClass:KGAtomicJsonWriter}} - Publishes lifecycle JSON records through same-directory replacement.
   - {{gtClass:KGDisabledSourceChanges}} - Enforces read-only source behavior.
   - {{gtClass:KGInteractiveSourceChanges}} - Exports GUI source changes through an explicit session repository.
+  - {{gtClass:KGStagingSourceChanges}} - Implements shared named-staging export and host promotion requests.
   - {{gtClass:KGStagedSourceChanges}} - Exports agentic changes into a durable staging repository.
   - {{gtClass:KGDiscardPersistence}} - Enforces discard-only image persistence.
   - {{gtClass:KGWorkspacePersistence}} - Enforces save-or-discard lifecycle for the mutable GUI workspace.
@@ -109,6 +110,7 @@ KlibGenGt package map:
   - {{gtClass:KGToolRegistry}} - Resolves structured operations without equality-chain dispatch.
   - {{gtClass:KGExportTool}} - Counts modified KlibGenGt packages and commits live changes in a managed GUI export repository.
   - {{gtClass:KGExportButton}} - Adds the live export count and commit action to the GT world toolbar.
+  - {{gtClass:KGPromoteButton}} - Adds explicit conflict-checked staging promotion to the GT world toolbar.
   - {{gtClass:KGGuiSessionHooks}} - Controls GUI quit confirmation and emits lifecycle and exact-repository Iceberg commit events for host-side promotion.
   - {{gtClass:KGUiControlConnector}} - Defines connector-neutral UI-control transport lifecycle.
   - {{gtClass:KGFileUiControlConnector}} - Exchanges UI-control envelopes through the default filesystem spool.

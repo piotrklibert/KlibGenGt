@@ -281,7 +281,13 @@ PROJECT_SETUP_STEP = Step(
 )
 PROJECT_SOURCE_STEP = Step(
     "project-source",
-    _implementation("project-source", "image-workspace", "image-workspace", "build/v2/scripts/load-project-source.st"),
+    StepImplementation(
+        "project-source-v2",
+        2,
+        "image-workspace",
+        "image-workspace",
+        ("build/v2/scripts/load-project-source.st",),
+    ),
     {"jjTree": {"paths": ["src"], "exclude": ["src/KlibGenGt-BuildSupport"]}},
 )
 PROJECT_FINALIZE_STEP = Step(

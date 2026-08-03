@@ -20,35 +20,30 @@ between those concepts:
   the hard-coded `DEFAULT_TARGETS`. Recipe values are coordinator-owned,
   versioned source; there is no generated recipe registry under `.klibgen/v2/`.
 
-- GUI export stops in a private Git bridge and does not reach authoritative
-  `src/`.
+- GUI and agentic export now converge on named staging and explicit host
+  promotion.
 
-  **Example:** the current workspace record names
-  `.klibgen/v2/workspaces/gui-default/source/.git` as `sourceGit`.
-  `KGInteractiveSourceChanges>>#exportChanges` commits there, and
-  `KGGuiSessionHooks` records an `iceberg-committed` event. The bridge is
-  generated workspace-owned state. Host promotion is implemented separately by
-  `python/klibgen_build/staging.py::promote_staging`, which only accepts named
-  areas under `.klibgen/v2/staging/`.
+  **Example:** the GUI defaults to `.klibgen/v2/staging/gui-default/overlay/.git`.
+  Export commits there, while Promote uses the session source-operation spool
+  and `python/klibgen_build/staging.py::promote_staging`.
 
-- Staging can silently run against a newer canonical artifact than its recorded
-  base.
+- Staging attachment safely rebases against newer authoritative source.
 
-  **Example:** a `klibgen.staging/1` record owns a `projectKey`, but
-  `python/klibgen_build/sessions.py::execute_session` obtains the current key
-  from `build_canonical(paths, "cli")` and does not compare it with the staging
-  record. `build/v2/scripts/run-agentic-session.st` then loads the staging Git
-  repository with `onConflictUseIncoming`.
+  **Example:** attachment performs a file-level three-way rebase before taking
+  the staging lease. Conflicts preserve the old base and overlay and prevent the
+  agentic image from starting.
 
-- JJ revision identity causes redundant project builds even when `src/`
-  content is identical.
+- JJ revision identity is retained as provenance without causing redundant
+  project builds when `src/` content is identical.
 
   **Example:** the current and previous project resolutions both recorded tree
   digest
   `7b1fffa2d752500854c13309525364c2c70a1d00847ca6e2c0b22fd46e882d55`,
-  but different JJ commit/change IDs produced different output keys. The value
-  is constructed by `resolution.py::jj_tree_identity`; source identity is
-  coordinator-owned provenance captured from the outer JJ working copy.
+  and now produce the same output key even when JJ commit/change IDs differ.
+  `resolution.py::jj_tree_identity` captures the full source record, while
+  `_key_configuration` selects only `treeDigest` as construction key material.
+  Source identity is coordinator-owned provenance captured from the outer JJ
+  working copy.
 
 - Status, diagnostics, retention, and artifact verification are less complete
   than the architecture suggests.
@@ -273,11 +268,14 @@ Each step key includes:
   `x86_64`, and ABI `x86_64`; `_resolve_config` obtains these host facts.
 - Selected repository source identity. For example, `project-source` records
   `paths: ["src"]` and excludes `src/KlibGenGt-BuildSupport`; `jj_tree_identity`
-  owns the capture.
+  owns the capture. The full record remains provenance, while
+  `_key_configuration` reduces JJ key material to the effective `treeDigest`.
 
 Target, recipe, and launch-preset names do not affect artifact identity. This is
 implemented by `resolve_recipe`, whose key material contains only the parent,
-implementation identity/input digest, and resolved configuration.
+implementation identity/input digest, and effective resolved configuration.
+For JJ project source, description changes, `jj new`, and other metadata-only
+revision rewrites therefore preserve the artifact key.
 
 Downstream invalidation follows naturally from the parent key. Editing ordinary
 project source therefore leaves runtime, GT, build-support, and dependency/setup
@@ -383,10 +381,10 @@ Source capability variants are:
 
 - `KGDisabledSourceChanges`, used by CLI/read-only sessions; calls are denied
   without an authoritative source destination.
-- `KGStagedSourceChanges`, used by agentic sessions; it inherits export into the
-  staging Git repository named by `manifest.inputs.sourceGit`.
-- `KGInteractiveSourceChanges`, used by the GUI; its `exportChanges` commits
-  modified `KlibGenGt-*` packages into the workspace's private Git bridge.
+- `KGStagingSourceChanges`, the shared named-staging implementation for export
+  and host promotion requests.
+- `KGStagedSourceChanges` and `KGInteractiveSourceChanges`, thin compatibility
+  subclasses used by agentic and GUI presets.
 
 Persistence variants are:
 
@@ -422,6 +420,8 @@ A named staging area contains:
   added file digest.
 - Promotion state and conflicts stored in the mutable `promotion` field of
   `staging.json`.
+- Generation, Git head, exclusive lease, last rebase, and last promotion stored
+  as compatible optional fields in the same schema-v1 record.
 
 Promotion:
 
@@ -435,8 +435,8 @@ Promotion:
   `promote_staging` before any copy/delete action.
 - Rejects overlapping changes by marking the staging record `conflicted` and
   reporting exact paths.
-- Leaves uncommitted changes in the outer JJ working copy by copying/removing
-  files directly under repository-owned `src/`.
+- Leaves uncommitted changes in the outer JJ working copy through an atomic,
+  rollback-protected replacement of repository-owned `src/`.
 - Never creates a JJ change or commit; no JJ mutation exists in
   `promote_staging`.
 
@@ -451,13 +451,17 @@ There is one named workspace: `gui-default`.
 It supports:
 
 - Initialization from a canonical artifact in `_initialize`, which reflinks or
-  copies `payload/image` and constructs an exact source Git bridge.
+  copies `payload/image` and attaches the named staging Git repository.
 - Exclusive locking while active through
   `.klibgen/v2/locks/workspaces/gui-default.lock` and `workspace_lock`.
 - Resume when `workspace.json` records an orderly saved completion;
   `_workspace_start_mode` selects `resumed`.
 - Explicit `--fresh` replacement in `launch_gui_workspace`, exposed by
   `python/klibgen_build/cli/sessions.py::gui`.
+- `--staging NAME` for explicit sequential GUI/agentic handoff; changing the
+  staging name of a saved workspace requires `--fresh`.
+- Clean generation reload on resume and dirty `sourceChangeCount` reservation
+  that refuses another writer.
 - Stale-project warnings by comparing `workspace.projectKey` with the current
   canonical build key. The current workspace has `4d0f0201…`, while the current
   reference has `06cdfc29…`.

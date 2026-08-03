@@ -14,6 +14,8 @@ Immutable JSON record generated from `WorkspaceV1`.
   - `lastCompletion` (`#(KGSessionCompletionV1 | UndefinedObject)`, `accessing`) - Value of JSON field `lastCompletion`.
   - `pid` (`#(Integer | UndefinedObject)`, `accessing`) - Value of JSON field `pid`.
   - `sessionId` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `sessionId`.
+  - `stagingArea` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `stagingArea`.
+  - `stagingGeneration` (`#(Integer | UndefinedObject)`, `accessing`) - Value of JSON field `stagingGeneration`.
   - `path` (`#(String | UndefinedObject)`, `accessing`) - Value of JSON field `path`.
   - `storage` (`#(KGJsonStorageRecord | UndefinedObject)`, `accessing`) - Value of JSON field `storage`.
 - Public API
@@ -39,6 +41,10 @@ Immutable JSON record generated from `WorkspaceV1`.
     Answer the immutable `pid` field value.
   - {{gtMethod:KGWorkspaceV1>>#sessionId}}
     Answer the immutable `sessionId` field value.
+  - {{gtMethod:KGWorkspaceV1>>#stagingArea}}
+    Answer the immutable `stagingArea` field value.
+  - {{gtMethod:KGWorkspaceV1>>#stagingGeneration}}
+    Answer the immutable `stagingGeneration` field value.
   - {{gtMethod:KGWorkspaceV1>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGWorkspaceV1>>#storage}}
@@ -58,6 +64,8 @@ Class {
 		'lastCompletion',
 		'pid',
 		'sessionId',
+		'stagingArea',
+		'stagingGeneration',
 		'path',
 		'storage'
 	],
@@ -86,6 +94,8 @@ KGWorkspaceV1 class >> jsonFieldSpecifications [
 		#('lastCompletion' 'lastCompletion' true #(#union #(#(#model #KGSessionCompletionV1) #(#nil)))).
 		#('pid' 'pid' false #(#union #(#(#integer) #(#nil)))).
 		#('sessionId' 'sessionId' false #(#union #(#(#string) #(#nil)))).
+		#('stagingArea' 'stagingArea' false #(#union #(#(#string) #(#nil)))).
+		#('stagingGeneration' 'stagingGeneration' false #(#constrained #(#union #(#(#integer) #(#nil))) #(#(#ge 1)))).
 		#('path' 'path' false #(#union #(#(#string) #(#nil)))).
 		#('storage' 'storage' false #(#union #(#(#model #KGJsonStorageRecord) #(#nil)))) }
 ]
@@ -160,6 +170,18 @@ KGWorkspaceV1 >> pid [
 KGWorkspaceV1 >> sessionId [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: sessionId
+]
+
+{ #category : 'accessing' }
+KGWorkspaceV1 >> stagingArea [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: stagingArea
+]
+
+{ #category : 'accessing' }
+KGWorkspaceV1 >> stagingGeneration [
+	<return: #(Integer | UndefinedObject)>
+	^ self defensiveJsonValue: stagingGeneration
 ]
 
 { #category : 'accessing' }

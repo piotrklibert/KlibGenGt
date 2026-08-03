@@ -102,16 +102,21 @@ def git_worktree_identity(path: Path) -> dict[str, Any]:
 
 
 def jj_tree_identity(root: Path, paths: Iterable[str], exclude: Iterable[str]) -> dict[str, Any]:
-    revision = read_jj_revision(root)
-    content = digest_paths(root, paths, exclude)
-    return {
-        "vcs": "jj",
-        "commitId": revision["commitId"],
-        "changeId": revision["changeId"],
-        "treeDigest": content["digest"],
-        "paths": sorted(set(paths)),
-        "exclude": sorted(set(exclude)),
-    }
+    selected_paths = tuple(paths)
+    excluded_paths = tuple(exclude)
+    for _attempt in range(3):
+        revision = read_jj_revision(root)
+        content = digest_paths(root, selected_paths, excluded_paths)
+        if read_jj_revision(root) == revision:
+            return {
+                "vcs": "jj",
+                "commitId": revision["commitId"],
+                "changeId": revision["changeId"],
+                "treeDigest": content["digest"],
+                "paths": sorted(set(selected_paths)),
+                "exclude": sorted(set(excluded_paths)),
+            }
+    raise ValueError("JJ working-copy revision changed repeatedly while capturing source")
 
 
 def read_jj_revision(root: Path) -> dict[str, str]:
@@ -174,6 +179,15 @@ def _resolve_config(paths: BuildPaths, config: Mapping[str, Any]) -> dict[str, A
     return resolved
 
 
+def _key_configuration(resolved: Mapping[str, Any]) -> dict[str, Any]:
+    """Return effective construction inputs without VCS-only provenance."""
+    key_configuration = dict(resolved)
+    source = key_configuration.get("source")
+    if isinstance(source, dict) and source.get("vcs") == "jj":
+        key_configuration["source"] = {"treeDigest": source["treeDigest"]}
+    return key_configuration
+
+
 def resolve_recipe(paths: BuildPaths, target: Target, recipe: Recipe | None = None) -> dict[str, Any]:
     selected = recipe or target.recipe
     parent_key: str | None = None
@@ -188,7 +202,7 @@ def resolve_recipe(paths: BuildPaths, target: Target, recipe: Recipe | None = No
                 "version": step.implementation.version,
                 "inputsDigest": implementation_inputs["digest"],
             },
-            "configuration": resolved_config,
+            "configuration": _key_configuration(resolved_config),
         }
         output_key = digest_json(key_material)
         steps.append({

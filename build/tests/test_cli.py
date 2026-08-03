@@ -100,6 +100,14 @@ class ClickCliTest(unittest.TestCase):
         profile.assert_called_once_with(["sh", "-c", "exit 3"], capture=True)
         self.assertEqual(json.loads(result.output)["data"]["exitCode"], 3)
 
+    def test_gui_maps_staging_option_and_integer_exit_to_a_structured_result(self):
+        with patch("klibgen_build.cli.sessions.launch_gui_workspace", return_value=0) as launch:
+            result = self.runner.invoke(cli, ["gui", "--fresh", "--staging", "shared"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        launch.assert_called_once()
+        self.assertEqual(launch.call_args.args[1:], (True, "shared"))
+        self.assertIn('"exitCode": 0', result.output)
+
     def test_result_and_error_exit_contracts_include_command_path(self):
         failed = {"schemaVersion": 1, "ok": False, "operation": "fixture", "message": "no"}
         with patch("klibgen_build.cli.recipes.recipe_catalog", return_value=failed):

@@ -1,9 +1,9 @@
 "
-Export agentic changes into a durable staging repository using the interactive repository protocol.
+Compatibility name for the common named-staging source capability used by agentic sessions.
 
 - Slots
   - none
 - Public API
-  - inherited from `KGInteractiveSourceChanges`; the distinct class records staged capability intent.
+  - inherited from `KGStagingSourceChanges`; the distinct class records staged capability intent.
 "
-Class { #name : 'KGStagedSourceChanges', #superclass : 'KGInteractiveSourceChanges', #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }
+Class { #name : 'KGStagedSourceChanges', #superclass : 'KGStagingSourceChanges', #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }

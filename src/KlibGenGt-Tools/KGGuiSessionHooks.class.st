@@ -1,4 +1,4 @@
-"Session hooks for one writable GUI run and its private Iceberg repository.
+"Session hooks for one writable GUI run and its attached named-staging Iceberg repository.
 
 - Slots
   - `DidOpen` (`#Boolean`, class state, `system startup`) - Records whether startup already opened or reused the run world.
@@ -158,8 +158,12 @@ KGGuiSessionHooks class >> rebindRepository [
 	<return: #KGGuiSessionHooks>
 	| gitDirectory repository |
 	gitDirectory := ((KGSession current manifest inputs at: 'sourceGit') asFileReference) parent.
+	IceRepository registry
+		detect: [ :each | [ each location fullName = gitDirectory fullName ] on: Error do: [ false ] ]
+		ifFound: [ ^ self ]
+		ifNone: [ ].
 	repository := IceRepository registry
-		detect: [ :each | [ each location basename = 'export' ] on: Error do: [ false ] ]
+		detect: [ :each | [ #('export' 'source') includes: each location basename ] on: Error do: [ false ] ]
 		ifNone: [ nil ].
 	repository ifNotNil: [ repository location: gitDirectory ].
 	^ self
@@ -243,6 +247,8 @@ KGGuiSessionHooks class >> startUp: isImageStarting [
 KGGuiSessionHooks class >> uninstall [
 	<return: #KGGuiSessionHooks>
 	KGExportButton uninstallFrom: GtWorld defaultWorld.
+	GtWorld defaultWorld ifNotNil: [ :world |
+		(world root query // KGPromoteButton) all do: #removeFromParent ].
 	KGUiControlService uninstall.
 	Iceberg announcer unsubscribe: self.
 	^ self

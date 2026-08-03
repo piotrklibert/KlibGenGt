@@ -7,6 +7,8 @@
     Answer the synthetic title for the current export commit.
   - {{gtMethod:KGExportTool>>#exportChanges}}
     Commit every pending repository change and announce the Iceberg commit.
+  - {{gtMethod:KGExportTool>>#promoteChanges}}
+    Request conflict-checked promotion through the host staging service.
 "
 Class {
 	#name : 'KGExportTool',
@@ -31,4 +33,10 @@ KGExportTool >> commitTitle [
 KGExportTool >> exportChanges [
 	<return: #(IceCommit?)>
 	^ KGSession current sourceChanges exportChanges
+]
+
+{ #category : 'public - actions' }
+KGExportTool >> promoteChanges [
+	<return: #(Dictionary<String, Any>)>
+	^ KGSession current sourceChanges promoteChanges
 ]

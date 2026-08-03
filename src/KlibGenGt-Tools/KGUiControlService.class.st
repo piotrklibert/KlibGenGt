@@ -206,9 +206,10 @@ KGUiControlService >> act: aRequest [
 KGUiControlService >> onUiFor: target request: aRequest do: aBlock [
 	| semaphore result error remaining |
 	semaphore := Semaphore new.
-	UIManager default defer: [
+	target enqueueTask: (BlTaskAction new action: [
 		[ [ result := aBlock value ] on: Exception do: [ :exception | error := exception ] ]
-			ensure: [ semaphore signal ] ].
+			ensure: [ semaphore signal ] ]).
+	target space requestNextPulse.
 	remaining := ((aRequest at: 'deadlineUnixMs') - (DateAndTime now asUnixTime * 1000)) max: 1.
 	(semaphore waitTimeoutMilliseconds: remaining) ifTrue: [ self error: 'UI action timed out waiting for the space process' ].
 	error ifNotNil: [ error pass ].

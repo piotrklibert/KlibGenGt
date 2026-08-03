@@ -9,12 +9,13 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from .canonical import build_canonical
+from .canonical import _dependency_repository, build_canonical
 from .core import BuildPaths
-from .json_models import SessionCompletionV1, SessionReadyV1, StagingV1
+from .json_models import SessionCompletionV1, SessionReadyV1
 from .processes import decode_output, run_command, start_command
+from .source_requests import service_source_requests
 from .store import atomic_json
-from .staging import validate_staging_name
+from .staging import acquire_staging_lease, release_staging_lease, validate_staging_name
 from .v2state import V2Paths
 
 
@@ -49,6 +50,11 @@ def execute_session(
 ) -> dict[str, Any]:
     build = build_canonical(paths, "cli")
     artifact = Path(build["artifacts"][-1]["path"])
+    artifact_manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
+    dependency_step = next(
+        step for step in artifact_manifest["resolvedRecipe"]["steps"]
+        if step["role"] == "project-dependencies"
+    )
     project_key = build["outputKey"]
     v2 = V2Paths.for_build(paths)
     v2.initialize()
@@ -64,21 +70,31 @@ def execute_session(
     ready_path = session / "ready.json"
     completion_path = session / "completion.json"
     result_path = session / "result.json"
+    source_requests = session / "tmp/source-requests"
+    source_responses = session / "tmp/source-responses"
     atomic_json(request_path, request)
     if preset not in {"cli", "agentic"}:
         raise ValueError(f"unsupported headless preset {preset!r}")
     source_changes = "staged" if preset == "agentic" else "disabled"
     inputs: dict[str, Any] = {}
+    staging_record: dict[str, Any] | None = None
     if staging_name is not None:
         staging_name = validate_staging_name(staging_name)
-        staging = v2.root / "staging" / staging_name
-        staging_record = StagingV1.model_validate_json((staging / "staging.json").read_text(encoding="utf-8")).to_wire()
+        staging_record = acquire_staging_lease(
+            paths, staging_name, "agentic", session_id, os.getpid(),
+        )
         inputs["sourceGit"] = staging_record["sourceGit"]
+        inputs["stagingArea"] = staging_name
+        inputs["stagingGeneration"] = staging_record.get("generation", 1)
     manifest = {
         "schema": "klibgen.session/1", "schemaVersion": 1,
         "sessionId": session_id, "projectKey": project_key, "recipe": "project",
         "preset": {"name": preset, "frontend": "headless", "sourceChanges": source_changes, "persistence": "discard"},
-        "paths": {"request": str(request_path), "ready": str(ready_path), "completion": str(completion_path), "result": str(result_path)},
+        "paths": {
+            "request": str(request_path), "ready": str(ready_path),
+            "completion": str(completion_path), "result": str(result_path),
+            "sourceRequests": str(source_requests), "sourceResponses": str(source_responses),
+        },
         "inputs": inputs,
     }
     manifest_path = session / "session.json"
@@ -88,6 +104,7 @@ def execute_session(
         "HOME": str(session / "home"), "XDG_CONFIG_HOME": str(session / "config"),
         "XDG_CACHE_HOME": str(session / "cache"), "XDG_DATA_HOME": str(session / "data-home"),
         "TMPDIR": str(session / "tmp"), "KLIBGEN_SESSION_MANIFEST": str(manifest_path),
+        "KLIBGEN_SQLITE_REPOSITORY": _dependency_repository(paths, dependency_step),
     })
     if staging_name is not None:
         environment["KLIBGEN_STAGING_GIT"] = inputs["sourceGit"]
@@ -97,12 +114,28 @@ def execute_session(
     started = time.monotonic()
     process = start_command(command, cwd=session, env=environment, capture_output=True)
     timed_out = False
-    try:
-        stdout, stderr = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        process.kill()
-        stdout, stderr = process.communicate()
+    deadline = started + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        try:
+            stdout, stderr = process.communicate(timeout=max(0.01, min(0.05, remaining)))
+            if staging_name is not None:
+                service_source_requests(
+                    paths, source_requests, source_responses,
+                    session_id=session_id, staging_name=staging_name,
+                )
+            break
+        except subprocess.TimeoutExpired:
+            if staging_name is not None:
+                service_source_requests(
+                    paths, source_requests, source_responses,
+                    session_id=session_id, staging_name=staging_name,
+                )
+            if remaining <= 0:
+                timed_out = True
+                process.kill()
+                stdout, stderr = process.communicate()
+                break
     wall = time.monotonic() - started
     (session / "logs/session.log").write_text(decode_output(stdout) + decode_output(stderr), encoding="utf-8")
     try:
@@ -132,6 +165,8 @@ def execute_session(
         _retain_diagnostics(v2, request.get("operation", "unknown"), session)
         raise
     finally:
+        if staging_name is not None:
+            release_staging_lease(paths, staging_name, session_id)
         v2.remove_tree(session)
 
 

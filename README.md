@@ -69,7 +69,7 @@ klibgen-build
 ├── recipe list | resolve
 ├── artifact list | verify
 ├── workspace status | reset
-├── staging list | create | reset | promote
+├── staging list | create | rebase | reset | promote
 ├── models export-tonel
 └── doctor | status | build | test | test-one | eval | load | smoke
     | check-type-pragmas | gui | agentic | inventory | build-map
@@ -150,29 +150,36 @@ Agentic work uses a named staging area:
 just staging-create experiment
 just agentic experiment
 just staging-list
+uv run klibgen-build staging rebase experiment
 just staging-promote experiment
 ```
 
-A staging record tracks its exact base plus additions, modifications,
-removals, and renames. Promotion is serialized, restricted to owned
-`KlibGenGt-*` package paths, and rejects overlapping authoritative changes. A
-successful promotion leaves reviewable uncommitted changes in the outer JJ
-working copy; it never creates a JJ change or commit.
+A staging record tracks its exact base, Git head, generation, exclusive lease,
+and additions, modifications, removals, and renames. Attachment and explicit
+`staging rebase` perform a file-level three-way rebase onto current `src/`;
+conflicts preserve the original overlay and refuse execution. Promotion is
+serialized, atomically applied, restricted to owned `KlibGenGt-*` package
+paths, and leaves reviewable uncommitted changes in the outer JJ working copy.
+It never creates a JJ change or commit.
 
 The GUI workflow is deliberately singular:
 
 ```sh
 just gui                 # resume, or initialize if absent
+uv run klibgen-build gui --staging experiment  # explicit sequential handoff
 just gui-fresh           # replace from the current canonical artifact
 just workspace-status
 just workspace-reset     # explicit destructive reset
 ```
 
-The workspace is exclusively locked. Resume compares saved provenance with the
-current canonical project key and displays a stale warning without rewriting
-the image. Save, discard, and cancel are image-authored lifecycle outcomes.
-Interactive exports pass through the source capability and conflict-checked
-staging/promotion path.
+The workspace is exclusively locked and uses `gui-default` staging unless
+`--staging NAME` is selected; switching a saved workspace requires `--fresh`.
+Agentic and GUI processes may attach to one area sequentially, never
+concurrently. A clean saved image reloads a newer staging generation on resume;
+an image with unexported changes reserves the area until those changes are
+exported or discarded. Export commits only to staging. Promote is a separate
+explicit GUI action serviced by the host through a session-scoped request
+spool. Save, discard, and cancel remain image-authored lifecycle outcomes.
 
 ## Structured image tools
 

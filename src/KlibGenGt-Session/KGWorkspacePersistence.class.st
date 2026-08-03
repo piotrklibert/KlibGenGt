@@ -34,6 +34,6 @@ KGWorkspacePersistence >> writeCompletion: state [
 	| session path |
 	session := KGSession current.
 	path := session manifest paths completion.
-	KGAtomicJsonWriter write: (KGSessionCompletionV1 fromDictionary: (OrderedDictionary new at: 'schema' put: 'klibgen.session-completion/1'; at: 'sessionId' put: session id; at: 'state' put: state; at: 'ok' put: true; yourself)) to: path.
+	KGAtomicJsonWriter write: (KGSessionCompletionV1 fromDictionary: (OrderedDictionary new at: 'schema' put: 'klibgen.session-completion/1'; at: 'sessionId' put: session id; at: 'state' put: state; at: 'ok' put: true; at: 'sourceChangeCount' put: session sourceChanges changeCount; yourself)) to: path.
 	^ self
 ]

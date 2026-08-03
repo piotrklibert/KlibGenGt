@@ -23,7 +23,12 @@ from klibgen_build.recipes import (
     StepImplementation,
     Target,
 )
-from klibgen_build.resolution import digest_paths, git_worktree_identity, resolve_recipe
+from klibgen_build.resolution import (
+    digest_paths,
+    git_worktree_identity,
+    jj_tree_identity,
+    resolve_recipe,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -166,6 +171,60 @@ class RecipeResolutionTest(unittest.TestCase):
         (self.root / "source/value").write_text("two")
         after = resolve_recipe(self.paths, target)
         self.assertNotEqual(before["outputKey"], after["outputKey"])
+
+    def test_jj_revision_provenance_does_not_affect_effective_content_key(self):
+        recipe = Recipe("jj-recipe", (
+            Step(
+                "source",
+                StepImplementation("jj-source", 1, None, "fixture"),
+                {"jjTree": {"paths": ["src"], "exclude": ["src/excluded"]}},
+                "artifact",
+            ),
+        ))
+        target = Target("jj-target", recipe, CLI_PRESET)
+        first_identity = {
+            "vcs": "jj", "commitId": "commit-one", "changeId": "change-one",
+            "treeDigest": "tree-one", "paths": ["src"], "exclude": ["src/excluded"],
+        }
+        second_identity = first_identity | {
+            "commitId": "commit-two", "changeId": "change-two",
+            "paths": ["src/selected"], "exclude": [],
+        }
+        with patch("klibgen_build.resolution.jj_tree_identity", return_value=first_identity):
+            first = resolve_recipe(self.paths, target)
+        with patch("klibgen_build.resolution.jj_tree_identity", return_value=second_identity):
+            second = resolve_recipe(self.paths, target)
+
+        self.assertEqual(first["outputKey"], second["outputKey"])
+        self.assertEqual(
+            second["steps"][0]["resolvedConfiguration"]["source"]["commitId"],
+            "commit-two",
+        )
+
+        with patch(
+            "klibgen_build.resolution.jj_tree_identity",
+            return_value=second_identity | {"treeDigest": "tree-two"},
+        ):
+            changed = resolve_recipe(self.paths, target)
+        self.assertNotEqual(second["outputKey"], changed["outputKey"])
+
+    def test_jj_identity_retries_until_revision_and_digest_are_consistent(self):
+        first = {"commitId": "commit-one", "changeId": "change-one"}
+        second = {"commitId": "commit-two", "changeId": "change-two"}
+        with (
+            patch(
+                "klibgen_build.resolution.read_jj_revision",
+                side_effect=[first, second, second, second],
+            ),
+            patch(
+                "klibgen_build.resolution.digest_paths",
+                side_effect=[{"digest": "tree-one"}, {"digest": "tree-two"}],
+            ),
+        ):
+            identity = jj_tree_identity(self.root, ["src"], ["src/excluded"])
+
+        self.assertEqual(identity["commitId"], "commit-two")
+        self.assertEqual(identity["treeDigest"], "tree-two")
 
     @unittest.skipUnless(subprocess.run(["git", "--version"], capture_output=True).returncode == 0, "git required")
     def test_dirty_git_identity_changes_with_effective_content(self):
