@@ -77,6 +77,7 @@ KGJsonModelsTest >> testNamedRegistryContainsEveryV02Schema [
 		'klibgen.inventory/2'
 		'klibgen.measurement/1'
 		'klibgen.recipe-catalog/1'
+		'klibgen.refactoring-request/1'
 		'klibgen.reference/1'
 		'klibgen.resolved-recipe/1'
 		'klibgen.session-completion/1'

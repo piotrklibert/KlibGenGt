@@ -533,6 +533,22 @@ class MeasurementV1(ClosedWireModel):
     allocated_byte_delta: int = Field(alias="allocatedByteDelta")
 
 
+class RefactoringRequestV1(WireModel):
+    schema_name = "klibgen.refactoring-request/1"
+    smalltalk_name = "KGRefactoringRequestV1"
+    schema_: Literal["klibgen.refactoring-request/1"] = Field(alias="schema")
+    schema_version: Literal[1] = Field(default=1, alias="schemaVersion")
+    operation: str | None = None
+    refactoring: str | None = None
+    target: dict[str, JsonValue] | None = None
+    arguments: dict[str, JsonValue] | None = None
+    scope: dict[str, JsonValue] | None = None
+    limits: dict[str, JsonValue] | None = None
+    acknowledged_warnings: tuple[str, ...] | None = Field(default=None, alias="acknowledgedWarnings")
+    allow_pattern_blocks: bool | None = Field(default=None, alias="allowPatternBlocks")
+    expect: str | None = None
+
+
 NAMED_MODELS: tuple[type[WireModel], ...] = (
     ArtifactV1,
     ArtifactListV1,
@@ -544,6 +560,7 @@ NAMED_MODELS: tuple[type[WireModel], ...] = (
     InventoryV2,
     MeasurementV1,
     RecipeCatalogV1,
+    RefactoringRequestV1,
     ReferenceV1,
     ResolvedRecipeV1,
     SessionV1,

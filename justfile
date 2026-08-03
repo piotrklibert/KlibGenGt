@@ -93,6 +93,21 @@ staging-promote name:
 agentic name:
     uv run klibgen-build agentic {{quote(name)}} --test
 
+refactor-catalog:
+    uv run klibgen-build refactor catalog
+
+refactor-describe refactoring_id:
+    uv run klibgen-build refactor describe {{quote(refactoring_id)}}
+
+refactor-applicable name request_file:
+    uv run klibgen-build refactor applicable {{quote(name)}} --file {{quote(request_file)}}
+
+refactor-preview name request_file:
+    uv run klibgen-build refactor preview {{quote(name)}} --file {{quote(request_file)}}
+
+refactor-apply name request_file plan_id:
+    uv run klibgen-build refactor apply {{quote(name)}} --file {{quote(request_file)}} --expect {{quote(plan_id)}}
+
 inventory:
     uv run klibgen-build inventory
 

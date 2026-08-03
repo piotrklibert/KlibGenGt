@@ -40,7 +40,7 @@ KGSessionTest >> testDisabledCapabilitiesEnforceReadOnlyDiscardPolicy [
 
 { #category : 'tests' }
 KGSessionTest >> testRegistryContainsEveryCurrentStructuredTool [
-	self assert: KGToolRegistry default identifiers equals: #('build-map.png' 'code.class' 'code.method' 'code.search' 'eval' 'lepiter.export' 'lepiter.search' 'test.all' 'test.run')
+	self assert: KGToolRegistry default identifiers equals: #('build-map.png' 'code.class' 'code.method' 'code.search' 'eval' 'lepiter.export' 'lepiter.search' 'refactor.applicable' 'refactor.apply' 'refactor.catalog' 'refactor.describe' 'refactor.preview' 'test.all' 'test.run')
 ]
 
 { #category : 'tests' }
@@ -51,6 +51,34 @@ KGSessionTest >> testRegistryRejectsDuplicateAndUnknownIdentifiers [
 	registry register: registration.
 	self should: [ registry register: registration ] raise: Error.
 	self should: [ registry at: 'missing' ] raise: Error
+]
+
+{ #category : 'tests' }
+KGSessionTest >> testRestrictedToolRegistrationRequiresStagedHeadlessSession [
+	| registration disabled staged manifest |
+	registration := KGToolRegistration
+		identifier: 'fixture'
+		version: 1
+		frontends: #('headless')
+		capabilities: #('staged-source')
+		handler: [ :request | request ].
+	self should: [ registration execute: Dictionary new inSession: nil ] raise: Error.
+	KGSession reset.
+	manifest := Dictionary new
+		at: 'schema' put: 'klibgen.session/1';
+		at: 'schemaVersion' put: 1;
+		at: 'sessionId' put: 'disabled';
+		at: 'projectKey' put: 'test-project';
+		at: 'preset' put: (Dictionary new at: 'name' put: 'cli'; at: 'frontend' put: 'headless'; at: 'sourceChanges' put: 'disabled'; at: 'persistence' put: 'discard'; yourself);
+		at: 'paths' put: (Dictionary new at: 'completion' put: 'completion.json'; yourself);
+		yourself.
+	disabled := KGSession installManifest: manifest sourceChanges: Object new persistence: Object new.
+	self should: [ registration execute: Dictionary new inSession: disabled ] raise: Error.
+	KGSession reset.
+	manifest at: 'sessionId' put: 'staged'.
+	(manifest at: 'preset') at: 'sourceChanges' put: 'staged'.
+	staged := KGSession installManifest: manifest sourceChanges: Object new persistence: Object new.
+	self assert: (registration execute: (Dictionary new at: 'ok' put: true; yourself) inSession: staged) equals: (Dictionary new at: 'ok' put: true; yourself)
 ]
 
 { #category : 'tests' }

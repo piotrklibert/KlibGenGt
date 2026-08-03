@@ -105,6 +105,10 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 - Run `just lint-source` after changing `.st` files. It loads source in the
   pinned GT runtime and rejects any exact Tonel text that an immediate Iceberg
   export would rewrite; it deliberately does not pretty-print method bodies.
+
+- For structural Smalltalk refactoring (renames, moves, extraction, signature
+  changes, or repeated AST transforms), use the repo-local `refactor-gt-code`
+  skill. Check the live supported catalog before editing Tonel directly.
   
 - Lepiter docs go under `lepiter/`.
 

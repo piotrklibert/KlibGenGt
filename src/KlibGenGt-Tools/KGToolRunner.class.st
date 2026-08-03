@@ -16,7 +16,9 @@ Class {
 
 { #category : 'private - dispatching' }
 KGToolRunner >> dispatch: operation request: aRequest [
-	^ (KGToolRegistry default at: operation) execute: aRequest
+	| session |
+	session := [ KGSession current ] on: Error do: [ nil ].
+	^ (KGToolRegistry default at: operation) execute: aRequest inSession: session
 ]
 
 { #category : 'private - responses' }

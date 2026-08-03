@@ -66,6 +66,12 @@ KGToolRegistry >> installStandardTools [
 		registerIdentifier: 'test.all' handler: [ :request | KGTestTool new runAllProjectTests ];
 		registerIdentifier: 'test.run' handler: [ :request | KGTestTool new run: request ];
 		registerIdentifier: 'build-map.png' handler: [ :request | KGBuildMapTool new exportPngs: request ].
+	self
+		register: (KGToolRegistration identifier: 'refactor.catalog' version: 1 frontends: #('headless' 'gui') capabilities: #() handler: [ :request | KGRefactoringTool new catalog: request ]);
+		register: (KGToolRegistration identifier: 'refactor.describe' version: 1 frontends: #('headless' 'gui') capabilities: #() handler: [ :request | KGRefactoringTool new describe: request ]);
+		register: (KGToolRegistration identifier: 'refactor.applicable' version: 1 frontends: #('headless') capabilities: #('staged-source') handler: [ :request | KGRefactoringTool new applicable: request ]);
+		register: (KGToolRegistration identifier: 'refactor.preview' version: 1 frontends: #('headless') capabilities: #('staged-source') handler: [ :request | KGRefactoringTool new preview: request ]);
+		register: (KGToolRegistration identifier: 'refactor.apply' version: 1 frontends: #('headless') capabilities: #('staged-source') handler: [ :request | KGRefactoringTool new apply: request ]).
 	^ self
 ]
 

@@ -439,6 +439,107 @@ KGToolsTest >> testGuiQuitPromptIsFrontmost [
 		ensure: [ prompt ifNotNil: [ prompt removeFromParent ] ]
 ]
 
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringASTPatternBlocksRequireExplicitOptIn [
+	| request adapter refactoring |
+	request := Dictionary new
+		at: 'arguments' put: (Dictionary new
+			at: 'patternKind' put: 'expression';
+			at: 'search' put: '`{ :node | node isLiteralNode }';
+			at: 'replace' put: '42';
+			yourself);
+		at: 'scope' put: (Dictionary new
+			at: 'methods' put: {
+				Dictionary new
+					at: 'class' put: 'KlibGenGt';
+					at: 'side' put: 'class';
+					at: 'selector' put: 'projectName';
+					yourself };
+			yourself);
+		yourself.
+	adapter := KGASTRewriteRefactoringAdapter new.
+	self should: [ adapter buildIn: GtRBNamespace new request: request ] raise: Error.
+	request at: 'allowPatternBlocks' put: true.
+	refactoring := adapter buildIn: GtRBNamespace new request: request.
+	self assert: refactoring containsPatternBlocks
+]
+
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringASTRewriteProducesOneLeafChangeWithoutRecursiveTraversal [
+	| request model refactoring tool change |
+	request := Dictionary new
+		at: 'arguments' put: (Dictionary new
+			at: 'patternKind' put: 'expression';
+			at: 'search' put: '''KlibGenGt''';
+			at: 'replace' put: '''KlibGenGtPreview''';
+			yourself);
+		at: 'scope' put: (Dictionary new
+			at: 'methods' put: {
+				Dictionary new
+					at: 'class' put: 'KlibGenGt';
+					at: 'side' put: 'class';
+					at: 'selector' put: 'projectName';
+					yourself };
+			yourself);
+		yourself.
+	model := GtRBNamespace new.
+	refactoring := KGASTRewriteRefactoring model: model request: request.
+	refactoring generateChanges.
+	change := model changes changes first.
+	tool := KGRefactoringTool new.
+	self assert: refactoring matchCount equals: 1.
+	self assert: (tool perform: #changeCount: with: change) equals: 1.
+	self deny: ((tool perform: #changeRecordFor: with: change) includesKey: 'children')
+]
+
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringASTScopeRejectsFrameworkClassesAndPackages [
+	| classRequest packageRequest |
+	classRequest := Dictionary new
+		at: 'scope' put: (Dictionary new at: 'classes' put: #('Object'); yourself);
+		yourself.
+	packageRequest := Dictionary new
+		at: 'scope' put: (Dictionary new at: 'packages' put: #('GToolkit-*'); yourself);
+		yourself.
+	self
+		should: [ (KGASTRewriteRefactoring model: GtRBNamespace new request: classRequest) perform: #methodsFromScope ]
+		raise: Error.
+	self
+		should: [ (KGASTRewriteRefactoring model: GtRBNamespace new request: packageRequest) perform: #methodsFromScope ]
+		raise: Error
+]
+
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringImpactCountsLeafChangesAndTonelBytes [
+	| model change impact |
+	model := GtRBNamespace new.
+	model classFor: KlibGenGt.
+	model changes addChange: (RBAddMethodChange compile: 'temporaryRefactoringFixture ^ 1' in: KlibGenGt).
+	change := model changes changes first.
+	impact := KGRefactoringTool new
+		perform: #impactFor:tonelChanges:
+		with: change
+		with: { Dictionary new at: 'before' put: nil; at: 'after' put: 'abc'; yourself }.
+	self assert: (impact at: 'semanticChanges') equals: 1.
+	self assert: (impact at: 'tonelFiles') equals: 1.
+	self assert: (impact at: 'tonelBytes') equals: 3
+]
+
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringRegistryExposesNineStableAdaptersAndRuntimeInventory [
+	| catalog identifiers methodRename astRewrite |
+	catalog := KGRefactoringRegistry new catalog.
+	identifiers := (catalog at: 'supported') collect: [ :descriptor | descriptor at: 'id' ].
+	self assert: identifiers equals: #('class.rename' 'instance-variable.rename' 'method.extract' 'method.move' 'method.rename' 'parameter.add' 'parameter.remove' 'parameter.rename' 'rewrite.ast').
+	methodRename := (catalog at: 'supported') detect: [ :descriptor | (descriptor at: 'id') = 'method.rename' ].
+	self assert: (methodRename at: 'requiredArguments') equals: #('class' 'selector' 'newSelector').
+	self assert: (methodRename at: 'optionalArguments') equals: #('side' 'argumentPermutation').
+	astRewrite := (catalog at: 'supported') detect: [ :descriptor | (descriptor at: 'id') = 'rewrite.ast' ].
+	self assert: (astRewrite at: 'requiresScope').
+	self assert: ((astRewrite at: 'safety') includes: 'pattern-blocks-require-opt-in').
+	self assert: (catalog at: 'installed') size > 100
+]
+
 { #category : 'tests - UI control' }
 KGToolsTest >> testTcpUiControlConnectorBoundsRequestLines [
 	| connector stream |

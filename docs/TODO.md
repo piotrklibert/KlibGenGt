@@ -70,7 +70,26 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 
 - [ ] more formalized acceptance tests, including full UI tests
 
+- [X] AST transformations and curated Refactoring Browser operations exposed
+      as a bounded, preview-first agentic tool with explicit pattern-block
+      opt-in and named-staging export.
+
 # Q & A
 
 - how is the staging area diffed exactly? can we simplify it with JJ/Git
   interactions?
+  
+- jj worktree integration? 
+
+- steps representation in Python?
+
+- what are our answers to the following workflows:
+
+  1. Adding an external dependency. SQlite3 is a good sample case: it requires a
+     native .so (which I think isn't captured in the manifest?). Let's imagine
+     that we depend on our own package that is developed concurrently and
+     contains Rust-written bindings to an external .so and src/ with Smalltalk
+     code... How do we add this dependency, including checkout, building, and
+     possible OS-wide package installation?
+
+  2. Updating the GT version. 

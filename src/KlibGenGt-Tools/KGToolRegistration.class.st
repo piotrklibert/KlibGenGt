@@ -14,6 +14,14 @@ Describe one versioned image tool and its compatibility requirements.
     Execute the handler for one validated request.
   - {{gtMethod:KGToolRegistration>>#identifier}}
     Answer the stable operation identifier.
+  - {{gtMethod:KGToolRegistration>>#execute:inSession:}}
+    Validate the session frontend and capabilities before executing the handler.
+  - {{gtMethod:KGToolRegistration>>#frontends}}
+    Answer the permitted frontend names.
+  - {{gtMethod:KGToolRegistration>>#requiredCapabilities}}
+    Answer the capability names required for execution.
+  - {{gtMethod:KGToolRegistration>>#version}}
+    Answer the registration protocol version.
 "
 Class {
 	#name : 'KGToolRegistration',
@@ -42,6 +50,30 @@ KGToolRegistration class >> identifier: anIdentifier version: aVersion frontends
 KGToolRegistration >> execute: aRequest [ <arg: #aRequest type: #(Dictionary<String, Any>)> <return: #(Dictionary<String, Any>)> ^ handler value: aRequest
 ]
 
+{ #category : 'executing' }
+KGToolRegistration >> execute: aRequest inSession: aSession [
+	<arg: #aRequest type: #(Dictionary<String, Any>)>
+	<arg: #aSession type: #(KGSession?)>
+	<return: #(Dictionary<String, Any>)>
+	| preset |
+	aSession ifNil: [
+		requiredCapabilities ifNotEmpty: [ self error: 'image tool requires an installed session capability' ].
+		^ self execute: aRequest ].
+	preset := aSession manifest preset.
+	(frontends includes: preset frontend) ifFalse: [
+		self error: 'image tool is unavailable for frontend: ', preset frontend ].
+	requiredCapabilities do: [ :capability |
+		(capability = 'staged-source' and: [ preset sourceChanges = 'staged' ]) ifFalse: [
+			self error: 'image tool requires capability: ', capability ] ].
+	^ self execute: aRequest
+]
+
+{ #category : 'accessing' }
+KGToolRegistration >> frontends [
+	<return: #(Array<String>)>
+	^ frontends copy
+]
+
 { #category : 'accessing' }
 KGToolRegistration >> identifier [ <return: #String> ^ identifier
 ]
@@ -54,4 +86,16 @@ KGToolRegistration >> initializeIdentifier: anIdentifier version: aVersion front
 	<return: #KGToolRegistration>
 	identifier := anIdentifier. version := aVersion. frontends := frontendNames copy.
 	requiredCapabilities := capabilityNames copy. handler := aBlock. ^ self
+]
+
+{ #category : 'accessing' }
+KGToolRegistration >> requiredCapabilities [
+	<return: #(Array<String>)>
+	^ requiredCapabilities copy
+]
+
+{ #category : 'accessing' }
+KGToolRegistration >> version [
+	<return: #Integer>
+	^ version
 ]

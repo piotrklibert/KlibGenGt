@@ -18,6 +18,7 @@ from . import image as _image  # noqa: E402,F401
 from . import maintenance as _maintenance  # noqa: E402,F401
 from . import models as _models  # noqa: E402,F401
 from . import recipes as _recipes  # noqa: E402,F401
+from . import refactoring as _refactoring  # noqa: E402,F401
 from . import sessions as _sessions  # noqa: E402,F401
 from . import staging as _staging  # noqa: E402,F401
 from . import ui as _ui  # noqa: E402,F401

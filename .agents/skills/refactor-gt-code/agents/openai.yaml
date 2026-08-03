@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactor GT Code"
+  short_description: "Plan and apply safe GT refactorings"
+  default_prompt: "Use $refactor-gt-code to check, preview, and apply a supported structural Smalltalk refactoring."

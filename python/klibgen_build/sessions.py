@@ -92,6 +92,7 @@ def execute_session(
         inputs["sourceGit"] = staging_record["sourceGit"]
         inputs["stagingArea"] = staging_name
         inputs["stagingGeneration"] = staging_record.get("generation", 1)
+        inputs["stagingHeadCommit"] = staging_record.get("headCommit")
     manifest = {
         "schema": "klibgen.session/1", "schemaVersion": 1,
         "sessionId": session_id, "projectKey": project_key, "recipe": "project",

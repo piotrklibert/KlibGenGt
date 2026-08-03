@@ -92,6 +92,7 @@ KGCodeSearchTool >> methodSource: aRequest [
 		at: 'class' put: classSide instanceSide name asString;
 		at: 'side' put: (classSide isMeta ifTrue: [ 'class' ] ifFalse: [ 'instance' ]);
 		at: 'selector' put: selector asString;
+		at: 'sha256' put: (SHA256 hashMessage: method sourceCode utf8Encoded) hex;
 		at: 'text' put: method sourceCode;
 		yourself
 ]

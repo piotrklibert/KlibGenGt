@@ -12,6 +12,12 @@ A shared source capability backed by the named staging repository attached to th
     Commit pending project changes and notify the host staging service.
   - {{gtMethod:KGStagingSourceChanges>>#promoteChanges}}
     Request conflict-checked host promotion and answer its structured response.
+  - {{gtMethod:KGStagingSourceChanges>>#sourceRepository}}
+    Answer the attached Iceberg repository for staged source tooling.
+  - {{gtMethod:KGStagingSourceChanges>>#sourceRoot}}
+    Answer the attached repository's Tonel source directory.
+  - {{gtMethod:KGStagingSourceChanges>>#headCommit}}
+    Answer the commit loaded by the current staging session.
 "
 Class {
 	#name : 'KGStagingSourceChanges',
@@ -65,6 +71,12 @@ KGStagingSourceChanges >> exportChanges [
 		 reconciles it if this best-effort notification cannot be delivered."
 		Stdio stderr nextPutAll: error printString; lf; flush ].
 	^ commit
+]
+
+{ #category : 'accessing' }
+KGStagingSourceChanges >> headCommit [
+	<return: #String>
+	^ manifest inputs at: 'stagingHeadCommit'
 ]
 
 { #category : 'private - initialization' }
@@ -145,4 +157,16 @@ KGStagingSourceChanges >> runGitConfiguration: arguments for: repository [
 	process isSuccess ifFalse: [
 		self error: 'Unable to configure the session source repository: ', process stderr trimBoth ].
 	^ self
+]
+
+{ #category : 'accessing' }
+KGStagingSourceChanges >> sourceRepository [
+	<return: #IceRepository>
+	^ self repository
+]
+
+{ #category : 'accessing' }
+KGStagingSourceChanges >> sourceRoot [
+	<return: #FileReference>
+	^ self repository location / 'src'
 ]

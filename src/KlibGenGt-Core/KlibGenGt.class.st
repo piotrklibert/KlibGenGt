@@ -82,6 +82,7 @@ KlibGenGt package map:
   - {{gtClass:KGJsonToolCheckRecord}} - Generated immutable JSON record for `ToolCheckRecord`.
   - {{gtClass:KGMeasurementV1}} - Generated immutable JSON record for `MeasurementV1`.
   - {{gtClass:KGRecipeCatalogV1}} - Generated immutable JSON record for `RecipeCatalogV1`.
+  - {{gtClass:KGRefactoringRequestV1}} - Generated immutable JSON record for `RefactoringRequestV1`.
   - {{gtClass:KGReferenceV1}} - Generated immutable JSON record for `ReferenceV1`.
   - {{gtClass:KGResolvedRecipeV1}} - Generated immutable JSON record for `ResolvedRecipeV1`.
   - {{gtClass:KGSessionCompletionV1}} - Generated immutable JSON record for `SessionCompletionV1`.
@@ -108,6 +109,19 @@ KlibGenGt package map:
   - {{gtClass:KGWorkspacePersistence}} - Enforces save-or-discard lifecycle for the mutable GUI workspace.
   - {{gtClass:KGToolRegistration}} - Describes a versioned registered image tool.
   - {{gtClass:KGToolRegistry}} - Resolves structured operations without equality-chain dispatch.
+  - {{gtClass:KGRefactoringAdapter}} - Defines the stable adapter protocol over pinned Pharo refactoring APIs.
+  - {{gtClass:KGClassRenameRefactoringAdapter}} - Adapts stable class rename requests.
+  - {{gtClass:KGMethodRenameRefactoringAdapter}} - Adapts stable method rename requests and permutations.
+  - {{gtClass:KGInstanceVariableRenameRefactoringAdapter}} - Adapts instance-variable rename requests.
+  - {{gtClass:KGMethodMoveRefactoringAdapter}} - Adapts method moves through an explicitly typed variable.
+  - {{gtClass:KGMethodExtractRefactoringAdapter}} - Adapts exact-source method extraction requests.
+  - {{gtClass:KGParameterAddRefactoringAdapter}} - Adapts method parameter additions.
+  - {{gtClass:KGParameterRemoveRefactoringAdapter}} - Adapts method parameter removals.
+  - {{gtClass:KGParameterRenameRefactoringAdapter}} - Adapts method parameter renames.
+  - {{gtClass:KGASTRewriteRefactoringAdapter}} - Adapts bounded AST rewrite requests and pattern-block opt-in.
+  - {{gtClass:KGASTRewriteRefactoring}} - Applies an AST rewrite over an explicit project method scope.
+  - {{gtClass:KGRefactoringRegistry}} - Catalogs stable adapters and the installed refactoring framework.
+  - {{gtClass:KGRefactoringTool}} - Previews exact Tonel plans and exports matched plans to staging.
   - {{gtClass:KGExportTool}} - Counts modified KlibGenGt packages and commits live changes in a managed GUI export repository.
   - {{gtClass:KGExportButton}} - Adds the live export count and commit action to the GT world toolbar.
   - {{gtClass:KGPromoteButton}} - Adds explicit conflict-checked staging promotion to the GT world toolbar.

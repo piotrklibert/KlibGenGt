@@ -163,6 +163,28 @@ serialized, atomically applied, restricted to owned `KlibGenGt-*` package
 paths, and leaves reviewable uncommitted changes in the outer JJ working copy.
 It never creates a JJ change or commit.
 
+Structural Smalltalk changes can use the image's curated Refactoring Browser
+adapters instead of text editing:
+
+```sh
+just refactor-catalog
+just refactor-describe method.rename
+just refactor-applicable experiment ./tmp/refactor.json
+just refactor-preview experiment ./tmp/refactor.json
+just refactor-apply experiment ./tmp/refactor.json sha256:THE_REVIEWED_PLAN
+```
+
+Requests use the extensible `klibgen.refactoring-request/1` JSON record. The
+stable catalog covers class, method, instance-variable, and parameter renames;
+method move and extraction; parameter addition/removal; and bounded AST
+rewrites. Preview runs in a disposable agentic image and returns semantic
+changes, exact before/after Tonel, warnings, impact counts, staging provenance,
+and a deterministic plan ID. Apply recomputes everything and exports only if
+that exact ID still matches. AST pattern blocks are disabled unless the request
+sets `allowPatternBlocks: true`, remain project-scoped and bounded, and are
+reported as an unsafe feature for explicit review. Promotion is still a
+separate operation.
+
 `just lint-source` round-trips every authoritative `.st` file through the
 pinned image's Tonel writer and requires an exact byte match. The same gate runs
 inside canonical project-source construction and after staging rebase before a

@@ -725,6 +725,39 @@ capability remains the enforcement point for indirect invocations.
 Exporters SHOULD NOT accept arbitrary authoritative destination paths in normal
 operation. They receive their target from the capability.
 
+### 14.1.1 Agentic refactoring protocol
+
+Structural source changes SHOULD use a versioned curated adapter when one is
+available. The image tool registry MUST expose read-only catalog and describe
+operations, plus applicability, preview, and apply operations restricted to a
+headless session with the named-staging source capability. Stable adapter IDs
+are independent of the installed Refactoring Browser class names; the catalog
+MAY additionally report unwrapped image refactoring classes as observed,
+unsupported inventory.
+
+Applicability and mutation requests use the extensible schema-v1 refactoring
+record. Preview MUST execute only in a disposable image attached exclusively to
+the requested staging area and MUST return:
+
+- structured semantic changes and bounded exact before/after Tonel files;
+- warnings with stable IDs and their acknowledgement state;
+- explicit unsafe features;
+- impact counts and the staging name, generation, and Git head; and
+- a deterministic plan ID bound to the normalized request, adapter version,
+  project artifact, staging identity, warnings, and exact Tonel result.
+
+Apply MUST regenerate the complete plan, require the caller's exact expected
+plan ID, and export through `KGStagingSourceChanges` only after equality is
+established. It MUST NOT promote. A changed artifact, staging generation/head,
+warning set, adapter version, or output therefore requires another preview.
+
+AST rewriting uses `RBParseTreeRewriter` over an explicit bounded set of
+methods, classes, or `KlibGenGt-*` packages. Executable AST pattern blocks are
+disabled by default, require a request-level opt-in, and MUST appear in the
+unsafe-feature result. Limits on traversed methods, transformed methods,
+semantic changes, and serialized Tonel size MUST be enforced. No refactoring
+adapter may target or persist changes outside project-owned packages.
+
 ### 14.2 Persistence capability
 
 Image save/close behavior MUST similarly be represented by a capability:
