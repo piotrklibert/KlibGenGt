@@ -114,6 +114,16 @@ class UiControlTest(unittest.TestCase):
             result = runner.invoke(cli, arguments)
             self.assertEqual(result.exit_code, 0, result.output)
 
+    def test_tree_cli_maps_independent_depth_and_node_limits(self):
+        runner = CliRunner()
+        response = {"schemaVersion": 1, "ok": True, "operation": "ui.tree", "data": {}}
+        with patch("klibgen_build.cli.ui.submit_ui_request", return_value=response) as submit:
+            result = runner.invoke(cli, ["ui", "tree", "--depth", "0", "--limit", "7"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        request = submit.call_args.args[1]
+        self.assertEqual(request["depth"], 0)
+        self.assertEqual(request["limit"], 7)
+
 
 if __name__ == "__main__":
     unittest.main()

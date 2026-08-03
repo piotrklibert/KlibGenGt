@@ -49,9 +49,9 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
  
 - [ ] Expand all methods in Coder
 
-
 - [X] Common Python logging with stderr-only INFO defaults and per-command
       TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL overrides.
+      
 - [ ] Add the corresponding structured logging policy inside Smalltalk images.
 
 - [ ] Tonel lines to methods and classes in error reporting.
@@ -74,6 +74,14 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 - [X] AST transformations and curated Refactoring Browser operations exposed
       as a bounded, preview-first agentic tool with explicit pattern-block
       opt-in and named-staging export.
+
+- [ ] Progressive refactoring skill
+  - start with big methods
+  - move extract code into local blocks
+  - move contents of blocks to methods
+  - replace bodies of blocks with calls to respective methods
+  - inline blocks
+
 
 # Q & A
 

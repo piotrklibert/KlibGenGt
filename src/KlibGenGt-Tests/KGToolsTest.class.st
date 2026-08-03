@@ -526,6 +526,36 @@ KGToolsTest >> testRefactoringImpactCountsLeafChangesAndTonelBytes [
 ]
 
 { #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringParameterAddAdapterBuildsAndGeneratesChanges [
+	| request refactoring |
+	request := Dictionary new
+		at: 'arguments' put: (Dictionary new
+			at: 'class' put: 'KGUiSceneGraph';
+			at: 'side' put: 'instance';
+			at: 'selector' put: 'boundedTextOf:';
+			at: 'newSelector' put: 'boundedTextOf:fallback:';
+			at: 'insertionIndex' put: 2;
+			at: 'name' put: 'fallback';
+			at: 'defaultExpression' put: 'nil';
+			yourself);
+		yourself.
+	refactoring := KGParameterAddRefactoringAdapter new
+		buildIn: GtRBNamespace new
+		request: request.
+	self shouldnt: [ refactoring generateChanges ] raise: Error
+]
+
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringRegistryCatalogIsJsonSerializable [
+	| catalog encoded decoded |
+	catalog := KGRefactoringRegistry new catalog.
+	encoded := STONJSON toString: catalog.
+	decoded := STONJSON fromString: encoded.
+	self assert: (decoded at: 'supported') size equals: 9.
+	self assert: (decoded at: 'installed') size > 100
+]
+
+{ #category : 'tests - refactoring' }
 KGToolsTest >> testRefactoringRegistryExposesNineStableAdaptersAndRuntimeInventory [
 	| catalog identifiers methodRename astRewrite |
 	catalog := KGRefactoringRegistry new catalog.
@@ -538,6 +568,39 @@ KGToolsTest >> testRefactoringRegistryExposesNineStableAdaptersAndRuntimeInvento
 	self assert: (astRewrite at: 'requiresScope').
 	self assert: ((astRewrite at: 'safety') includes: 'pattern-blocks-require-opt-in').
 	self assert: (catalog at: 'installed') size > 100
+]
+
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringSharedDescriptorArraysReproduceStonWriterError [
+	| sharedSafety response normalized |
+	sharedSafety := #('project-packages-only' 'preview-before-apply').
+	response := {
+		OrderedDictionary new
+			at: 'id' put: 'class.rename';
+			at: 'safety' put: sharedSafety;
+			yourself.
+		OrderedDictionary new
+			at: 'id' put: 'method.rename';
+			at: 'safety' put: sharedSafety;
+			yourself }.
+	self should: [ STONJSON toString: response ] raise: STONWriterError.
+	normalized := KGRefactoringTool new
+		perform: #canonicalObjectFor:
+		with: response.
+	self deny: (normalized first at: 'safety') == (normalized second at: 'safety').
+	self shouldnt: [ STONJSON toString: normalized ] raise: STONWriterError
+]
+
+{ #category : 'tests - refactoring' }
+KGToolsTest >> testRefactoringToolDiscoveryResponsesAreJsonSerializable [
+	| tool responses |
+	tool := KGRefactoringTool new.
+	responses := {
+		tool catalog: Dictionary new.
+		tool applicable: (Dictionary new at: 'arguments' put: Dictionary new; yourself).
+		tool describe: (Dictionary new at: 'refactoring' put: 'parameter.add'; yourself) }.
+	responses do: [ :response |
+		self shouldnt: [ STONJSON toString: response ] raise: STONWriterError ]
 ]
 
 { #category : 'tests - UI control' }
@@ -673,6 +736,29 @@ KGToolsTest >> testUiControlSerializedRequestReturnsStructuredFailure [
 	self deny: (response at: 'ok').
 	self assert: (response at: 'requestId') equals: 'fallback'.
 	self assert: (response at: 'sessionId') equals: 'test-session'
+]
+
+{ #category : 'tests - UI control' }
+KGToolsTest >> testUiSceneDepthBoundsTraversalIndependentlyOfNodeLimit [
+	| scene root firstChild secondChild grandchild records |
+	scene := KGUiSceneGraph new.
+	root := BlElement new.
+	firstChild := BlElement new.
+	secondChild := BlElement new.
+	grandchild := BlElement new.
+	root addChild: firstChild; addChild: secondChild.
+	firstChild addChild: grandchild.
+	records := OrderedCollection new.
+	scene
+		perform: #visit:parent:index:path:into:limit:maxDepth:
+		withArguments: { root. nil. 1. #(1). records. 100. 1 }.
+	self assert: records size equals: 3.
+	self assert: (records noneSatisfy: [ :record | (record at: 'path') size > 2 ]).
+	records removeAll.
+	scene
+		perform: #visit:parent:index:path:into:limit:maxDepth:
+		withArguments: { root. nil. 1. #(1). records. 2. nil }.
+	self assert: records size equals: 2
 ]
 
 { #category : 'tests - UI control' }

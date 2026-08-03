@@ -590,8 +590,10 @@ requires one uniquely selected, active, ready GUI, polls for a matching response
 and removes timed-out unclaimed requests.
 
 The protocol supports scene-tree/status inspection, selectors, Scripter-backed
-actions, waits, batches, and diagnostic eval. This is local filesystem IPC; no
-network listener or authentication service is involved.
+actions, waits, batches, and diagnostic eval. Scene traversal accepts an
+independent node-count limit and maximum depth relative to the scene or
+`under` root. This is local filesystem IPC; no network listener or
+authentication service is involved.
 
 ## 11. Context and worktree lifecycle
 

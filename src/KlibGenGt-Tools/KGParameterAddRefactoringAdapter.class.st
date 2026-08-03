@@ -24,7 +24,7 @@ KGParameterAddRefactoringAdapter >> buildIn: aModel request: aRequest [
 	selector := (self require: 'selector' in: arguments) asSymbol.
 	newSelector := (self require: 'newSelector' in: arguments) asSymbol.
 	insertion := self require: 'insertionIndex' in: arguments.
-	newSelector numArgs = selector numArgs + 1 ifFalse: [ self error: 'new selector must add exactly one argument' ].
+	newSelector numArgs = (selector numArgs + 1) ifFalse: [ self error: 'new selector must add exactly one argument' ].
 	(insertion isInteger and: [ insertion between: 1 and: newSelector numArgs ]) ifFalse: [
 		self error: 'insertionIndex is outside the new selector' ].
 	permutation := (1 to: newSelector numArgs) collect: [ :index |

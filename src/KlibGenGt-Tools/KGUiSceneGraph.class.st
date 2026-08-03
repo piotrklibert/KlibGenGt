@@ -116,6 +116,8 @@ KGUiSceneGraph >> query: aRequest [
 		at: 'space' put: (tree at: 'space');
 		at: 'matches' put: matches asArray;
 		at: 'count' put: matches size;
+		at: 'depth' put: (tree at: 'depth');
+		at: 'truncated' put: (tree at: 'truncated');
 		yourself
 ]
 
@@ -166,16 +168,29 @@ KGUiSceneGraph >> recordFor: anElement parent: parentHandle index: childIndex pa
 
 { #category : 'private - inspection' }
 KGUiSceneGraph >> recordsFor: aRequest [
-	| space records limit root |
+	| space records limit maxDepth root |
 	self pruneHandles.
 	space := self selectedSpaceFor: aRequest.
 	limit := aRequest at: 'limit' ifAbsent: [ 5000 ].
+	maxDepth := aRequest at: 'depth' ifAbsent: [ nil ].
+	(maxDepth notNil and: [ (maxDepth isInteger and: [ maxDepth >= 0 ]) not ]) ifTrue: [
+		self error: 'depth must be a non-negative integer' ].
 	root := (aRequest includesKey: 'under')
-		ifTrue: [ self elementAt: (aRequest at: 'under') ]
-		ifFalse: [ space root ].
+			ifTrue: [ self elementAt: (aRequest at: 'under') ]
+			ifFalse: [ space root ].
 	records := OrderedCollection new.
-	self visit: root parent: nil index: 1 path: #(1) into: records limit: limit.
-	^ { space. records. limit }
+	self
+		visit: root
+		parent: nil
+		index: 1
+		path: #(1)
+		into: records
+		limit: limit
+		maxDepth: maxDepth.
+	^ {space.
+		records.
+		limit.
+		maxDepth}
 ]
 
 { #category : 'public - querying' }
@@ -244,26 +259,44 @@ KGUiSceneGraph >> spacesData [
 KGUiSceneGraph >> tree: aRequest [
 	<arg: #aRequest type: #(Dictionary<String, Any>)>
 	<return: #(Dictionary<String, Any>)>
-	| tuple space records limit |
+	| tuple space records limit maxDepth depthTruncated |
 	tuple := self recordsFor: aRequest.
-	space := tuple first. records := tuple second. limit := tuple third.
+	space := tuple first. records := tuple second. limit := tuple third. maxDepth := tuple fourth.
+	depthTruncated := maxDepth notNil and: [
+		records anySatisfy: [ :record |
+			(record at: 'path') size - 1 = maxDepth and: [ (record at: 'childCount') > 0 ] ] ].
 	^ OrderedDictionary new
 		at: 'space' put: (self spaceId: space);
 		at: 'roots' put: (records ifEmpty: [ #() ] ifNotEmpty: [ { records first at: 'nodeId' } ]);
 		at: 'nodes' put: records asArray;
 		at: 'nodeCount' put: records size;
 		at: 'limit' put: limit;
-		at: 'truncated' put: records size >= limit;
+		at: 'depth' put: maxDepth;
+		at: 'depthTruncated' put: depthTruncated;
+		at: 'truncated' put: (records size >= limit or: [ depthTruncated ]);
 		yourself
 ]
 
 { #category : 'private - inspection' }
-KGUiSceneGraph >> visit: anElement parent: parentHandle index: childIndex path: path into: records limit: limit [
+KGUiSceneGraph >> visit: anElement parent: parentHandle index: childIndex path: path into: records limit: limit maxDepth: maxDepth [
 	| record handle |
 	records size >= limit ifTrue: [ ^ self ].
-	record := self recordFor: anElement parent: parentHandle index: childIndex path: path.
+	record := self
+			recordFor: anElement
+			parent: parentHandle
+			index: childIndex
+			path: path.
 	records add: record.
+	(maxDepth notNil and: [ path size - 1 >= maxDepth ]) ifTrue: [ ^ self ].
 	handle := record at: 'nodeId'.
-	anElement children withIndexDo: [ :child :index |
-		self visit: child parent: handle index: index path: path , { index } into: records limit: limit ]
+	anElement children
+		withIndexDo: [ :child :index | 
+			self
+				visit: child
+				parent: handle
+				index: index
+				path: path , {index}
+				into: records
+				limit: limit
+				maxDepth: maxDepth ]
 ]

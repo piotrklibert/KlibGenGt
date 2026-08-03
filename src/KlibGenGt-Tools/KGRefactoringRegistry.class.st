@@ -71,7 +71,7 @@ KGRefactoringRegistry >> catalog [
 			at: 'status' put: 'observed';
 			yourself ].
 	^ OrderedDictionary new
-		at: 'supported' put: (self adapters collect: #descriptor);
+		at: 'supported' put: (self jsonTreeCopyOf: (self adapters collect: #descriptor));
 		at: 'installed' put: installed asArray;
 		yourself
 ]
@@ -100,4 +100,22 @@ KGRefactoringRegistry >> initialize [
 		KGASTRewriteRefactoringAdapter new
 	} do: [ :adapter | adapters at: adapter identifier put: adapter ].
 	^ self
+]
+
+{ #category : 'private - serialization' }
+KGRefactoringRegistry >> jsonTreeCopyOf: anObject [
+	<arg: #anObject type: #Any>
+	<return: #Any>
+	| copy |
+	anObject isString ifTrue: [ ^ anObject copy ].
+	anObject isDictionary ifTrue: [
+		copy := OrderedDictionary new.
+		anObject keysAndValuesDo: [ :key :value |
+			copy
+				at: (self jsonTreeCopyOf: key)
+				put: (self jsonTreeCopyOf: value) ].
+		^ copy ].
+	((anObject isArray) or: [ anObject isKindOf: OrderedCollection ]) ifTrue: [
+		^ (anObject collect: [ :each | self jsonTreeCopyOf: each ]) asArray ].
+	^ anObject
 ]

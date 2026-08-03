@@ -47,6 +47,7 @@ class ClickCliTest(unittest.TestCase):
             ["host", "windows", "list", "--id", "zero"],
             ["host", "windows", "list", "--title-regex", "["],
             ["image", "eval", "--file", "does-not-exist.st"],
+            ["ui", "tree", "--depth", "-1"],
         )
         for arguments in invalid:
             result = self.runner.invoke(cli, arguments)
@@ -84,13 +85,14 @@ class ClickCliTest(unittest.TestCase):
     def test_ui_tri_state_selector_mapping(self):
         response = {"schemaVersion": 1, "ok": True, "operation": "ui.query", "data": {}}
         with patch("klibgen_build.cli.ui.submit_ui_request", return_value=response) as submit:
-            result = self.runner.invoke(cli, ["ui", "query", "--visible", "--no-enabled", "--focused", "--text-regex", "Save.*"])
+            result = self.runner.invoke(cli, ["ui", "query", "--visible", "--no-enabled", "--focused", "--text-regex", "Save.*", "--depth", "2"])
         self.assertEqual(result.exit_code, 0, result.output)
         request = submit.call_args.args[1]
         self.assertEqual(request["visible"], True)
         self.assertEqual(request["enabled"], False)
         self.assertEqual(request["focused"], True)
         self.assertEqual(request["textRegex"], "Save.*")
+        self.assertEqual(request["depth"], 2)
 
     def test_profile_preserves_passthrough_command(self):
         profiled = {"exitCode": 3, "stdout": "", "stderr": "", "metrics": {"wallTimeNs": 1}}

@@ -29,7 +29,7 @@ Class {
 KGRefactoringTool >> applicable: aRequest [
 	<arg: #aRequest type: #(Dictionary<String, Any>)>
 	<return: #(Dictionary<String, Any>)>
-	^ registry applicable: aRequest
+	^ self canonicalObjectFor: (registry applicable: aRequest)
 ]
 
 { #category : 'executing' }
@@ -47,10 +47,13 @@ KGRefactoringTool >> canonicalObjectFor: anObject [
 		| ordered |
 		ordered := OrderedDictionary new.
 		anObject keys sorted do: [ :key |
-			ordered at: key put: (self canonicalObjectFor: (anObject at: key)) ].
+			ordered
+				at: (self canonicalObjectFor: key)
+				put: (self canonicalObjectFor: (anObject at: key)) ].
 		^ ordered ].
 	((anObject isArray) or: [ anObject isKindOf: OrderedCollection ]) ifTrue: [
 		^ (anObject collect: [ :each | self canonicalObjectFor: each ]) asArray ].
+	anObject isString ifTrue: [ ^ anObject copy ].
 	^ anObject
 ]
 
@@ -58,7 +61,7 @@ KGRefactoringTool >> canonicalObjectFor: anObject [
 KGRefactoringTool >> catalog: aRequest [
 	<arg: #aRequest type: #(Dictionary<String, Any>)>
 	<return: #(Dictionary<String, Any>)>
-	^ registry catalog
+	^ self canonicalObjectFor: registry catalog
 ]
 
 { #category : 'private - changes' }
@@ -107,7 +110,7 @@ KGRefactoringTool >> changeRecordFor: aChange [
 KGRefactoringTool >> describe: aRequest [
 	<arg: #aRequest type: #(Dictionary<String, Any>)>
 	<return: #(Dictionary<String, Any>)>
-	^ registry describe: (aRequest at: 'refactoring')
+	^ self canonicalObjectFor: (registry describe: (aRequest at: 'refactoring'))
 ]
 
 { #category : 'private - files' }
@@ -183,11 +186,12 @@ KGRefactoringTool >> plan: aRequest exporting: shouldExport [
 			ifTrue: [ warning resume ]
 			ifFalse: [ generated := false. warning return ] ].
 	generated ifFalse: [
-		^ OrderedDictionary new
+		result := OrderedDictionary new
 			at: 'applicable' put: false;
 			at: 'status' put: 'warning';
 			at: 'warnings' put: warnings asArray;
-			yourself ].
+			yourself.
+		^ self canonicalObjectFor: result ].
 	changes := model changes.
 	limit := ((aRequest at: 'limits' ifAbsent: [ Dictionary new ]) at: 'maxChanges' ifAbsent: [ 500 ]) min: 2000.
 	(self changeCount: changes) > limit ifTrue: [ self error: 'refactoring change limit exceeded' ].
@@ -219,7 +223,7 @@ KGRefactoringTool >> plan: aRequest exporting: shouldExport [
 	shouldExport ifTrue: [
 		commit := KGSession current sourceChanges exportChanges.
 		result at: 'commit' put: (commit ifNil: [ nil ] ifNotNil: [ commit id asString ]) ].
-	^ result
+	^ self canonicalObjectFor: result
 ]
 
 { #category : 'private - identity' }

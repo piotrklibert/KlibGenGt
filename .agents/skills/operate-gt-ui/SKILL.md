@@ -10,7 +10,7 @@ Drive the live Bloc scene through the GUI-workspace control service. Prefer this
 ## Follow the control loop
 
 1. Confirm the ready GUI workspace with `klibgen-build ui status --json`.
-2. Inspect with `ui spaces`, `ui tree`, or `ui query`. Narrow queries with `--space`, `--under`, `--class`, `--element-id`, text filters, and state filters.
+2. Inspect with `ui spaces`, `ui tree`, or `ui query`. Narrow queries with `--space`, `--under`, `--depth`, `--class`, `--element-id`, text filters, and state filters. Depth is relative to the scene or `--under` root, which is depth 0; `--limit` independently caps node count.
 3. Require a unique target before mutation. Reuse its `nodeId` with `--node`; handles remain valid only for the reported workspace session.
 4. Act with `ui act ACTION`, then use `ui wait STATE` and re-inspect to verify the resulting focus, text, visibility, or hierarchy.
 5. Use a batch for a bounded sequence whose later steps depend on earlier ones. Inspect the completed results and first-failure record.

@@ -12,12 +12,15 @@ from .common import JSON_OPTION, POSITIVE_FLOAT, POSITIVE_INT, _expression, _pat
 from ..ui_control import active_gui_sessions, submit_ui_request, validate_regex_selector
 
 
+NON_NEGATIVE_INT = click.IntRange(min=0)
+
+
 def _selector(**values: Any) -> dict[str, Any]:
     mapping = {
         "space": "space", "node": "node", "under": "under", "class_name": "class",
         "element_id": "elementId", "text": "text", "text_contains": "textContains",
         "text_regex": "textRegex", "visible": "visible", "enabled": "enabled",
-        "focused": "focused",
+        "focused": "focused", "depth": "depth",
     }
     return {wire: values[name] for name, wire in mapping.items() if values.get(name) is not None}
 
@@ -40,8 +43,9 @@ def ui_common(selector: bool = False) -> Callable[[Callable[..., Any]], Callable
                 ("--visible/--no-visible", {"default": None}),
                 ("--enabled/--no-enabled", {"default": None}),
                 ("--focused/--no-focused", {"default": None}),
+                ("--depth", {"type": NON_NEGATIVE_INT, "metavar": "LEVELS"}),
             ]
-            helps = ["Select a space.", "Select an exact node ID.", "Restrict matches beneath this node.", "Match an element class.", "Match an element ID.", "Match exact text.", "Match contained text.", "Match text by regular expression.", "Require visible or hidden nodes.", "Require enabled or disabled nodes.", "Require focused or unfocused nodes."]
+            helps = ["Select a space.", "Select an exact node ID.", "Restrict matches beneath this node.", "Match an element class.", "Match an element ID.", "Match exact text.", "Match contained text.", "Match text by regular expression.", "Require visible or hidden nodes.", "Require enabled or disabled nodes.", "Require focused or unfocused nodes.", "Traverse at most LEVELS below the scene or --under root; the root is depth 0."]
             for (declaration, extra), help_text in reversed(list(zip(specs, helps))):
                 destination = extra.pop("dest", None)
                 args = (declaration, destination) if destination else (declaration,)
@@ -77,7 +81,7 @@ def ui_spaces(ctx: click.Context, session: str | None, timeout: float, as_json: 
 
 
 def selector_values(values: dict[str, Any]) -> dict[str, Any]:
-    names = {"space", "node", "under", "class_name", "element_id", "text", "text_contains", "text_regex", "visible", "enabled", "focused"}
+    names = {"space", "node", "under", "class_name", "element_id", "text", "text_contains", "text_regex", "visible", "enabled", "focused", "depth"}
     selected = {key: values.pop(key) for key in list(values) if key in names}
     request = _selector(**selected)
     validate_regex_selector(request)
@@ -166,5 +170,4 @@ def ui_eval(ctx: click.Context, expression: str | None, file: Path | None, stdin
         request = {"operation": "ui.eval", "expression": _expression(expression, file, stdin)}
         return submit_ui_request(_paths(), request, session_id=session, timeout=timeout)
     _run(ctx, as_json, operation)
-
 
