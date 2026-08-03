@@ -119,6 +119,29 @@ class ClickCliTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 2)
         self.assertIn("cli recipe list: disk unavailable", result.output)
 
+    def test_failed_image_lookup_renders_structured_error_without_key_error(self):
+        failed = {
+            "schemaVersion": 1,
+            "ok": False,
+            "operation": "code.method",
+            "error": {"class": "Error", "kind": "runtime", "message": "method not found: Missing>>#selector"},
+        }
+        with patch("klibgen_build.cli.image.execute_session", return_value=failed):
+            result = self.runner.invoke(cli, ["image", "code", "method", "Missing", "selector"])
+        self.assertEqual(result.exit_code, 1, result.output)
+        self.assertIn("method not found: Missing>>#selector", result.output)
+        self.assertNotIn("KeyError", result.output)
+
+    def test_lint_source_reports_checked_tonel_file_count(self):
+        response = {
+            "schemaVersion": 1, "ok": True, "operation": "source.lint",
+            "sourceRoot": "/fixture/src", "fileCount": 12, "outputKey": "a" * 64,
+        }
+        with patch("klibgen_build.cli.sessions.lint_authoritative_source", return_value=response):
+            result = self.runner.invoke(cli, ["lint-source"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Tonel source is canonical (12 .st files)", result.output)
+
     def test_main_is_an_integer_returning_wrapper_and_parser_api_is_absent(self):
         self.assertEqual(main(["--help"]), 0)
         import klibgen_build.cli as module

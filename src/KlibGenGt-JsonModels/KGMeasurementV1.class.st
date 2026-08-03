@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `MeasurementV1`.
 
@@ -30,7 +31,8 @@ Immutable JSON record generated from `MeasurementV1`.
   - {{gtMethod:KGMeasurementV1>>#logicalByteDelta}}
     Answer the immutable `logicalByteDelta` field value.
   - {{gtMethod:KGMeasurementV1>>#allocatedByteDelta}}
-    Answer the immutable `allocatedByteDelta` field value."
+    Answer the immutable `allocatedByteDelta` field value.
+"
 Class {
 	#name : 'KGMeasurementV1',
 	#superclass : 'KGJsonRecord',
@@ -77,6 +79,42 @@ KGMeasurementV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGMeasurementV1 >> after [
+	<return: #KGJsonMeasurementStorageRecord>
+	^ self defensiveJsonValue: after
+]
+
+{ #category : 'accessing' }
+KGMeasurementV1 >> allocatedByteDelta [
+	<return: #Integer>
+	^ self defensiveJsonValue: allocatedByteDelta
+]
+
+{ #category : 'accessing' }
+KGMeasurementV1 >> before [
+	<return: #KGJsonMeasurementStorageRecord>
+	^ self defensiveJsonValue: before
+]
+
+{ #category : 'accessing' }
+KGMeasurementV1 >> exitCode [
+	<return: #Integer>
+	^ self defensiveJsonValue: exitCode
+]
+
+{ #category : 'accessing' }
+KGMeasurementV1 >> logicalByteDelta [
+	<return: #Integer>
+	^ self defensiveJsonValue: logicalByteDelta
+]
+
+{ #category : 'accessing' }
+KGMeasurementV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
 KGMeasurementV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -89,43 +127,7 @@ KGMeasurementV1 >> schemaVersion [
 ]
 
 { #category : 'accessing' }
-KGMeasurementV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
-KGMeasurementV1 >> exitCode [
-	<return: #Integer>
-	^ self defensiveJsonValue: exitCode
-]
-
-{ #category : 'accessing' }
 KGMeasurementV1 >> wallSeconds [
 	<return: #Number>
 	^ self defensiveJsonValue: wallSeconds
-]
-
-{ #category : 'accessing' }
-KGMeasurementV1 >> before [
-	<return: #KGJsonMeasurementStorageRecord>
-	^ self defensiveJsonValue: before
-]
-
-{ #category : 'accessing' }
-KGMeasurementV1 >> after [
-	<return: #KGJsonMeasurementStorageRecord>
-	^ self defensiveJsonValue: after
-]
-
-{ #category : 'accessing' }
-KGMeasurementV1 >> logicalByteDelta [
-	<return: #Integer>
-	^ self defensiveJsonValue: logicalByteDelta
-]
-
-{ #category : 'accessing' }
-KGMeasurementV1 >> allocatedByteDelta [
-	<return: #Integer>
-	^ self defensiveJsonValue: allocatedByteDelta
 ]

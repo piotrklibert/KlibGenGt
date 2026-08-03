@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `ResolvedRecipeV1`.
 
@@ -27,7 +28,8 @@ Immutable JSON record generated from `ResolvedRecipeV1`.
   - {{gtMethod:KGResolvedRecipeV1>>#steps}}
     Answer the immutable `steps` field value.
   - {{gtMethod:KGResolvedRecipeV1>>#outputKey}}
-    Answer the immutable `outputKey` field value."
+    Answer the immutable `outputKey` field value.
+"
 Class {
 	#name : 'KGResolvedRecipeV1',
 	#superclass : 'KGJsonRecord',
@@ -72,6 +74,30 @@ KGResolvedRecipeV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGResolvedRecipeV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
+KGResolvedRecipeV1 >> outputKey [
+	<return: #String>
+	^ self defensiveJsonValue: outputKey
+]
+
+{ #category : 'accessing' }
+KGResolvedRecipeV1 >> preset [
+	<return: #KGJsonLaunchPresetRecord>
+	^ self defensiveJsonValue: preset
+]
+
+{ #category : 'accessing' }
+KGResolvedRecipeV1 >> recipe [
+	<return: #String>
+	^ self defensiveJsonValue: recipe
+]
+
+{ #category : 'accessing' }
 KGResolvedRecipeV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -84,37 +110,13 @@ KGResolvedRecipeV1 >> schemaVersion [
 ]
 
 { #category : 'accessing' }
-KGResolvedRecipeV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
-KGResolvedRecipeV1 >> target [
-	<return: #String>
-	^ self defensiveJsonValue: target
-]
-
-{ #category : 'accessing' }
-KGResolvedRecipeV1 >> recipe [
-	<return: #String>
-	^ self defensiveJsonValue: recipe
-]
-
-{ #category : 'accessing' }
-KGResolvedRecipeV1 >> preset [
-	<return: #KGJsonLaunchPresetRecord>
-	^ self defensiveJsonValue: preset
-]
-
-{ #category : 'accessing' }
 KGResolvedRecipeV1 >> steps [
 	<return: #(Array<KGJsonResolvedStepRecord>)>
 	^ self defensiveJsonValue: steps
 ]
 
 { #category : 'accessing' }
-KGResolvedRecipeV1 >> outputKey [
+KGResolvedRecipeV1 >> target [
 	<return: #String>
-	^ self defensiveJsonValue: outputKey
+	^ self defensiveJsonValue: target
 ]

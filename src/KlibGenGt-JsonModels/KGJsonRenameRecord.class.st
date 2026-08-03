@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `RenameRecord`.
 
@@ -9,7 +10,8 @@ Immutable JSON record generated from `RenameRecord`.
   - {{gtMethod:KGJsonRenameRecord>>#source}}
     Answer the immutable `source` field value.
   - {{gtMethod:KGJsonRenameRecord>>#target}}
-    Answer the immutable `target` field value."
+    Answer the immutable `target` field value.
+"
 Class {
 	#name : 'KGJsonRenameRecord',
 	#superclass : 'KGJsonRecord',

@@ -176,7 +176,7 @@ def render_model(model: type[WireModel]) -> str:
     schema = "nil" if model.schema_name is None else _quote(model.schema_name)
     allows_extras = model.model_config.get("extra") == "allow"
     methods = []
-    for slot, _, pragma_type in slots:
+    for slot, _, pragma_type in sorted(slots):
         methods.append(
             "{ #category : 'accessing' }\n"
             f"{model.smalltalk_name} >> {slot} [\n"
@@ -184,7 +184,7 @@ def render_model(model: type[WireModel]) -> str:
             f"\t^ self defensiveJsonValue: {slot}\n]"
         )
     return (
-        f'"{class_comment}"\n'
+        f'"\n{class_comment}\n"\n'
         "Class {\n"
         f"\t#name : '{model.smalltalk_name}',\n"
         "\t#superclass : 'KGJsonRecord',"

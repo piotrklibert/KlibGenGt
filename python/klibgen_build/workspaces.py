@@ -24,6 +24,7 @@ from .staging import (
     validate_staging_name,
 )
 from .store import atomic_json
+from .tonel_lint import lint_git_source
 from .v2state import V2Paths
 
 
@@ -179,6 +180,11 @@ def launch_gui_workspace(
             paths, staging_name, "gui", WORKSPACE_NAME, os.getpid(),
             session_id=session_id,
         )
+        try:
+            lint_git_source(paths, Path(staging["sourceGit"]), artifact)
+        except Exception:
+            release_staging_lease(paths, staging_name, session_id)
+            raise
         completion = workspace / "completion.json"
         completion.unlink(missing_ok=True)
         event_journal = workspace / "logs" / f"events-{session_id}.jsonl"

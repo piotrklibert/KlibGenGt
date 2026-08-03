@@ -1,4 +1,5 @@
-"A shared source capability backed by the named staging repository attached to the session.
+"
+A shared source capability backed by the named staging repository attached to the session.
 
 - Slots
   - `manifest` (`#KGSessionV1`, `provenance`) - Launch manifest retained independently of the mutable global session installation.
@@ -15,18 +16,12 @@
 Class {
 	#name : 'KGStagingSourceChanges',
 	#superclass : 'Object',
-	#instVars : [ 'manifest' ],
+	#instVars : [
+		'manifest'
+	],
 	#category : 'KlibGenGt-Session',
 	#package : 'KlibGenGt-Session'
 }
-
-{ #category : 'private - initialization' }
-KGStagingSourceChanges >> initializeManifest: aManifest [
-	<arg: #aManifest type: #KGSessionV1>
-	<return: #KGStagingSourceChanges>
-	manifest := aManifest.
-	^ self
-]
 
 { #category : 'testing' }
 KGStagingSourceChanges >> available [
@@ -39,6 +34,15 @@ KGStagingSourceChanges >> changeCount [
 	<return: #Integer>
 	^ self repository modifiedPackages count: [ :package |
 		package name asString beginsWith: 'KlibGenGt' ]
+]
+
+{ #category : 'private - configuration' }
+KGStagingSourceChanges >> ensureGitIdentityFor: repository [
+	<arg: #repository type: #IceRepository>
+	<return: #KGStagingSourceChanges>
+	self runGitConfiguration: #('user.name' 'KlibGenGt Export') for: repository.
+	self runGitConfiguration: #('user.email' 'export@localhost') for: repository.
+	^ self
 ]
 
 { #category : 'actions' }
@@ -63,19 +67,32 @@ KGStagingSourceChanges >> exportChanges [
 	^ commit
 ]
 
+{ #category : 'private - initialization' }
+KGStagingSourceChanges >> initializeManifest: aManifest [
+	<arg: #aManifest type: #KGSessionV1>
+	<return: #KGStagingSourceChanges>
+	manifest := aManifest.
+	^ self
+]
+
 { #category : 'actions' }
 KGStagingSourceChanges >> promoteChanges [
 	<return: #(Dictionary<String, Any>)>
 	^ self requestSourceOperation: 'source.promote'
 ]
 
-{ #category : 'private - configuration' }
-KGStagingSourceChanges >> ensureGitIdentityFor: repository [
-	<arg: #repository type: #IceRepository>
-	<return: #KGStagingSourceChanges>
-	self runGitConfiguration: #('user.name' 'KlibGenGt Export') for: repository.
-	self runGitConfiguration: #('user.email' 'export@localhost') for: repository.
-	^ self
+{ #category : 'private - accessing' }
+KGStagingSourceChanges >> repository [
+	<return: #IceRepository>
+	| gitPath location repository |
+	gitPath := (manifest inputs at: 'sourceGit') asFileReference.
+	location := gitPath parent fullName.
+	repository := IceRepository registry
+		detect: [ :each | [ each location fullName = location ] on: Error do: [ false ] ]
+		ifNone: [ self error: 'The session source repository is not registered in Iceberg' ].
+	(repository head isDetached or: [ repository workingCopy isDetached ])
+		ifTrue: [ repository checkoutBranch: 'master' ].
+	^ repository
 ]
 
 { #category : 'private - requests' }
@@ -113,20 +130,6 @@ KGStagingSourceChanges >> requestSourceOperation: operation [
 	response := STONJSON fromString: responsePath contents.
 	responsePath ensureDelete.
 	^ response
-]
-
-{ #category : 'private - accessing' }
-KGStagingSourceChanges >> repository [
-	<return: #IceRepository>
-	| gitPath location repository |
-	gitPath := (manifest inputs at: 'sourceGit') asFileReference.
-	location := gitPath parent fullName.
-	repository := IceRepository registry
-		detect: [ :each | [ each location fullName = location ] on: Error do: [ false ] ]
-		ifNone: [ self error: 'The session source repository is not registered in Iceberg' ].
-	(repository head isDetached or: [ repository workingCopy isDetached ])
-		ifTrue: [ repository checkoutBranch: 'master' ].
-	^ repository
 ]
 
 { #category : 'private - configuration' }

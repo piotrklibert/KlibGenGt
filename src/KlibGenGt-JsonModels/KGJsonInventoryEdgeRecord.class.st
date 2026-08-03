@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `InventoryEdgeRecord`.
 
@@ -18,7 +19,8 @@ Immutable JSON record generated from `InventoryEdgeRecord`.
   - {{gtMethod:KGJsonInventoryEdgeRecord>>#target}}
     Answer the immutable `target` field value.
   - {{gtMethod:KGJsonInventoryEdgeRecord>>#characteristics}}
-    Answer the immutable `characteristics` field value."
+    Answer the immutable `characteristics` field value.
+"
 Class {
 	#name : 'KGJsonInventoryEdgeRecord',
 	#superclass : 'KGJsonRecord',
@@ -57,6 +59,12 @@ KGJsonInventoryEdgeRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGJsonInventoryEdgeRecord >> characteristics [
+	<return: #(Dictionary<String, Any>)>
+	^ self defensiveJsonValue: characteristics
+]
+
+{ #category : 'accessing' }
 KGJsonInventoryEdgeRecord >> id [
 	<return: #String>
 	^ self defensiveJsonValue: id
@@ -78,10 +86,4 @@ KGJsonInventoryEdgeRecord >> source [
 KGJsonInventoryEdgeRecord >> target [
 	<return: #String>
 	^ self defensiveJsonValue: target
-]
-
-{ #category : 'accessing' }
-KGJsonInventoryEdgeRecord >> characteristics [
-	<return: #(Dictionary<String, Any>)>
-	^ self defensiveJsonValue: characteristics
 ]

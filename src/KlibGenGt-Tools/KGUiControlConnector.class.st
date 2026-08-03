@@ -1,4 +1,5 @@
-"Abstract transport for schema-version-one live UI control envelopes.
+"
+Abstract transport for schema-version-one live UI control envelopes.
 
 - Slots
   - `service` (`#KGUiControlService`, `requests`) - Connector-independent request handler.
@@ -10,7 +11,15 @@
   - {{gtMethod:KGUiControlConnector>>#stop}}
     Stop accepting requests and release transport resources idempotently.
 "
-Class { #name : 'KGUiControlConnector', #superclass : 'Object', #instVars : [ 'service' ], #category : 'KlibGenGt-Tools', #package : 'KlibGenGt-Tools' }
+Class {
+	#name : 'KGUiControlConnector',
+	#superclass : 'Object',
+	#instVars : [
+		'service'
+	],
+	#category : 'KlibGenGt-Tools',
+	#package : 'KlibGenGt-Tools'
+}
 
 { #category : 'accessing' }
 KGUiControlConnector >> service: aService [
@@ -19,7 +28,9 @@ KGUiControlConnector >> service: aService [
 ]
 
 { #category : 'public - lifecycle' }
-KGUiControlConnector >> start [ <return: #KGUiControlConnector> self subclassResponsibility ]
+KGUiControlConnector >> start [ <return: #KGUiControlConnector> self subclassResponsibility
+]
 
 { #category : 'public - lifecycle' }
-KGUiControlConnector >> stop [ <return: #KGUiControlConnector> self subclassResponsibility ]
+KGUiControlConnector >> stop [ <return: #KGUiControlConnector> self subclassResponsibility
+]

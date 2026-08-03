@@ -1,4 +1,5 @@
-"Marks a GUI run as changed when a tool tab is added.
+"
+Marks a GUI run as changed when a tool tab is added.
 
 - Slots
   - none

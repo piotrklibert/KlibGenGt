@@ -1,4 +1,5 @@
-"Run project SUnit tests and retain structured diagnostics at exception signal time.
+"
+Run project SUnit tests and retain structured diagnostics at exception signal time.
 
 - Slots
   - none

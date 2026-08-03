@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `PathDigestFileRecord`.
 
@@ -18,7 +19,8 @@ Immutable JSON record generated from `PathDigestFileRecord`.
   - {{gtMethod:KGJsonPathDigestFileRecord>>#mode}}
     Answer the immutable `mode` field value.
   - {{gtMethod:KGJsonPathDigestFileRecord>>#sha256}}
-    Answer the immutable `sha256` field value."
+    Answer the immutable `sha256` field value.
+"
 Class {
 	#name : 'KGJsonPathDigestFileRecord',
 	#superclass : 'KGJsonRecord',
@@ -57,21 +59,9 @@ KGJsonPathDigestFileRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonPathDigestFileRecord >> path [
-	<return: #String>
-	^ self defensiveJsonValue: path
-]
-
-{ #category : 'accessing' }
 KGJsonPathDigestFileRecord >> kind [
 	<return: #String>
 	^ self defensiveJsonValue: kind
-]
-
-{ #category : 'accessing' }
-KGJsonPathDigestFileRecord >> target [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: target
 ]
 
 { #category : 'accessing' }
@@ -81,7 +71,19 @@ KGJsonPathDigestFileRecord >> mode [
 ]
 
 { #category : 'accessing' }
+KGJsonPathDigestFileRecord >> path [
+	<return: #String>
+	^ self defensiveJsonValue: path
+]
+
+{ #category : 'accessing' }
 KGJsonPathDigestFileRecord >> sha256 [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: sha256
+]
+
+{ #category : 'accessing' }
+KGJsonPathDigestFileRecord >> target [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: target
 ]

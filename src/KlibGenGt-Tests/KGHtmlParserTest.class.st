@@ -10,7 +10,8 @@ Class {
 	#name : 'KGHtmlParserTest',
 	#superclass : 'TestCase',
 	#category : 'KlibGenGt-Tests-LegacyHtml',
-	#package : 'KlibGenGt-Tests'
+	#package : 'KlibGenGt-Tests',
+	#tag : 'LegacyHtml'
 }
 
 { #category : 'tests' }

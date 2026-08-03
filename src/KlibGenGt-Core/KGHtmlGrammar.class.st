@@ -44,7 +44,8 @@ Class {
 		'text'
 	],
 	#category : 'KlibGenGt-Core-LegacyHtml',
-	#package : 'KlibGenGt-Core'
+	#package : 'KlibGenGt-Core',
+	#tag : 'LegacyHtml'
 }
 
 { #category : 'grammar' }

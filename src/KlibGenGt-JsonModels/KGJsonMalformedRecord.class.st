@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `MalformedRecord`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `MalformedRecord`.
   - {{gtMethod:KGJsonMalformedRecord>>#malformed}}
     Answer the immutable `malformed` field value.
   - {{gtMethod:KGJsonMalformedRecord>>#error}}
-    Answer the immutable `error` field value."
+    Answer the immutable `error` field value.
+"
 Class {
 	#name : 'KGJsonMalformedRecord',
 	#superclass : 'KGJsonRecord',
@@ -47,9 +49,9 @@ KGJsonMalformedRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonMalformedRecord >> path [
+KGJsonMalformedRecord >> error [
 	<return: #String>
-	^ self defensiveJsonValue: path
+	^ self defensiveJsonValue: error
 ]
 
 { #category : 'accessing' }
@@ -59,7 +61,7 @@ KGJsonMalformedRecord >> malformed [
 ]
 
 { #category : 'accessing' }
-KGJsonMalformedRecord >> error [
+KGJsonMalformedRecord >> path [
 	<return: #String>
-	^ self defensiveJsonValue: error
+	^ self defensiveJsonValue: path
 ]

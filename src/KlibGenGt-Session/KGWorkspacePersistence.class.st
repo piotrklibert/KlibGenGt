@@ -11,10 +11,16 @@ Enforce save-or-discard lifecycle for the single mutable GUI workspace.
   - {{gtMethod:KGWorkspacePersistence>>#discardAndQuit}}
     Write authoritative discarded completion and quit without saving.
 "
-Class { #name : 'KGWorkspacePersistence', #superclass : 'Object', #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }
+Class {
+	#name : 'KGWorkspacePersistence',
+	#superclass : 'Object',
+	#category : 'KlibGenGt-Session',
+	#package : 'KlibGenGt-Session'
+}
 
 { #category : 'testing' }
-KGWorkspacePersistence >> available [ <return: #Boolean> ^ true ]
+KGWorkspacePersistence >> available [ <return: #Boolean> ^ true
+]
 
 { #category : 'actions' }
 KGWorkspacePersistence >> discardAndQuit [

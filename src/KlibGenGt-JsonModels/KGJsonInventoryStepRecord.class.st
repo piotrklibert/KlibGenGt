@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `InventoryStepRecord`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `InventoryStepRecord`.
   - {{gtMethod:KGJsonInventoryStepRecord>>#outputKey}}
     Answer the immutable `outputKey` field value.
   - {{gtMethod:KGJsonInventoryStepRecord>>#checkpoint}}
-    Answer the immutable `checkpoint` field value."
+    Answer the immutable `checkpoint` field value.
+"
 Class {
 	#name : 'KGJsonInventoryStepRecord',
 	#superclass : 'KGJsonRecord',
@@ -47,9 +49,9 @@ KGJsonInventoryStepRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonInventoryStepRecord >> role [
+KGJsonInventoryStepRecord >> checkpoint [
 	<return: #String>
-	^ self defensiveJsonValue: role
+	^ self defensiveJsonValue: checkpoint
 ]
 
 { #category : 'accessing' }
@@ -59,7 +61,7 @@ KGJsonInventoryStepRecord >> outputKey [
 ]
 
 { #category : 'accessing' }
-KGJsonInventoryStepRecord >> checkpoint [
+KGJsonInventoryStepRecord >> role [
 	<return: #String>
-	^ self defensiveJsonValue: checkpoint
+	^ self defensiveJsonValue: role
 ]

@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `InventoryTargetRecord`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `InventoryTargetRecord`.
   - {{gtMethod:KGJsonInventoryTargetRecord>>#outputKey}}
     Answer the immutable `outputKey` field value.
   - {{gtMethod:KGJsonInventoryTargetRecord>>#steps}}
-    Answer the immutable `steps` field value."
+    Answer the immutable `steps` field value.
+"
 Class {
 	#name : 'KGJsonInventoryTargetRecord',
 	#superclass : 'KGJsonRecord',

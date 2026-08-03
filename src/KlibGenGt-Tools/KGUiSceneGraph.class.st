@@ -1,4 +1,5 @@
-"Inspect and resolve instantiated elements in live Bloc spaces.
+"
+Inspect and resolve instantiated elements in live Bloc spaces.
 
 - Slots
   - `handles` (`#(IdentityDictionary<BlElement, String>)`, `handles`) - Stable element-to-node mapping for this GUI run.
@@ -21,76 +22,47 @@
 Class {
 	#name : 'KGUiSceneGraph',
 	#superclass : 'Object',
-	#instVars : [ 'handles', 'elements', 'nextHandle' ],
+	#instVars : [
+		'handles',
+		'elements',
+		'nextHandle'
+	],
 	#category : 'KlibGenGt-Tools',
 	#package : 'KlibGenGt-Tools'
 }
 
-{ #category : 'initialization' }
-KGUiSceneGraph >> initialize [
-	super initialize.
-	handles := IdentityDictionary new.
-	elements := Dictionary new.
-	nextHandle := 1
+{ #category : 'private - inspection' }
+KGUiSceneGraph >> boundedTextOf: anElement [
+	| value |
+	value := [
+		(anElement respondsTo: #text)
+			ifTrue: [ anElement text asString ]
+			ifFalse: [ (anElement respondsTo: #label)
+				ifTrue: [ anElement label asString ]
+				ifFalse: [ '' ] ] ] on: Error do: [ '' ].
+	^ value size > 500 ifTrue: [ (value first: 500) , '…' ] ifFalse: [ value ]
 ]
 
-{ #category : 'public - spaces' }
-KGUiSceneGraph >> spaces [
-	<return: #(OrderedCollection<BlSpace>)>
-	| result world |
-	result := OrderedCollection new.
-	BlSpace allOpenSpacesDo: [ :space |
-		(space isOpened and: [ (result identityIncludes: space) not ])
-			ifTrue: [ result add: space ] ].
-	world := GtWorld defaultWorld.
-	(world notNil and: [ world isOpened ]) ifTrue: [
-		result remove: world ifAbsent: [ ].
-		result addFirst: world ].
-	^ result
-]
-
-{ #category : 'private - spaces' }
-KGUiSceneGraph >> selectedSpaceFor: aRequest [
-	| all requested |
-	all := self spaces.
-	requested := aRequest at: 'space' ifAbsent: [ nil ].
-	requested ifNotNil: [
-		^ all
-			detect: [ :space | (self spaceId: space) = requested or: [ space title = requested ] ]
-			ifNone: [ self error: 'UI space not found: ' , requested ] ].
-	^ (GtWorld defaultWorld notNil and: [ all includes: GtWorld defaultWorld ])
-		ifTrue: [ GtWorld defaultWorld ]
-		ifFalse: [ all ifEmpty: [ self error: 'no open UI spaces' ] ifNotEmpty: [ all first ] ]
-]
-
-{ #category : 'private - spaces' }
-KGUiSceneGraph >> spaceId: aSpace [
-	^ 'space-' , aSpace identityHash asString
-]
-
-{ #category : 'public - inspection' }
-KGUiSceneGraph >> spacesData [
-	<return: #(Dictionary<String, Any>)>
+{ #category : 'private - inspection' }
+KGUiSceneGraph >> boundsDataOf: anElement [
+	| rectangle |
+	rectangle := [ anElement bounds inSpace bounds ] on: Error do: [ 0 @ 0 extent: 0 @ 0 ].
 	^ OrderedDictionary new
-		at: 'spaces' put: (self spaces collect: [ :space |
-			OrderedDictionary new
-				at: 'spaceId' put: (self spaceId: space);
-				at: 'class' put: space class name asString;
-				at: 'title' put: ([ space title asString ] on: Error do: [ '' ]);
-				at: 'opened' put: space isOpened;
-				at: 'extent' put: { space extent x. space extent y };
-				yourself ]) asArray;
+		at: 'x' put: rectangle left;
+		at: 'y' put: rectangle top;
+		at: 'width' put: rectangle width;
+		at: 'height' put: rectangle height;
 		yourself
 ]
 
-{ #category : 'private - handles' }
-KGUiSceneGraph >> handleFor: anElement [
-	^ handles at: anElement ifAbsentPut: [
-		| handle |
-		handle := 'node-' , nextHandle asString.
-		nextHandle := nextHandle + 1.
-		elements at: handle put: anElement.
-		handle ]
+{ #category : 'private - inspection' }
+KGUiSceneGraph >> effectiveVisibilityOf: anElement [
+	| current |
+	current := anElement.
+	[ current notNil ] whileTrue: [
+		current isVisible ifFalse: [ ^ false ].
+		current := current parent ].
+	^ true
 ]
 
 { #category : 'public - handles' }
@@ -107,6 +79,24 @@ KGUiSceneGraph >> elementAt: aHandle [
 ]
 
 { #category : 'private - handles' }
+KGUiSceneGraph >> handleFor: anElement [
+	^ handles at: anElement ifAbsentPut: [
+		| handle |
+		handle := 'node-' , nextHandle asString.
+		nextHandle := nextHandle + 1.
+		elements at: handle put: anElement.
+		handle ]
+]
+
+{ #category : 'initialization' }
+KGUiSceneGraph >> initialize [
+	super initialize.
+	handles := IdentityDictionary new.
+	elements := Dictionary new.
+	nextHandle := 1
+]
+
+{ #category : 'private - handles' }
 KGUiSceneGraph >> pruneHandles [
 	(elements keys select: [ :handle | (elements at: handle) isAttachedToSceneGraph not ])
 		do: [ :handle |
@@ -115,38 +105,31 @@ KGUiSceneGraph >> pruneHandles [
 			handles removeKey: element ifAbsent: [ ] ]
 ]
 
-{ #category : 'private - inspection' }
-KGUiSceneGraph >> boundedTextOf: anElement [
-	| value |
-	value := [
-		(anElement respondsTo: #text)
-			ifTrue: [ anElement text asString ]
-			ifFalse: [ (anElement respondsTo: #label)
-				ifTrue: [ anElement label asString ]
-				ifFalse: [ '' ] ] ] on: Error do: [ '' ].
-	^ value size > 500 ifTrue: [ (value first: 500) , '…' ] ifFalse: [ value ]
-]
-
-{ #category : 'private - inspection' }
-KGUiSceneGraph >> effectiveVisibilityOf: anElement [
-	| current |
-	current := anElement.
-	[ current notNil ] whileTrue: [
-		current isVisible ifFalse: [ ^ false ].
-		current := current parent ].
-	^ true
-]
-
-{ #category : 'private - inspection' }
-KGUiSceneGraph >> boundsDataOf: anElement [
-	| rectangle |
-	rectangle := [ anElement bounds inSpace bounds ] on: Error do: [ 0 @ 0 extent: 0 @ 0 ].
+{ #category : 'public - querying' }
+KGUiSceneGraph >> query: aRequest [
+	<arg: #aRequest type: #(Dictionary<String, Any>)>
+	<return: #(Dictionary<String, Any>)>
+	| tree matches |
+	tree := self tree: aRequest.
+	matches := (tree at: 'nodes') select: [ :record | self record: record matches: aRequest ].
 	^ OrderedDictionary new
-		at: 'x' put: rectangle left;
-		at: 'y' put: rectangle top;
-		at: 'width' put: rectangle width;
-		at: 'height' put: rectangle height;
+		at: 'space' put: (tree at: 'space');
+		at: 'matches' put: matches asArray;
+		at: 'count' put: matches size;
 		yourself
+]
+
+{ #category : 'private - querying' }
+KGUiSceneGraph >> record: record matches: aRequest [
+	(aRequest at: 'node' ifAbsent: [ record at: 'nodeId' ]) = (record at: 'nodeId') ifFalse: [ ^ false ].
+	(aRequest at: 'class' ifAbsent: [ record at: 'class' ]) = (record at: 'class') ifFalse: [ ^ false ].
+	(aRequest at: 'elementId' ifAbsent: [ record at: 'elementId' ]) = (record at: 'elementId') ifFalse: [ ^ false ].
+	(aRequest includesKey: 'text') ifTrue: [ (record at: 'text') = (aRequest at: 'text') ifFalse: [ ^ false ] ].
+	(aRequest includesKey: 'textContains') ifTrue: [ ((record at: 'text') includesSubstring: (aRequest at: 'textContains')) ifFalse: [ ^ false ] ].
+	(aRequest includesKey: 'textRegex') ifTrue: [ ((record at: 'text') matchesRegex: (aRequest at: 'textRegex')) ifFalse: [ ^ false ] ].
+	#('visible' 'enabled' 'focused') do: [ :key |
+		(aRequest includesKey: key) ifTrue: [ (record at: key) = (aRequest at: key) ifFalse: [ ^ false ] ] ].
+	^ true
 ]
 
 { #category : 'private - inspection' }
@@ -182,17 +165,6 @@ KGUiSceneGraph >> recordFor: anElement parent: parentHandle index: childIndex pa
 ]
 
 { #category : 'private - inspection' }
-KGUiSceneGraph >> visit: anElement parent: parentHandle index: childIndex path: path into: records limit: limit [
-	| record handle |
-	records size >= limit ifTrue: [ ^ self ].
-	record := self recordFor: anElement parent: parentHandle index: childIndex path: path.
-	records add: record.
-	handle := record at: 'nodeId'.
-	anElement children withIndexDo: [ :child :index |
-		self visit: child parent: handle index: index path: path , { index } into: records limit: limit ]
-]
-
-{ #category : 'private - inspection' }
 KGUiSceneGraph >> recordsFor: aRequest [
 	| space records limit root |
 	self pruneHandles.
@@ -204,6 +176,68 @@ KGUiSceneGraph >> recordsFor: aRequest [
 	records := OrderedCollection new.
 	self visit: root parent: nil index: 1 path: #(1) into: records limit: limit.
 	^ { space. records. limit }
+]
+
+{ #category : 'public - querying' }
+KGUiSceneGraph >> resolveOne: aRequest [
+	<arg: #aRequest type: #(Dictionary<String, Any>)>
+	<return: #BlElement>
+	| result |
+	result := self query: aRequest.
+	(result at: 'count') = 1 ifFalse: [
+		self error: ((result at: 'count') = 0
+			ifTrue: [ 'UI target did not match any instantiated element' ]
+			ifFalse: [ 'UI target is ambiguous; matches: ' , ((result at: 'matches') printStringLimitedTo: 2000) ]) ].
+	^ self elementAt: ((result at: 'matches') first at: 'nodeId')
+]
+
+{ #category : 'private - spaces' }
+KGUiSceneGraph >> selectedSpaceFor: aRequest [
+	| all requested |
+	all := self spaces.
+	requested := aRequest at: 'space' ifAbsent: [ nil ].
+	requested ifNotNil: [
+		^ all
+			detect: [ :space | (self spaceId: space) = requested or: [ space title = requested ] ]
+			ifNone: [ self error: 'UI space not found: ' , requested ] ].
+	^ (GtWorld defaultWorld notNil and: [ all includes: GtWorld defaultWorld ])
+		ifTrue: [ GtWorld defaultWorld ]
+		ifFalse: [ all ifEmpty: [ self error: 'no open UI spaces' ] ifNotEmpty: [ all first ] ]
+]
+
+{ #category : 'private - spaces' }
+KGUiSceneGraph >> spaceId: aSpace [
+	^ 'space-' , aSpace identityHash asString
+]
+
+{ #category : 'public - spaces' }
+KGUiSceneGraph >> spaces [
+	<return: #(OrderedCollection<BlSpace>)>
+	| result world |
+	result := OrderedCollection new.
+	BlSpace allOpenSpacesDo: [ :space |
+		(space isOpened and: [ (result identityIncludes: space) not ])
+			ifTrue: [ result add: space ] ].
+	world := GtWorld defaultWorld.
+	(world notNil and: [ world isOpened ]) ifTrue: [
+		result remove: world ifAbsent: [ ].
+		result addFirst: world ].
+	^ result
+]
+
+{ #category : 'public - inspection' }
+KGUiSceneGraph >> spacesData [
+	<return: #(Dictionary<String, Any>)>
+	^ OrderedDictionary new
+		at: 'spaces' put: (self spaces collect: [ :space |
+			OrderedDictionary new
+				at: 'spaceId' put: (self spaceId: space);
+				at: 'class' put: space class name asString;
+				at: 'title' put: ([ space title asString ] on: Error do: [ '' ]);
+				at: 'opened' put: space isOpened;
+				at: 'extent' put: { space extent x. space extent y };
+				yourself ]) asArray;
+		yourself
 ]
 
 { #category : 'public - inspection' }
@@ -223,42 +257,13 @@ KGUiSceneGraph >> tree: aRequest [
 		yourself
 ]
 
-{ #category : 'private - querying' }
-KGUiSceneGraph >> record: record matches: aRequest [
-	(aRequest at: 'node' ifAbsent: [ record at: 'nodeId' ]) = (record at: 'nodeId') ifFalse: [ ^ false ].
-	(aRequest at: 'class' ifAbsent: [ record at: 'class' ]) = (record at: 'class') ifFalse: [ ^ false ].
-	(aRequest at: 'elementId' ifAbsent: [ record at: 'elementId' ]) = (record at: 'elementId') ifFalse: [ ^ false ].
-	(aRequest includesKey: 'text') ifTrue: [ (record at: 'text') = (aRequest at: 'text') ifFalse: [ ^ false ] ].
-	(aRequest includesKey: 'textContains') ifTrue: [ ((record at: 'text') includesSubstring: (aRequest at: 'textContains')) ifFalse: [ ^ false ] ].
-	(aRequest includesKey: 'textRegex') ifTrue: [ ((record at: 'text') matchesRegex: (aRequest at: 'textRegex')) ifFalse: [ ^ false ] ].
-	#('visible' 'enabled' 'focused') do: [ :key |
-		(aRequest includesKey: key) ifTrue: [ (record at: key) = (aRequest at: key) ifFalse: [ ^ false ] ] ].
-	^ true
-]
-
-{ #category : 'public - querying' }
-KGUiSceneGraph >> query: aRequest [
-	<arg: #aRequest type: #(Dictionary<String, Any>)>
-	<return: #(Dictionary<String, Any>)>
-	| tree matches |
-	tree := self tree: aRequest.
-	matches := (tree at: 'nodes') select: [ :record | self record: record matches: aRequest ].
-	^ OrderedDictionary new
-		at: 'space' put: (tree at: 'space');
-		at: 'matches' put: matches asArray;
-		at: 'count' put: matches size;
-		yourself
-]
-
-{ #category : 'public - querying' }
-KGUiSceneGraph >> resolveOne: aRequest [
-	<arg: #aRequest type: #(Dictionary<String, Any>)>
-	<return: #BlElement>
-	| result |
-	result := self query: aRequest.
-	(result at: 'count') = 1 ifFalse: [
-		self error: ((result at: 'count') = 0
-			ifTrue: [ 'UI target did not match any instantiated element' ]
-			ifFalse: [ 'UI target is ambiguous; matches: ' , ((result at: 'matches') printStringLimitedTo: 2000) ]) ].
-	^ self elementAt: ((result at: 'matches') first at: 'nodeId')
+{ #category : 'private - inspection' }
+KGUiSceneGraph >> visit: anElement parent: parentHandle index: childIndex path: path into: records limit: limit [
+	| record handle |
+	records size >= limit ifTrue: [ ^ self ].
+	record := self recordFor: anElement parent: parentHandle index: childIndex path: path.
+	records add: record.
+	handle := record at: 'nodeId'.
+	anElement children withIndexDo: [ :child :index |
+		self visit: child parent: handle index: index path: path , { index } into: records limit: limit ]
 ]

@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `InventoryNodeRecord`.
 
@@ -30,7 +31,8 @@ Immutable JSON record generated from `InventoryNodeRecord`.
   - {{gtMethod:KGJsonInventoryNodeRecord>>#fileCount}}
     Answer the immutable `fileCount` field value.
   - {{gtMethod:KGJsonInventoryNodeRecord>>#path}}
-    Answer the immutable `path` field value."
+    Answer the immutable `path` field value.
+"
 Class {
 	#name : 'KGJsonInventoryNodeRecord',
 	#superclass : 'KGJsonRecord',
@@ -77,6 +79,24 @@ KGJsonInventoryNodeRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGJsonInventoryNodeRecord >> allocatedBytes [
+	<return: #Integer>
+	^ self defensiveJsonValue: allocatedBytes
+]
+
+{ #category : 'accessing' }
+KGJsonInventoryNodeRecord >> characteristics [
+	<return: #(Dictionary<String, Any>)>
+	^ self defensiveJsonValue: characteristics
+]
+
+{ #category : 'accessing' }
+KGJsonInventoryNodeRecord >> fileCount [
+	<return: #Integer>
+	^ self defensiveJsonValue: fileCount
+]
+
+{ #category : 'accessing' }
 KGJsonInventoryNodeRecord >> id [
 	<return: #String>
 	^ self defensiveJsonValue: id
@@ -95,37 +115,19 @@ KGJsonInventoryNodeRecord >> label [
 ]
 
 { #category : 'accessing' }
-KGJsonInventoryNodeRecord >> status [
-	<return: #String>
-	^ self defensiveJsonValue: status
-]
-
-{ #category : 'accessing' }
-KGJsonInventoryNodeRecord >> characteristics [
-	<return: #(Dictionary<String, Any>)>
-	^ self defensiveJsonValue: characteristics
-]
-
-{ #category : 'accessing' }
 KGJsonInventoryNodeRecord >> logicalBytes [
 	<return: #Integer>
 	^ self defensiveJsonValue: logicalBytes
 ]
 
 { #category : 'accessing' }
-KGJsonInventoryNodeRecord >> allocatedBytes [
-	<return: #Integer>
-	^ self defensiveJsonValue: allocatedBytes
-]
-
-{ #category : 'accessing' }
-KGJsonInventoryNodeRecord >> fileCount [
-	<return: #Integer>
-	^ self defensiveJsonValue: fileCount
-]
-
-{ #category : 'accessing' }
 KGJsonInventoryNodeRecord >> path [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: path
+]
+
+{ #category : 'accessing' }
+KGJsonInventoryNodeRecord >> status [
+	<return: #String>
+	^ self defensiveJsonValue: status
 ]

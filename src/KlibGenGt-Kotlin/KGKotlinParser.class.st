@@ -21,7 +21,8 @@ Class {
 		'index'
 	],
 	#category : 'KlibGenGt-Kotlin-Parser',
-	#package : 'KlibGenGt-Kotlin'
+	#package : 'KlibGenGt-Kotlin',
+	#tag : 'Parser'
 }
 
 { #category : 'instance creation' }
@@ -36,22 +37,6 @@ KGKotlinParser class >> parseFile: aFileReference [
 	<arg: #aFileReference type: #(FileReference | String)>
 	<return: #KGKotlinFile>
 	^ self parse: aFileReference asFileReference contents
-]
-
-{ #category : 'parsing' }
-KGKotlinParser >> parse: aString [
-	<arg: #aString type: #String>
-	<return: #KGKotlinFile>
-	| packageName imports declarations |
-	source := KGKotlinGrammar new parse: aString.
-	index := 1.
-	packageName := self parsePackageDirective.
-	imports := self parseImportDirectives.
-	declarations := self parseDeclarationsUntil: nil.
-	^ KGKotlinFile
-		packageName: packageName
-		imports: imports
-		declarations: declarations
 ]
 
 { #category : 'private - parsing' }
@@ -97,6 +82,51 @@ KGKotlinParser >> declarationsFromBodyIfPresent [
 		ifFalse: [ ^ #() ].
 	index := index + 1.
 	^ self parseDeclarationsUntil: $}
+]
+
+{ #category : 'private - parsing' }
+KGKotlinParser >> firstTopLevelCharacter: targetCharacter in: aString [
+	<arg: #targetCharacter type: #Character>
+	<arg: #aString type: #String>
+	<return: #Integer>
+	| paren square brace angle position char |
+	paren := 0.
+	square := 0.
+	brace := 0.
+	angle := 0.
+	position := 1.
+	[ position <= aString size ] whileTrue: [
+		char := aString at: position.
+		(char = $" or: [ char = $' ])
+			ifTrue: [ position := self skipQuotedStringIn: aString startingAt: position ]
+			ifFalse: [
+				(char = targetCharacter and: [
+					paren = 0 and: [ square = 0 and: [ brace = 0 and: [ angle = 0 ] ] ] ])
+					ifTrue: [ ^ position ].
+				char = $( ifTrue: [ paren := paren + 1 ].
+				char = $) ifTrue: [ paren := paren - 1 ].
+				char = $[ ifTrue: [ square := square + 1 ].
+				char = $] ifTrue: [ square := square - 1 ].
+				char = ${ ifTrue: [ brace := brace + 1 ].
+				char = $} ifTrue: [ brace := brace - 1 ].
+				char = $< ifTrue: [ angle := angle + 1 ].
+				char = $> ifTrue: [ angle := angle - 1 ].
+				position := position + 1 ] ].
+	^ 0
+]
+
+{ #category : 'private - parsing' }
+KGKotlinParser >> firstTopLevelColonIn: aString [
+	<arg: #aString type: #String>
+	<return: #Integer>
+	^ self firstTopLevelCharacter: $: in: aString
+]
+
+{ #category : 'private - parsing' }
+KGKotlinParser >> firstTopLevelOpenParenIn: aString [
+	<arg: #aString type: #String>
+	<return: #Integer>
+	^ self firstTopLevelCharacter: $( in: aString
 ]
 
 { #category : 'private - parsing' }
@@ -153,6 +183,18 @@ KGKotlinParser >> keywordAtIndex: aString [
 ]
 
 { #category : 'private - parsing' }
+KGKotlinParser >> lastDotIndexIn: aString [
+	<arg: #aString type: #String>
+	<return: #Integer>
+	| position |
+	position := aString size.
+	[ position > 0 ] whileTrue: [
+		(aString at: position) = $. ifTrue: [ ^ position ].
+		position := position - 1 ].
+	^ 0
+]
+
+{ #category : 'private - parsing' }
 KGKotlinParser >> normalizeSupertype: aString [
 	<arg: #aString type: #String>
 	<return: #String>
@@ -163,23 +205,20 @@ KGKotlinParser >> normalizeSupertype: aString [
 	^ (trimmed copyFrom: 1 to: paren - 1) trimBoth
 ]
 
-{ #category : 'private - parsing' }
-KGKotlinParser >> parseDeclarationWithModifiers: modifierCollection annotations: annotationCollection [
-	<arg: #modifierCollection type: #(Collection | Array)>
-	<arg: #annotationCollection type: #(Collection | Array)>
-	<return: #(KGKotlinDeclaration?)>
-	(self consumeKeyword: 'typealias')
-		ifTrue: [ ^ self parseTypeAliasWithModifiers: modifierCollection annotations: annotationCollection ].
-	(self consumeKeyword: 'fun')
-		ifTrue: [ ^ self parseFunctionWithModifiers: modifierCollection annotations: annotationCollection ].
-	(self consumeKeyword: 'class')
-		ifTrue: [ ^ self parseTypeKind: 'class' modifiers: modifierCollection annotations: annotationCollection ].
-	(self consumeKeyword: 'interface')
-		ifTrue: [ ^ self parseTypeKind: 'interface' modifiers: modifierCollection annotations: annotationCollection ].
-	(self consumeKeyword: 'object')
-		ifTrue: [ ^ self parseTypeKind: 'object' modifiers: modifierCollection annotations: annotationCollection ].
-	self skipUnknownConstruct.
-	^ nil
+{ #category : 'parsing' }
+KGKotlinParser >> parse: aString [
+	<arg: #aString type: #String>
+	<return: #KGKotlinFile>
+	| packageName imports declarations |
+	source := KGKotlinGrammar new parse: aString.
+	index := 1.
+	packageName := self parsePackageDirective.
+	imports := self parseImportDirectives.
+	declarations := self parseDeclarationsUntil: nil.
+	^ KGKotlinFile
+		packageName: packageName
+		imports: imports
+		declarations: declarations
 ]
 
 { #category : 'private - parsing' }
@@ -203,6 +242,25 @@ KGKotlinParser >> parseDeclarationPrefix [
 						keepGoing := true ]
 					ifFalse: [ keepGoing := false ] ] ].
 	^ { modifiers asArray. annotations asArray }
+]
+
+{ #category : 'private - parsing' }
+KGKotlinParser >> parseDeclarationWithModifiers: modifierCollection annotations: annotationCollection [
+	<arg: #modifierCollection type: #(Collection | Array)>
+	<arg: #annotationCollection type: #(Collection | Array)>
+	<return: #(KGKotlinDeclaration?)>
+	(self consumeKeyword: 'typealias')
+		ifTrue: [ ^ self parseTypeAliasWithModifiers: modifierCollection annotations: annotationCollection ].
+	(self consumeKeyword: 'fun')
+		ifTrue: [ ^ self parseFunctionWithModifiers: modifierCollection annotations: annotationCollection ].
+	(self consumeKeyword: 'class')
+		ifTrue: [ ^ self parseTypeKind: 'class' modifiers: modifierCollection annotations: annotationCollection ].
+	(self consumeKeyword: 'interface')
+		ifTrue: [ ^ self parseTypeKind: 'interface' modifiers: modifierCollection annotations: annotationCollection ].
+	(self consumeKeyword: 'object')
+		ifTrue: [ ^ self parseTypeKind: 'object' modifiers: modifierCollection annotations: annotationCollection ].
+	self skipUnknownConstruct.
+	^ nil
 ]
 
 { #category : 'private - parsing' }
@@ -630,6 +688,32 @@ KGKotlinParser >> skipQuotedString [
 ]
 
 { #category : 'private - parsing' }
+KGKotlinParser >> skipQuotedStringIn: aString startingAt: startIndex [
+	<arg: #aString type: #String>
+	<arg: #startIndex type: #Integer>
+	<return: #Integer>
+	| quote position triple |
+	quote := aString at: startIndex.
+	triple := quote = $" and: [
+		startIndex + 2 <= aString size and: [
+			(aString at: startIndex + 1) = $" and: [ (aString at: startIndex + 2) = $" ] ] ].
+	triple
+		ifTrue: [
+			position := startIndex + 3.
+			[ position + 2 <= aString size and: [
+				((aString at: position) = $" and: [
+					(aString at: position + 1) = $" and: [ (aString at: position + 2) = $" ] ]) not ] ]
+				whileTrue: [ position := position + 1 ].
+			^ (position + 3) min: aString size + 1 ].
+	position := startIndex + 1.
+	[ position <= aString size and: [ (aString at: position) ~= quote ] ] whileTrue: [
+		(aString at: position) = $\
+			ifTrue: [ position := position + 2 ]
+			ifFalse: [ position := position + 1 ] ].
+	^ (position + 1) min: aString size + 1
+]
+
+{ #category : 'private - parsing' }
 KGKotlinParser >> skipTrivia [
 	<return: #Integer>
 	| changed |
@@ -754,87 +838,4 @@ KGKotlinParser >> textBeforeTopLevelEquals: aString [
 	parts := self splitTopLevel: aString by: $=.
 	parts isEmpty ifTrue: [ ^ '' ].
 	^ parts first
-]
-
-{ #category : 'private - parsing' }
-KGKotlinParser >> firstTopLevelColonIn: aString [
-	<arg: #aString type: #String>
-	<return: #Integer>
-	^ self firstTopLevelCharacter: $: in: aString
-]
-
-{ #category : 'private - parsing' }
-KGKotlinParser >> firstTopLevelOpenParenIn: aString [
-	<arg: #aString type: #String>
-	<return: #Integer>
-	^ self firstTopLevelCharacter: $( in: aString
-]
-
-{ #category : 'private - parsing' }
-KGKotlinParser >> firstTopLevelCharacter: targetCharacter in: aString [
-	<arg: #targetCharacter type: #Character>
-	<arg: #aString type: #String>
-	<return: #Integer>
-	| paren square brace angle position char |
-	paren := 0.
-	square := 0.
-	brace := 0.
-	angle := 0.
-	position := 1.
-	[ position <= aString size ] whileTrue: [
-		char := aString at: position.
-		(char = $" or: [ char = $' ])
-			ifTrue: [ position := self skipQuotedStringIn: aString startingAt: position ]
-			ifFalse: [
-				(char = targetCharacter and: [
-					paren = 0 and: [ square = 0 and: [ brace = 0 and: [ angle = 0 ] ] ] ])
-					ifTrue: [ ^ position ].
-				char = $( ifTrue: [ paren := paren + 1 ].
-				char = $) ifTrue: [ paren := paren - 1 ].
-				char = $[ ifTrue: [ square := square + 1 ].
-				char = $] ifTrue: [ square := square - 1 ].
-				char = ${ ifTrue: [ brace := brace + 1 ].
-				char = $} ifTrue: [ brace := brace - 1 ].
-				char = $< ifTrue: [ angle := angle + 1 ].
-				char = $> ifTrue: [ angle := angle - 1 ].
-				position := position + 1 ] ].
-	^ 0
-]
-
-{ #category : 'private - parsing' }
-KGKotlinParser >> lastDotIndexIn: aString [
-	<arg: #aString type: #String>
-	<return: #Integer>
-	| position |
-	position := aString size.
-	[ position > 0 ] whileTrue: [
-		(aString at: position) = $. ifTrue: [ ^ position ].
-		position := position - 1 ].
-	^ 0
-]
-
-{ #category : 'private - parsing' }
-KGKotlinParser >> skipQuotedStringIn: aString startingAt: startIndex [
-	<arg: #aString type: #String>
-	<arg: #startIndex type: #Integer>
-	<return: #Integer>
-	| quote position triple |
-	quote := aString at: startIndex.
-	triple := quote = $" and: [
-		startIndex + 2 <= aString size and: [
-			(aString at: startIndex + 1) = $" and: [ (aString at: startIndex + 2) = $" ] ] ].
-	triple
-		ifTrue: [
-			position := startIndex + 3.
-			[ position + 2 <= aString size and: [
-				((aString at: position) = $" and: [
-					(aString at: position + 1) = $" and: [ (aString at: position + 2) = $" ] ]) not ] ]
-				whileTrue: [ position := position + 1 ].
-			^ (position + 3) min: aString size + 1 ].
-	position := startIndex + 1.
-	[ position <= aString size and: [ (aString at: position) ~= quote ] ] whileTrue: [
-		(aString at: position) = $\
-			ifTrue: [ position := position + 2 ]
-			ifFalse: [ position := position + 1 ] ].
-	^ (position + 1) min: aString size + 1
 ]

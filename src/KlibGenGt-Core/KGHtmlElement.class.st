@@ -29,7 +29,8 @@ Class {
 		'children'
 	],
 	#category : 'KlibGenGt-Core-LegacyHtml',
-	#package : 'KlibGenGt-Core'
+	#package : 'KlibGenGt-Core',
+	#tag : 'LegacyHtml'
 }
 
 { #category : 'instance creation' }

@@ -22,6 +22,52 @@ Class {
 	#package : 'KlibGenGt-Environment'
 }
 
+{ #category : 'private - results' }
+KGCheckTypePragmas >> addMethodPragmaResultsFor: aCompiledMethod in: aClass to: results [
+	<arg: #aCompiledMethod type: #CompiledMethod>
+	<arg: #aClass type: #ClassDescription>
+	<arg: #results type: #(OrderedCollection<Dictionary>)>
+	<return: #(OrderedCollection<Dictionary>)>
+	aCompiledMethod pragmas do: [ :pragma |
+		pragma selector = #returns:
+			ifTrue: [
+				results add: (self
+					resultFor: aClass
+					source: aCompiledMethod methodClass name , '>>#' , aCompiledMethod selector asString , ' <return:>'
+					type: pragma arguments first printString
+					valid: false
+					message: 'Use <return: Type>, not <returns: Type>.') ].
+		pragma selector = #return:
+			ifTrue: [
+				| type |
+				type := pragma arguments first.
+				results add: (self
+					resultFor: aClass
+					source: aCompiledMethod methodClass name , '>>#' , aCompiledMethod selector asString , ' <return:>'
+					type: type printString
+					valid: (self validateTypeLiteral: type)
+					message: 'return type') ].
+		pragma selector = #arg:type:
+			ifTrue: [
+				| type argumentName |
+				argumentName := pragma arguments first.
+				type := pragma arguments second.
+				results add: (self
+					resultFor: aClass
+					source: aCompiledMethod methodClass name , '>>#' , aCompiledMethod selector asString , ' <arg: ' , argumentName printString , ' type:>'
+					type: type printString
+					valid: (self validateTypeLiteral: type)
+					message: 'argument type') ] ].
+	^ results
+]
+
+{ #category : 'private - parsing' }
+KGCheckTypePragmas >> arrayFrom: aCollection [
+	<arg: #aCollection type: #Collection>
+	<return: #Array>
+	^ aCollection asArray
+]
+
 { #category : 'checking' }
 KGCheckTypePragmas >> inClass: aClass [
 	<arg: #aClass type: #ClassDescription>
@@ -76,71 +122,6 @@ KGCheckTypePragmas >> inProject [
 			results ]
 ]
 
-{ #category : 'checking' }
-KGCheckTypePragmas >> validateTypeLiteral: aLiteral [
-	<arg: #aLiteral type: #(Symbol | Array)>
-	<return: #Boolean>
-	aLiteral isSymbol ifTrue: [ ^ self isNominalTypeSymbol: aLiteral ].
-	aLiteral isArray ifTrue: [ ^ self validateTypeArray: aLiteral asArray ].
-	^ false
-]
-
-{ #category : 'checking' }
-KGCheckTypePragmas >> validateTypeString: aString [
-	<arg: #aString type: #String>
-	<return: #Boolean>
-	| tokens |
-	tokens := self tokenizeTypeString: aString.
-	tokens ifNil: [ ^ false ].
-	^ self validateTypeLiteral: tokens
-]
-
-{ #category : 'private - results' }
-KGCheckTypePragmas >> addMethodPragmaResultsFor: aCompiledMethod in: aClass to: results [
-	<arg: #aCompiledMethod type: #CompiledMethod>
-	<arg: #aClass type: #ClassDescription>
-	<arg: #results type: #(OrderedCollection<Dictionary>)>
-	<return: #(OrderedCollection<Dictionary>)>
-	aCompiledMethod pragmas do: [ :pragma |
-		pragma selector = #returns:
-			ifTrue: [
-				results add: (self
-					resultFor: aClass
-					source: aCompiledMethod methodClass name , '>>#' , aCompiledMethod selector asString , ' <return:>'
-					type: pragma arguments first printString
-					valid: false
-					message: 'Use <return: Type>, not <returns: Type>.') ].
-		pragma selector = #return:
-			ifTrue: [
-				| type |
-				type := pragma arguments first.
-				results add: (self
-					resultFor: aClass
-					source: aCompiledMethod methodClass name , '>>#' , aCompiledMethod selector asString , ' <return:>'
-					type: type printString
-					valid: (self validateTypeLiteral: type)
-					message: 'return type') ].
-		pragma selector = #arg:type:
-			ifTrue: [
-				| type argumentName |
-				argumentName := pragma arguments first.
-				type := pragma arguments second.
-				results add: (self
-					resultFor: aClass
-					source: aCompiledMethod methodClass name , '>>#' , aCompiledMethod selector asString , ' <arg: ' , argumentName printString , ' type:>'
-					type: type printString
-					valid: (self validateTypeLiteral: type)
-					message: 'argument type') ] ].
-	^ results
-]
-
-{ #category : 'private - parsing' }
-KGCheckTypePragmas >> arrayFrom: aCollection [
-	<arg: #aCollection type: #Collection>
-	<return: #Array>
-	^ aCollection asArray
-]
-
 { #category : 'private - parsing' }
 KGCheckTypePragmas >> isNominalTypeSymbol: aSymbol [
 	<arg: #aSymbol type: #Symbol>
@@ -187,12 +168,6 @@ KGCheckTypePragmas >> resultFor: aClass source: sourceString type: typeString va
 ]
 
 { #category : 'private - parsing' }
-KGCheckTypePragmas >> specialTypeSymbols [
-	<return: #Array>
-	^ #( | < > , -> ? )
-]
-
-{ #category : 'private - parsing' }
 KGCheckTypePragmas >> slotTypeEndIn: line startingAt: start [
 	<arg: #line type: #String>
 	<arg: #start type: #Integer>
@@ -208,6 +183,12 @@ KGCheckTypePragmas >> slotTypeEndIn: line startingAt: start [
 		(char = $> and: [ depth = 0 ]) ifTrue: [ ^ index ].
 		index := index + 1 ].
 	^ 0
+]
+
+{ #category : 'private - parsing' }
+KGCheckTypePragmas >> specialTypeSymbols [
+	<return: #Array>
+	^ #( | < > , -> ? )
 ]
 
 { #category : 'private - parsing' }
@@ -323,6 +304,15 @@ KGCheckTypePragmas >> upToTypeSeparatorFrom: stream [
 ]
 
 { #category : 'private - validation' }
+KGCheckTypePragmas >> validateBlockTypeArgument: tokens [
+	<arg: #tokens type: #Array>
+	<return: #Boolean>
+	(tokens size = 2 and: [ tokens second = #* and: [ tokens first isSymbol ] ])
+		ifTrue: [ ^ self isNominalTypeSymbol: tokens first ].
+	^ self validateTypeArray: tokens
+]
+
+{ #category : 'private - validation' }
 KGCheckTypePragmas >> validateBlockTypeArray: tokens [
 	<arg: #tokens type: #Array>
 	<return: #Boolean>
@@ -336,15 +326,6 @@ KGCheckTypePragmas >> validateBlockTypeArray: tokens [
 	args isEmpty ifTrue: [ ^ true ].
 	^ (self typePartsFrom: args separatedBy: #,) allSatisfy: [ :each |
 		self validateBlockTypeArgument: each ]
-]
-
-{ #category : 'private - validation' }
-KGCheckTypePragmas >> validateBlockTypeArgument: tokens [
-	<arg: #tokens type: #Array>
-	<return: #Boolean>
-	(tokens size = 2 and: [ tokens second = #* and: [ tokens first isSymbol ] ])
-		ifTrue: [ ^ self isNominalTypeSymbol: tokens first ].
-	^ self validateTypeArray: tokens
 ]
 
 { #category : 'private - validation' }
@@ -381,4 +362,23 @@ KGCheckTypePragmas >> validateTypeArray: tokens [
 		token isArray ifTrue: [ ^ self validateTypeArray: token ].
 		^ false ].
 	^ false
+]
+
+{ #category : 'checking' }
+KGCheckTypePragmas >> validateTypeLiteral: aLiteral [
+	<arg: #aLiteral type: #(Symbol | Array)>
+	<return: #Boolean>
+	aLiteral isSymbol ifTrue: [ ^ self isNominalTypeSymbol: aLiteral ].
+	aLiteral isArray ifTrue: [ ^ self validateTypeArray: aLiteral asArray ].
+	^ false
+]
+
+{ #category : 'checking' }
+KGCheckTypePragmas >> validateTypeString: aString [
+	<arg: #aString type: #String>
+	<return: #Boolean>
+	| tokens |
+	tokens := self tokenizeTypeString: aString.
+	tokens ifNil: [ ^ false ].
+	^ self validateTypeLiteral: tokens
 ]

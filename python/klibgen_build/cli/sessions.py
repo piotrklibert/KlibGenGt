@@ -9,6 +9,7 @@ from . import cli
 from .common import JSON_OPTION, ROLE, TARGET, _expression, _paths, _run
 from ..canonical import build_canonical
 from ..sessions import execute_agentic_session, execute_session
+from ..tonel_lint import lint_authoritative_source
 from ..workspaces import launch_gui_workspace
 
 
@@ -83,6 +84,14 @@ def session_command(name: str, help_text: str, request: dict[str, Any], result_o
 def load(ctx: click.Context, as_json: bool) -> None:
     """Build the canonical CLI target and label the result as a load operation."""
     _run(ctx, as_json, lambda: build_canonical(_paths(), "cli") | {"operation": "load"})
+
+
+@cli.command("lint-source")
+@JSON_OPTION
+@click.pass_context
+def lint_source(ctx: click.Context, as_json: bool) -> None:
+    """Reject `.st` source that the pinned Tonel exporter would rewrite."""
+    _run(ctx, as_json, lambda: lint_authoritative_source(_paths()))
 
 
 session_command("smoke", "Check that the project loads and answers its name in a fresh image.", {"operation": "eval", "expression": "KlibGenGt projectName", "profile": False}, "smoke")

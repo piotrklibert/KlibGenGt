@@ -1,4 +1,5 @@
-"Exchange live UI control envelopes through a session-private atomic filesystem spool.
+"
+Exchange live UI control envelopes through a session-private atomic filesystem spool.
 
 - Slots
   - `root` (`#FileReference`, `spool`) - Session-private `tmp/ui-control` directory.
@@ -12,23 +13,36 @@
   - {{gtMethod:KGFileUiControlConnector>>#stop}}
     Stop polling and remove stale request and readiness files.
 "
-Class { #name : 'KGFileUiControlConnector', #superclass : 'KGUiControlConnector', #instVars : [ 'root', 'requests', 'responses', 'worker', 'running' ], #category : 'KlibGenGt-Tools', #package : 'KlibGenGt-Tools' }
-
-{ #category : 'initialization' }
-KGFileUiControlConnector >> initialize [ super initialize. running := false ]
+Class {
+	#name : 'KGFileUiControlConnector',
+	#superclass : 'KGUiControlConnector',
+	#instVars : [
+		'root',
+		'requests',
+		'responses',
+		'worker',
+		'running'
+	],
+	#category : 'KlibGenGt-Tools',
+	#package : 'KlibGenGt-Tools'
+}
 
 { #category : 'private - spool' }
 KGFileUiControlConnector >> deleteChildrenOf: aDirectory [
 	aDirectory exists ifTrue: [ aDirectory children do: [ :each | each isDirectory ifTrue: [ each deleteAll ] ifFalse: [ each delete ] ] ]
 ]
 
+{ #category : 'initialization' }
+KGFileUiControlConnector >> initialize [ super initialize. running := false
+]
+
 { #category : 'private - spool' }
-KGFileUiControlConnector >> writeJson: anObject atomicallyTo: destination [
-	| temporary stream output |
-	temporary := destination parent / ('.', destination basename, '.tmp'). temporary ensureDelete.
-	output := STONJSON toString: anObject. stream := temporary writeStream.
-	[ stream nextPutAll: output; flush ] ensure: [ stream close ].
-	destination ensureDelete. temporary renameTo: destination basename
+KGFileUiControlConnector >> processFile: requestFile [
+	| requestId operation response |
+	requestId := requestFile basenameWithoutExtension. operation := 'unknown'.
+	response := service responseForSerializedRequest: requestFile contents defaultRequestId: requestId.
+	operation := response at: 'operation' ifAbsent: [ operation ]. requestId := response at: 'requestId' ifAbsent: [ requestId ].
+	[ [ self writeJson: response atomicallyTo: responses / (requestId, '.json') ] on: Exception do: [ :error | self writeJson: (service failureFor: error requestId: requestId operation: operation) atomicallyTo: responses / (requestId, '.json') ] ] ensure: [ requestFile ensureDelete ]
 ]
 
 { #category : 'public - lifecycle' }
@@ -56,10 +70,10 @@ KGFileUiControlConnector >> workerLoop [
 ]
 
 { #category : 'private - spool' }
-KGFileUiControlConnector >> processFile: requestFile [
-	| requestId operation response |
-	requestId := requestFile basenameWithoutExtension. operation := 'unknown'.
-	response := service responseForSerializedRequest: requestFile contents defaultRequestId: requestId.
-	operation := response at: 'operation' ifAbsent: [ operation ]. requestId := response at: 'requestId' ifAbsent: [ requestId ].
-	[ [ self writeJson: response atomicallyTo: responses / (requestId, '.json') ] on: Exception do: [ :error | self writeJson: (service failureFor: error requestId: requestId operation: operation) atomicallyTo: responses / (requestId, '.json') ] ] ensure: [ requestFile ensureDelete ]
+KGFileUiControlConnector >> writeJson: anObject atomicallyTo: destination [
+	| temporary stream output |
+	temporary := destination parent / ('.', destination basename, '.tmp'). temporary ensureDelete.
+	output := STONJSON toString: anObject. stream := temporary writeStream.
+	[ stream nextPutAll: output; flush ] ensure: [ stream close ].
+	destination ensureDelete. temporary renameTo: destination basename
 ]

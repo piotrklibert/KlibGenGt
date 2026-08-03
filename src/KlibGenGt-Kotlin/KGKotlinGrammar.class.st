@@ -19,7 +19,8 @@ Class {
 		'sourceText'
 	],
 	#category : 'KlibGenGt-Kotlin-Parser',
-	#package : 'KlibGenGt-Kotlin'
+	#package : 'KlibGenGt-Kotlin',
+	#tag : 'Parser'
 }
 
 { #category : 'accessing' }

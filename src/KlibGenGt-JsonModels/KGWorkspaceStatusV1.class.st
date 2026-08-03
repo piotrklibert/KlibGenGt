@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `WorkspaceStatusV1`.
 
@@ -24,7 +25,8 @@ Immutable JSON record generated from `WorkspaceStatusV1`.
   - {{gtMethod:KGWorkspaceStatusV1>>#workspace}}
     Answer the immutable `workspace` field value.
   - {{gtMethod:KGWorkspaceStatusV1>>#path}}
-    Answer the immutable `path` field value."
+    Answer the immutable `path` field value.
+"
 Class {
 	#name : 'KGWorkspaceStatusV1',
 	#superclass : 'KGJsonRecord',
@@ -67,24 +69,6 @@ KGWorkspaceStatusV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGWorkspaceStatusV1 >> schemaValue [
-	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGWorkspaceStatusV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGWorkspaceStatusV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
 KGWorkspaceStatusV1 >> exists [
 	<return: #Boolean>
 	^ self defensiveJsonValue: exists
@@ -97,13 +81,31 @@ KGWorkspaceStatusV1 >> name [
 ]
 
 { #category : 'accessing' }
-KGWorkspaceStatusV1 >> workspace [
-	<return: #(KGWorkspaceV1 | UndefinedObject)>
-	^ self defensiveJsonValue: workspace
+KGWorkspaceStatusV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
 ]
 
 { #category : 'accessing' }
 KGWorkspaceStatusV1 >> path [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: path
+]
+
+{ #category : 'accessing' }
+KGWorkspaceStatusV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
+]
+
+{ #category : 'accessing' }
+KGWorkspaceStatusV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
+]
+
+{ #category : 'accessing' }
+KGWorkspaceStatusV1 >> workspace [
+	<return: #(KGWorkspaceV1 | UndefinedObject)>
+	^ self defensiveJsonValue: workspace
 ]

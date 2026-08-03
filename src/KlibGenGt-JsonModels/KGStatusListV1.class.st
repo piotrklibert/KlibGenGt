@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `StatusListV1`.
 
@@ -18,7 +19,8 @@ Immutable JSON record generated from `StatusListV1`.
   - {{gtMethod:KGStatusListV1>>#statuses}}
     Answer the immutable `statuses` field value.
   - {{gtMethod:KGStatusListV1>>#workspace}}
-    Answer the immutable `workspace` field value."
+    Answer the immutable `workspace` field value.
+"
 Class {
 	#name : 'KGStatusListV1',
 	#superclass : 'KGJsonRecord',
@@ -57,6 +59,12 @@ KGStatusListV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGStatusListV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
 KGStatusListV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -66,12 +74,6 @@ KGStatusListV1 >> schemaValue [
 KGStatusListV1 >> schemaVersion [
 	<return: #Integer>
 	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGStatusListV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
 ]
 
 { #category : 'accessing' }

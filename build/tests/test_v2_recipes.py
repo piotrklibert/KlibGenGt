@@ -47,6 +47,9 @@ class RecipeModelTest(unittest.TestCase):
         self.assertEqual([step.role for step in PROJECT.steps], expected)
         self.assertEqual(set(DEFAULT_TARGETS), {"cli", "agentic", "gui", "build-map"})
         self.assertTrue(all(target.recipe is PROJECT for target in DEFAULT_TARGETS.values()))
+        project_source = next(step for step in PROJECT.steps if step.role == "project-source")
+        self.assertEqual(project_source.implementation.version, 3)
+        self.assertIn("python/klibgen_build/tonel_lint.py", project_source.implementation.inputs)
 
     def test_composition_returns_new_values_and_reports_precise_errors(self):
         replacement = Step(

@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `InventoryV2`.
 
@@ -57,7 +58,8 @@ Immutable JSON record generated from `InventoryV2`.
   - {{gtMethod:KGInventoryV2>>#locks}}
     Answer the immutable `locks` field value.
   - {{gtMethod:KGInventoryV2>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGInventoryV2',
 	#superclass : 'KGJsonRecord',
@@ -122,6 +124,60 @@ KGInventoryV2 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGInventoryV2 >> activeSessions [
+	<return: #(Array<(KGSessionV1 | KGJsonMalformedRecord)>)>
+	^ self defensiveJsonValue: activeSessions
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> artifacts [
+	<return: #(Array<(KGArtifactV1 | KGJsonInvalidArtifactRecord)>)>
+	^ self defensiveJsonValue: artifacts
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> edges [
+	<return: #(Array<KGJsonInventoryEdgeRecord>)>
+	^ self defensiveJsonValue: edges
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> generatedAt [
+	<return: #String>
+	^ self defensiveJsonValue: generatedAt
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> locks [
+	<return: #(Array<String>)>
+	^ self defensiveJsonValue: locks
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> nodes [
+	<return: #(Array<KGJsonInventoryNodeRecord>)>
+	^ self defensiveJsonValue: nodes
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> recipes [
+	<return: #(Array<KGJsonInventoryRecipeRecord>)>
+	^ self defensiveJsonValue: recipes
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> references [
+	<return: #(Array<(KGReferenceV1 | KGJsonMalformedRecord)>)>
+	^ self defensiveJsonValue: references
+]
+
+{ #category : 'accessing' }
 KGInventoryV2 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -134,33 +190,9 @@ KGInventoryV2 >> schemaVersion [
 ]
 
 { #category : 'accessing' }
-KGInventoryV2 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> generatedAt [
-	<return: #String>
-	^ self defensiveJsonValue: generatedAt
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> nodes [
-	<return: #(Array<KGJsonInventoryNodeRecord>)>
-	^ self defensiveJsonValue: nodes
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> edges [
-	<return: #(Array<KGJsonInventoryEdgeRecord>)>
-	^ self defensiveJsonValue: edges
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> warnings [
-	<return: #(Array<String>)>
-	^ self defensiveJsonValue: warnings
+KGInventoryV2 >> stagingAreas [
+	<return: #(Array<(KGStagingV1 | KGJsonMalformedRecord)>)>
+	^ self defensiveJsonValue: stagingAreas
 ]
 
 { #category : 'accessing' }
@@ -170,9 +202,15 @@ KGInventoryV2 >> stateRoot [
 ]
 
 { #category : 'accessing' }
-KGInventoryV2 >> recipes [
-	<return: #(Array<KGJsonInventoryRecipeRecord>)>
-	^ self defensiveJsonValue: recipes
+KGInventoryV2 >> statuses [
+	<return: #(Array<(KGBuildStatusV1 | KGJsonMalformedRecord)>)>
+	^ self defensiveJsonValue: statuses
+]
+
+{ #category : 'accessing' }
+KGInventoryV2 >> storage [
+	<return: #KGJsonStorageRecord>
+	^ self defensiveJsonValue: storage
 ]
 
 { #category : 'accessing' }
@@ -182,49 +220,13 @@ KGInventoryV2 >> targets [
 ]
 
 { #category : 'accessing' }
-KGInventoryV2 >> artifacts [
-	<return: #(Array<(KGArtifactV1 | KGJsonInvalidArtifactRecord)>)>
-	^ self defensiveJsonValue: artifacts
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> references [
-	<return: #(Array<(KGReferenceV1 | KGJsonMalformedRecord)>)>
-	^ self defensiveJsonValue: references
+KGInventoryV2 >> warnings [
+	<return: #(Array<String>)>
+	^ self defensiveJsonValue: warnings
 ]
 
 { #category : 'accessing' }
 KGInventoryV2 >> workspaces [
 	<return: #(Array<(KGWorkspaceV1 | KGJsonMalformedRecord)>)>
 	^ self defensiveJsonValue: workspaces
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> stagingAreas [
-	<return: #(Array<(KGStagingV1 | KGJsonMalformedRecord)>)>
-	^ self defensiveJsonValue: stagingAreas
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> activeSessions [
-	<return: #(Array<(KGSessionV1 | KGJsonMalformedRecord)>)>
-	^ self defensiveJsonValue: activeSessions
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> statuses [
-	<return: #(Array<(KGBuildStatusV1 | KGJsonMalformedRecord)>)>
-	^ self defensiveJsonValue: statuses
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> locks [
-	<return: #(Array<String>)>
-	^ self defensiveJsonValue: locks
-]
-
-{ #category : 'accessing' }
-KGInventoryV2 >> storage [
-	<return: #KGJsonStorageRecord>
-	^ self defensiveJsonValue: storage
 ]

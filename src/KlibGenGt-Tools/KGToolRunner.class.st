@@ -14,20 +14,6 @@ Class {
 	#package : 'KlibGenGt-Tools'
 }
 
-{ #category : 'running' }
-KGToolRunner >> run: aRequest [
-	<arg: #aRequest type: #(Dictionary<String, Any>)>
-	<return: #(Dictionary<String, Any>)>
-	| operation data |
-	operation := aRequest at: 'operation' ifAbsent: [ self error: 'request is missing operation' ].
-	^ [ data := self dispatch: operation request: aRequest.
-		((operation beginsWith: 'test.') and: [ (data at: 'successful' ifAbsent: [ true ]) not ])
-			ifTrue: [ OrderedDictionary new at: 'schemaVersion' put: 1; at: 'ok' put: false; at: 'operation' put: operation; at: 'data' put: data; yourself ]
-			ifFalse: [ self successFor: operation data: data ] ]
-		on: Exception
-		do: [ :error | self failureFor: operation exception: error ]
-]
-
 { #category : 'private - dispatching' }
 KGToolRunner >> dispatch: operation request: aRequest [
 	^ (KGToolRegistry default at: operation) execute: aRequest
@@ -54,6 +40,20 @@ KGToolRunner >> failureFor: operation exception: anException [
 			at: 'stack' put: stack;
 			yourself);
 		yourself
+]
+
+{ #category : 'running' }
+KGToolRunner >> run: aRequest [
+	<arg: #aRequest type: #(Dictionary<String, Any>)>
+	<return: #(Dictionary<String, Any>)>
+	| operation data |
+	operation := aRequest at: 'operation' ifAbsent: [ self error: 'request is missing operation' ].
+	^ [ data := self dispatch: operation request: aRequest.
+		((operation beginsWith: 'test.') and: [ (data at: 'successful' ifAbsent: [ true ]) not ])
+			ifTrue: [ OrderedDictionary new at: 'schemaVersion' put: 1; at: 'ok' put: false; at: 'operation' put: operation; at: 'data' put: data; yourself ]
+			ifFalse: [ self successFor: operation data: data ] ]
+		on: Exception
+		do: [ :error | self failureFor: operation exception: error ]
 ]
 
 { #category : 'private - responses' }

@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `DoctorV1`.
 
@@ -27,7 +28,8 @@ Immutable JSON record generated from `DoctorV1`.
   - {{gtMethod:KGDoctorV1>>#tools}}
     Answer the immutable `tools` field value.
   - {{gtMethod:KGDoctorV1>>#checks}}
-    Answer the immutable `checks` field value."
+    Answer the immutable `checks` field value.
+"
 Class {
 	#name : 'KGDoctorV1',
 	#superclass : 'KGJsonRecord',
@@ -72,6 +74,30 @@ KGDoctorV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGDoctorV1 >> checks [
+	<return: #(Array<KGJsonToolCheckRecord>)>
+	^ self defensiveJsonValue: checks
+]
+
+{ #category : 'accessing' }
+KGDoctorV1 >> ok [
+	<return: #Boolean>
+	^ self defensiveJsonValue: ok
+]
+
+{ #category : 'accessing' }
+KGDoctorV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
+KGDoctorV1 >> platform [
+	<return: #String>
+	^ self defensiveJsonValue: platform
+]
+
+{ #category : 'accessing' }
 KGDoctorV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -84,24 +110,6 @@ KGDoctorV1 >> schemaVersion [
 ]
 
 { #category : 'accessing' }
-KGDoctorV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
-KGDoctorV1 >> ok [
-	<return: #Boolean>
-	^ self defensiveJsonValue: ok
-]
-
-{ #category : 'accessing' }
-KGDoctorV1 >> platform [
-	<return: #String>
-	^ self defensiveJsonValue: platform
-]
-
-{ #category : 'accessing' }
 KGDoctorV1 >> stateRoot [
 	<return: #String>
 	^ self defensiveJsonValue: stateRoot
@@ -111,10 +119,4 @@ KGDoctorV1 >> stateRoot [
 KGDoctorV1 >> tools [
 	<return: #(Array<KGJsonToolCheckRecord>)>
 	^ self defensiveJsonValue: tools
-]
-
-{ #category : 'accessing' }
-KGDoctorV1 >> checks [
-	<return: #(Array<KGJsonToolCheckRecord>)>
-	^ self defensiveJsonValue: checks
 ]

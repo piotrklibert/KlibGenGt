@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `SessionV1`.
 
@@ -36,7 +37,8 @@ Immutable JSON record generated from `SessionV1`.
   - {{gtMethod:KGSessionV1>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGSessionV1>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGSessionV1',
 	#superclass : 'KGJsonRecord',
@@ -87,21 +89,33 @@ KGSessionV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGSessionV1 >> schemaValue [
-	<return: #String>
-	^ self defensiveJsonValue: schemaValue
+KGSessionV1 >> inputs [
+	<return: #(Dictionary<String, Any>)>
+	^ self defensiveJsonValue: inputs
 ]
 
 { #category : 'accessing' }
-KGSessionV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
+KGSessionV1 >> path [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: path
 ]
 
 { #category : 'accessing' }
-KGSessionV1 >> sessionId [
-	<return: #String>
-	^ self defensiveJsonValue: sessionId
+KGSessionV1 >> paths [
+	<return: #KGJsonSessionPathsRecord>
+	^ self defensiveJsonValue: paths
+]
+
+{ #category : 'accessing' }
+KGSessionV1 >> pid [
+	<return: #(Integer | UndefinedObject)>
+	^ self defensiveJsonValue: pid
+]
+
+{ #category : 'accessing' }
+KGSessionV1 >> preset [
+	<return: #KGJsonLaunchPresetRecord>
+	^ self defensiveJsonValue: preset
 ]
 
 { #category : 'accessing' }
@@ -117,33 +131,21 @@ KGSessionV1 >> recipe [
 ]
 
 { #category : 'accessing' }
-KGSessionV1 >> preset [
-	<return: #KGJsonLaunchPresetRecord>
-	^ self defensiveJsonValue: preset
+KGSessionV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
 ]
 
 { #category : 'accessing' }
-KGSessionV1 >> paths [
-	<return: #KGJsonSessionPathsRecord>
-	^ self defensiveJsonValue: paths
+KGSessionV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
 ]
 
 { #category : 'accessing' }
-KGSessionV1 >> inputs [
-	<return: #(Dictionary<String, Any>)>
-	^ self defensiveJsonValue: inputs
-]
-
-{ #category : 'accessing' }
-KGSessionV1 >> pid [
-	<return: #(Integer | UndefinedObject)>
-	^ self defensiveJsonValue: pid
-]
-
-{ #category : 'accessing' }
-KGSessionV1 >> path [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: path
+KGSessionV1 >> sessionId [
+	<return: #String>
+	^ self defensiveJsonValue: sessionId
 ]
 
 { #category : 'accessing' }

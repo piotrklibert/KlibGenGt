@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `LaunchPresetRecord`.
 
@@ -24,7 +25,8 @@ Immutable JSON record generated from `LaunchPresetRecord`.
   - {{gtMethod:KGJsonLaunchPresetRecord>>#inputs}}
     Answer the immutable `inputs` field value.
   - {{gtMethod:KGJsonLaunchPresetRecord>>#startMode}}
-    Answer the immutable `startMode` field value."
+    Answer the immutable `startMode` field value.
+"
 Class {
 	#name : 'KGJsonLaunchPresetRecord',
 	#superclass : 'KGJsonRecord',
@@ -67,9 +69,9 @@ KGJsonLaunchPresetRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonLaunchPresetRecord >> name [
-	<return: #String>
-	^ self defensiveJsonValue: name
+KGJsonLaunchPresetRecord >> entrypoint [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: entrypoint
 ]
 
 { #category : 'accessing' }
@@ -79,9 +81,15 @@ KGJsonLaunchPresetRecord >> frontend [
 ]
 
 { #category : 'accessing' }
-KGJsonLaunchPresetRecord >> sourceChanges [
+KGJsonLaunchPresetRecord >> inputs [
+	<return: #((Array<String>) | UndefinedObject)>
+	^ self defensiveJsonValue: inputs
+]
+
+{ #category : 'accessing' }
+KGJsonLaunchPresetRecord >> name [
 	<return: #String>
-	^ self defensiveJsonValue: sourceChanges
+	^ self defensiveJsonValue: name
 ]
 
 { #category : 'accessing' }
@@ -91,15 +99,9 @@ KGJsonLaunchPresetRecord >> persistence [
 ]
 
 { #category : 'accessing' }
-KGJsonLaunchPresetRecord >> entrypoint [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: entrypoint
-]
-
-{ #category : 'accessing' }
-KGJsonLaunchPresetRecord >> inputs [
-	<return: #((Array<String>) | UndefinedObject)>
-	^ self defensiveJsonValue: inputs
+KGJsonLaunchPresetRecord >> sourceChanges [
+	<return: #String>
+	^ self defensiveJsonValue: sourceChanges
 ]
 
 { #category : 'accessing' }

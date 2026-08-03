@@ -1,4 +1,5 @@
-"A world-toolbar button that requests conflict-checked promotion of the attached staging area.
+"
+A world-toolbar button that requests conflict-checked promotion of the attached staging area.
 
 - Slots
   - `tool` (`#KGExportTool`, `model`) - Delegates promotion to the installed source capability.
@@ -13,7 +14,11 @@
 Class {
 	#name : 'KGPromoteButton',
 	#superclass : 'BrButton',
-	#instVars : [ 'tool', 'worker', 'lastResult' ],
+	#instVars : [
+		'tool',
+		'worker',
+		'lastResult'
+	],
 	#category : 'KlibGenGt-Tools',
 	#package : 'KlibGenGt-Tools'
 }
@@ -38,6 +43,15 @@ KGPromoteButton >> lastResult [
 	^ lastResult
 ]
 
+{ #category : 'hooks' }
+KGPromoteButton >> onRemovedFromSceneGraph [
+	<return: #KGPromoteButton>
+	super onRemovedFromSceneGraph.
+	worker ifNotNil: [ :process | process terminate ].
+	worker := nil.
+	^ self
+]
+
 { #category : 'private - actions' }
 KGPromoteButton >> promote [
 	<return: #KGPromoteButton>
@@ -56,15 +70,6 @@ KGPromoteButton >> promote [
 			self enable; label: ((lastResult at: 'ok' ifAbsent: [ false ])
 				ifTrue: [ 'Promoted' ]
 				ifFalse: [ 'Conflict' ]) ] ] fork.
-	^ self
-]
-
-{ #category : 'hooks' }
-KGPromoteButton >> onRemovedFromSceneGraph [
-	<return: #KGPromoteButton>
-	super onRemovedFromSceneGraph.
-	worker ifNotNil: [ :process | process terminate ].
-	worker := nil.
 	^ self
 ]
 

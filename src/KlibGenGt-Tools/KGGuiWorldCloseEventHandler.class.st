@@ -1,4 +1,5 @@
-"Close-request policy for the managed GUI world.
+"
+Close-request policy for the managed GUI world.
 
 - Slots
   - none

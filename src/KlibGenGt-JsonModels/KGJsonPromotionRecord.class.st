@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `PromotionRecord`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `PromotionRecord`.
   - {{gtMethod:KGJsonPromotionRecord>>#conflicts}}
     Answer the immutable `conflicts` field value.
   - {{gtMethod:KGJsonPromotionRecord>>#changes}}
-    Answer the immutable `changes` field value."
+    Answer the immutable `changes` field value.
+"
 Class {
 	#name : 'KGJsonPromotionRecord',
 	#superclass : 'KGJsonRecord',
@@ -47,9 +49,9 @@ KGJsonPromotionRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonPromotionRecord >> ok [
-	<return: #Boolean>
-	^ self defensiveJsonValue: ok
+KGJsonPromotionRecord >> changes [
+	<return: #(KGJsonStagingChangesRecord | UndefinedObject)>
+	^ self defensiveJsonValue: changes
 ]
 
 { #category : 'accessing' }
@@ -59,7 +61,7 @@ KGJsonPromotionRecord >> conflicts [
 ]
 
 { #category : 'accessing' }
-KGJsonPromotionRecord >> changes [
-	<return: #(KGJsonStagingChangesRecord | UndefinedObject)>
-	^ self defensiveJsonValue: changes
+KGJsonPromotionRecord >> ok [
+	<return: #Boolean>
+	^ self defensiveJsonValue: ok
 ]

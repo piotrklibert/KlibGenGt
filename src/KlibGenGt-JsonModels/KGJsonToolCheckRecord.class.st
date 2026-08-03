@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `ToolCheckRecord`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `ToolCheckRecord`.
   - {{gtMethod:KGJsonToolCheckRecord>>#name}}
     Answer the immutable `name` field value.
   - {{gtMethod:KGJsonToolCheckRecord>>#path}}
-    Answer the immutable `path` field value."
+    Answer the immutable `path` field value.
+"
 Class {
 	#name : 'KGJsonToolCheckRecord',
 	#superclass : 'KGJsonRecord',
@@ -47,15 +49,15 @@ KGJsonToolCheckRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonToolCheckRecord >> ok [
-	<return: #Boolean>
-	^ self defensiveJsonValue: ok
-]
-
-{ #category : 'accessing' }
 KGJsonToolCheckRecord >> name [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: name
+]
+
+{ #category : 'accessing' }
+KGJsonToolCheckRecord >> ok [
+	<return: #Boolean>
+	^ self defensiveJsonValue: ok
 ]
 
 { #category : 'accessing' }

@@ -11,7 +11,15 @@ Normalize one image operation into the stable schema-version-one response envelo
   - {{gtMethod:KGOperationResult>>#asDictionary}}
     Answer a defensive response copy.
 "
-Class { #name : 'KGOperationResult', #superclass : 'Object', #instVars : [ 'value' ], #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }
+Class {
+	#name : 'KGOperationResult',
+	#superclass : 'Object',
+	#instVars : [
+		'value'
+	],
+	#category : 'KlibGenGt-Session',
+	#package : 'KlibGenGt-Session'
+}
 
 { #category : 'instance creation' }
 KGOperationResult class >> failure: anException operation: aString [
@@ -30,7 +38,9 @@ KGOperationResult class >> success: aDictionary operation: aString [
 ]
 
 { #category : 'accessing' }
-KGOperationResult >> asDictionary [ <return: #(Dictionary<String, Any>)> ^ value copy ]
+KGOperationResult >> asDictionary [ <return: #(Dictionary<String, Any>)> ^ value copy
+]
 
 { #category : 'initialization' }
-KGOperationResult >> initializeValue: aDictionary [ <arg: #aDictionary type: #(Dictionary<String, Any>)> <return: #KGOperationResult> value := aDictionary. ^ self ]
+KGOperationResult >> initializeValue: aDictionary [ <arg: #aDictionary type: #(Dictionary<String, Any>)> <return: #KGOperationResult> value := aDictionary. ^ self
+]

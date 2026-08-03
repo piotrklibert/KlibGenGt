@@ -15,7 +15,19 @@ Describe one versioned image tool and its compatibility requirements.
   - {{gtMethod:KGToolRegistration>>#identifier}}
     Answer the stable operation identifier.
 "
-Class { #name : 'KGToolRegistration', #superclass : 'Object', #instVars : [ 'identifier', 'version', 'handler', 'frontends', 'requiredCapabilities' ], #category : 'KlibGenGt-Tools', #package : 'KlibGenGt-Tools' }
+Class {
+	#name : 'KGToolRegistration',
+	#superclass : 'Object',
+	#instVars : [
+		'identifier',
+		'version',
+		'handler',
+		'frontends',
+		'requiredCapabilities'
+	],
+	#category : 'KlibGenGt-Tools',
+	#package : 'KlibGenGt-Tools'
+}
 
 { #category : 'instance creation' }
 KGToolRegistration class >> identifier: anIdentifier version: aVersion frontends: frontendNames capabilities: capabilityNames handler: aBlock [
@@ -27,10 +39,12 @@ KGToolRegistration class >> identifier: anIdentifier version: aVersion frontends
 ]
 
 { #category : 'executing' }
-KGToolRegistration >> execute: aRequest [ <arg: #aRequest type: #(Dictionary<String, Any>)> <return: #(Dictionary<String, Any>)> ^ handler value: aRequest ]
+KGToolRegistration >> execute: aRequest [ <arg: #aRequest type: #(Dictionary<String, Any>)> <return: #(Dictionary<String, Any>)> ^ handler value: aRequest
+]
 
 { #category : 'accessing' }
-KGToolRegistration >> identifier [ <return: #String> ^ identifier ]
+KGToolRegistration >> identifier [ <return: #String> ^ identifier
+]
 
 { #category : 'initialization' }
 KGToolRegistration >> initializeIdentifier: anIdentifier version: aVersion frontends: frontendNames capabilities: capabilityNames handler: aBlock [

@@ -7,7 +7,12 @@ Write one JSON-compatible record through a same-directory temporary file.
   - {{gtMethod:KGAtomicJsonWriter class>>#write:to:}}
     Atomically replace the target with one dictionary or generated JSON record.
 "
-Class { #name : 'KGAtomicJsonWriter', #superclass : 'Object', #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }
+Class {
+	#name : 'KGAtomicJsonWriter',
+	#superclass : 'Object',
+	#category : 'KlibGenGt-Session',
+	#package : 'KlibGenGt-Session'
+}
 
 { #category : 'writing' }
 KGAtomicJsonWriter class >> write: aRecord to: aPath [

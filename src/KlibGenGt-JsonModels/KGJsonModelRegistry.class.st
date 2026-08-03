@@ -1,4 +1,5 @@
-"Registry that dispatches named KlibGen JSON records to generated classes.
+"
+Registry that dispatches named KlibGen JSON records to generated classes.
 
 - Slots
   - `Registry` (`#(Dictionary<String, Class>)`, class state, `registration`) - Lazily rebuilt schema-to-class mapping.
@@ -20,6 +21,23 @@ Class {
 	#package : 'KlibGenGt-JsonModels'
 }
 
+{ #category : 'parsing' }
+KGJsonModelRegistry class >> parseDictionary: aDictionary [
+	<arg: #aDictionary type: #(Dictionary<String, Any>)>
+	<return: #KGJsonRecord>
+	| schema recordClass |
+	schema := aDictionary at: 'schema' ifAbsent: [ self error: 'Named JSON record has no schema' ].
+	recordClass := self registry at: schema ifAbsent: [ self error: 'Unknown named KlibGen JSON schema ', schema asString ].
+	^ recordClass fromDictionary: aDictionary
+]
+
+{ #category : 'parsing' }
+KGJsonModelRegistry class >> parseJson: aString [
+	<arg: #aString type: #String>
+	<return: #KGJsonRecord>
+	^ self parseDictionary: (STONJSON fromString: aString)
+]
+
 { #category : 'registration' }
 KGJsonModelRegistry class >> rebuild [
 	<return: #(Dictionary<String, Class>)>
@@ -37,23 +55,6 @@ KGJsonModelRegistry class >> rebuild [
 KGJsonModelRegistry class >> registry [
 	<return: #(Dictionary<String, Class>)>
 	^ Registry ifNil: [ self rebuild ]
-]
-
-{ #category : 'parsing' }
-KGJsonModelRegistry class >> parseDictionary: aDictionary [
-	<arg: #aDictionary type: #(Dictionary<String, Any>)>
-	<return: #KGJsonRecord>
-	| schema recordClass |
-	schema := aDictionary at: 'schema' ifAbsent: [ self error: 'Named JSON record has no schema' ].
-	recordClass := self registry at: schema ifAbsent: [ self error: 'Unknown named KlibGen JSON schema ', schema asString ].
-	^ recordClass fromDictionary: aDictionary
-]
-
-{ #category : 'parsing' }
-KGJsonModelRegistry class >> parseJson: aString [
-	<arg: #aString type: #String>
-	<return: #KGJsonRecord>
-	^ self parseDictionary: (STONJSON fromString: aString)
 ]
 
 { #category : 'registration' }

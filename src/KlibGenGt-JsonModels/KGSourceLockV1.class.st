@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `SourceLockV1`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `SourceLockV1`.
   - {{gtMethod:KGSourceLockV1>>#schemaVersion}}
     Answer the immutable `schemaVersion` field value.
   - {{gtMethod:KGSourceLockV1>>#sources}}
-    Answer the immutable `sources` field value."
+    Answer the immutable `sources` field value.
+"
 Class {
 	#name : 'KGSourceLockV1',
 	#superclass : 'KGJsonRecord',

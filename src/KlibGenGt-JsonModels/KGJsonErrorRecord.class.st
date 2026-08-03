@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `ErrorRecord`.
 
@@ -9,7 +10,8 @@ Immutable JSON record generated from `ErrorRecord`.
   - {{gtMethod:KGJsonErrorRecord>>#errorClass}}
     Answer the immutable `errorClass` field value.
   - {{gtMethod:KGJsonErrorRecord>>#message}}
-    Answer the immutable `message` field value."
+    Answer the immutable `message` field value.
+"
 Class {
 	#name : 'KGJsonErrorRecord',
 	#superclass : 'KGJsonRecord',

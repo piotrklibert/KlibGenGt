@@ -17,7 +17,8 @@ Class {
 		'context'
 	],
 	#category : 'KlibGenGt-Core-LegacyHtml',
-	#package : 'KlibGenGt-Core'
+	#package : 'KlibGenGt-Core',
+	#tag : 'LegacyHtml'
 }
 
 { #category : 'escaping' }
@@ -111,6 +112,20 @@ KGLegacyPostTransformer >> firstChildElementNamed: aString in: anElement [
 	^ anElement children
 		detect: [ :each | each isElement and: [ each name = aString ] ]
 		ifNone: [ nil ]
+]
+
+{ #category : 'building' }
+KGLegacyPostTransformer >> permalinkAnchor [
+	<return: #KGHtmlElement>
+	^ self
+		elementNamed: 'a'
+		attributes: (self attributes: {
+			'href'. '#' , self context link.
+			'class'. 'robaczek'.
+			'title'. 'Link to this place on current page' })
+		children: { self text: '
+          ¶
+        ' }
 ]
 
 { #category : 'building' }
@@ -347,20 +362,6 @@ KGLegacyPostTransformer >> transformOutdatedNote: anElement [
 					elementNamed: 'strong'
 					attributes: self emptyAttributes
 					children: { self text: 'NOTE:' } } , (self transformNodes: anElement children)) }
-]
-
-{ #category : 'building' }
-KGLegacyPostTransformer >> permalinkAnchor [
-	<return: #KGHtmlElement>
-	^ self
-		elementNamed: 'a'
-		attributes: (self attributes: {
-			'href'. '#' , self context link.
-			'class'. 'robaczek'.
-			'title'. 'Link to this place on current page' })
-		children: { self text: '
-          ¶
-        ' }
 ]
 
 { #category : 'transforming' }

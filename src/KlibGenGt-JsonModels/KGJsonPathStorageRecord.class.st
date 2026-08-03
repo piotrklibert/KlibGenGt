@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `PathStorageRecord`.
 
@@ -9,7 +10,8 @@ Immutable JSON record generated from `PathStorageRecord`.
   - {{gtMethod:KGJsonPathStorageRecord>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGJsonPathStorageRecord>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGJsonPathStorageRecord',
 	#superclass : 'KGJsonRecord',

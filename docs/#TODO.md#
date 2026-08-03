@@ -70,7 +70,15 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 
 - [ ] more formalized acceptance tests, including full UI tests
 
+- AST transformations for refactoring as a tool
+  - first need a report on available facilities
+
 # Q & A
 
 - how is the staging area diffed exactly? can we simplify it with JJ/Git
   interactions?
+  
+- jj worktree integration? 
+
+- what are our answers to the following workflows:
+  1. Adding an external dependency

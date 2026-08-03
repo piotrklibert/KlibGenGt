@@ -57,6 +57,9 @@ test-fresh:
 check-type-pragmas:
     uv run klibgen-build check-type-pragmas
 
+lint-source:
+    uv run klibgen-build lint-source
+
 smoke:
     uv run klibgen-build smoke
 
@@ -160,4 +163,4 @@ generate-json-models:
 check-json-models:
     uv run klibgen-build models export-tonel --check
 
-check: test-build-tools doctor check-type-pragmas test
+check: test-build-tools doctor lint-source check-type-pragmas test

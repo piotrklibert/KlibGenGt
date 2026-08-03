@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `StagingV1`.
 
@@ -51,7 +52,8 @@ Immutable JSON record generated from `StagingV1`.
   - {{gtMethod:KGStagingV1>>#changes}}
     Answer the immutable `changes` field value.
   - {{gtMethod:KGStagingV1>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGStagingV1',
 	#superclass : 'KGJsonRecord',
@@ -112,51 +114,15 @@ KGStagingV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGStagingV1 >> schemaValue [
-	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGStagingV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGStagingV1 >> name [
-	<return: #String>
-	^ self defensiveJsonValue: name
-]
-
-{ #category : 'accessing' }
-KGStagingV1 >> state [
-	<return: #String>
-	^ self defensiveJsonValue: state
-]
-
-{ #category : 'accessing' }
 KGStagingV1 >> baseSource [
 	<return: #(Dictionary<String, Any>)>
 	^ self defensiveJsonValue: baseSource
 ]
 
 { #category : 'accessing' }
-KGStagingV1 >> projectKey [
-	<return: #String>
-	^ self defensiveJsonValue: projectKey
-]
-
-{ #category : 'accessing' }
-KGStagingV1 >> sourceGit [
-	<return: #String>
-	^ self defensiveJsonValue: sourceGit
-]
-
-{ #category : 'accessing' }
-KGStagingV1 >> promotion [
-	<return: #(KGJsonPromotionRecord | UndefinedObject)>
-	^ self defensiveJsonValue: promotion
+KGStagingV1 >> changes [
+	<return: #(KGJsonStagingChangesRecord | UndefinedObject)>
+	^ self defensiveJsonValue: changes
 ]
 
 { #category : 'accessing' }
@@ -172,9 +138,9 @@ KGStagingV1 >> headCommit [
 ]
 
 { #category : 'accessing' }
-KGStagingV1 >> lease [
+KGStagingV1 >> lastPromotion [
 	<return: #((Dictionary<String, Any>) | UndefinedObject)>
-	^ self defensiveJsonValue: lease
+	^ self defensiveJsonValue: lastPromotion
 ]
 
 { #category : 'accessing' }
@@ -184,9 +150,15 @@ KGStagingV1 >> lastRebase [
 ]
 
 { #category : 'accessing' }
-KGStagingV1 >> lastPromotion [
+KGStagingV1 >> lease [
 	<return: #((Dictionary<String, Any>) | UndefinedObject)>
-	^ self defensiveJsonValue: lastPromotion
+	^ self defensiveJsonValue: lease
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> name [
+	<return: #String>
+	^ self defensiveJsonValue: name
 ]
 
 { #category : 'accessing' }
@@ -196,9 +168,39 @@ KGStagingV1 >> path [
 ]
 
 { #category : 'accessing' }
-KGStagingV1 >> changes [
-	<return: #(KGJsonStagingChangesRecord | UndefinedObject)>
-	^ self defensiveJsonValue: changes
+KGStagingV1 >> projectKey [
+	<return: #String>
+	^ self defensiveJsonValue: projectKey
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> promotion [
+	<return: #(KGJsonPromotionRecord | UndefinedObject)>
+	^ self defensiveJsonValue: promotion
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> sourceGit [
+	<return: #String>
+	^ self defensiveJsonValue: sourceGit
+]
+
+{ #category : 'accessing' }
+KGStagingV1 >> state [
+	<return: #String>
+	^ self defensiveJsonValue: state
 ]
 
 { #category : 'accessing' }

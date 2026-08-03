@@ -17,7 +17,10 @@ Store immutable construction provenance embedded in a canonical project image.
 Class {
 	#name : 'KGBuildProvenance',
 	#superclass : 'Object',
-	#classVars : [ 'Manifest', 'ProjectKey' ],
+	#classVars : [
+		'Manifest',
+		'ProjectKey'
+	],
 	#category : 'KlibGenGt-BuildSupport',
 	#package : 'KlibGenGt-BuildSupport'
 }

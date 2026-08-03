@@ -13,6 +13,7 @@ from .core import BuildPaths
 from .processes import run_command
 from .resolution import resolve_target
 from .store import ArtifactStore
+from .tonel_lint import verify_tonel_roundtrip
 
 
 def _set_writable(root: Path) -> None:
@@ -137,9 +138,14 @@ class CanonicalExecutor:
         elif role == "project-source":
             revision = step["resolvedConfiguration"]["source"]["commitId"]
             bridge = _git_bridge(self.paths, workspace, ("src",), revision)
+            exported = workspace / f"tonel-{uuid.uuid4().hex}/src"
             dependency_step = next(item for item in self.resolved["steps"] if item["role"] == "project-dependencies")
-            _run_image(self.paths, payload, self.paths.root / "build/v2/scripts/load-project-source.st", "project-source", {"KLIBGEN_EXPORT_GIT": str(bridge / ".git"), "KLIBGEN_SQLITE_REPOSITORY": _dependency_repository(self.paths, dependency_step)})
-            shutil.rmtree(bridge)
+            try:
+                _run_image(self.paths, payload, self.paths.root / "build/v2/scripts/load-project-source.st", "project-source", {"KLIBGEN_EXPORT_GIT": str(bridge / ".git"), "KLIBGEN_TONEL_OUTPUT": str(exported), "KLIBGEN_SQLITE_REPOSITORY": _dependency_repository(self.paths, dependency_step)})
+                verify_tonel_roundtrip(bridge / "src", exported)
+            finally:
+                shutil.rmtree(bridge, ignore_errors=True)
+                shutil.rmtree(exported.parent, ignore_errors=True)
         elif role == "project-finalize":
             manifest = workspace / "resolved-recipe.json"
             manifest.write_text(json.dumps(self.resolved, indent=2, sort_keys=True) + "\n", encoding="utf-8")

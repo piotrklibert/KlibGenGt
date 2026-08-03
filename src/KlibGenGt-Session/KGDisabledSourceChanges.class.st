@@ -13,13 +13,20 @@ Deny every project-source mutation in read-only sessions.
   - {{gtMethod:KGDisabledSourceChanges>>#promoteChanges}}
     Reject staging promotion in a read-only session.
 "
-Class { #name : 'KGDisabledSourceChanges', #superclass : 'Object', #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }
+Class {
+	#name : 'KGDisabledSourceChanges',
+	#superclass : 'Object',
+	#category : 'KlibGenGt-Session',
+	#package : 'KlibGenGt-Session'
+}
 
 { #category : 'testing' }
-KGDisabledSourceChanges >> available [ <return: #Boolean> ^ false ]
+KGDisabledSourceChanges >> available [ <return: #Boolean> ^ false
+]
 
 { #category : 'accessing' }
-KGDisabledSourceChanges >> changeCount [ <return: #Integer> ^ 0 ]
+KGDisabledSourceChanges >> changeCount [ <return: #Integer> ^ 0
+]
 
 { #category : 'actions' }
 KGDisabledSourceChanges >> exportChanges [

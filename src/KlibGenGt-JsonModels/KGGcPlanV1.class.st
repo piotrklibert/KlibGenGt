@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `GcPlanV1`.
 
@@ -27,7 +28,8 @@ Immutable JSON record generated from `GcPlanV1`.
   - {{gtMethod:KGGcPlanV1>>#warnings}}
     Answer the immutable `warnings` field value.
   - {{gtMethod:KGGcPlanV1>>#applied}}
-    Answer the immutable `applied` field value."
+    Answer the immutable `applied` field value.
+"
 Class {
 	#name : 'KGGcPlanV1',
 	#superclass : 'KGJsonRecord',
@@ -72,6 +74,36 @@ KGGcPlanV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGGcPlanV1 >> applied [
+	<return: #Boolean>
+	^ self defensiveJsonValue: applied
+]
+
+{ #category : 'accessing' }
+KGGcPlanV1 >> mode [
+	<return: #String>
+	^ self defensiveJsonValue: mode
+]
+
+{ #category : 'accessing' }
+KGGcPlanV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
+KGGcPlanV1 >> remove [
+	<return: #(Array<KGJsonPathStorageRecord>)>
+	^ self defensiveJsonValue: remove
+]
+
+{ #category : 'accessing' }
+KGGcPlanV1 >> roots [
+	<return: #(Array<String>)>
+	^ self defensiveJsonValue: roots
+]
+
+{ #category : 'accessing' }
 KGGcPlanV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -84,37 +116,7 @@ KGGcPlanV1 >> schemaVersion [
 ]
 
 { #category : 'accessing' }
-KGGcPlanV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
-KGGcPlanV1 >> mode [
-	<return: #String>
-	^ self defensiveJsonValue: mode
-]
-
-{ #category : 'accessing' }
-KGGcPlanV1 >> roots [
-	<return: #(Array<String>)>
-	^ self defensiveJsonValue: roots
-]
-
-{ #category : 'accessing' }
-KGGcPlanV1 >> remove [
-	<return: #(Array<KGJsonPathStorageRecord>)>
-	^ self defensiveJsonValue: remove
-]
-
-{ #category : 'accessing' }
 KGGcPlanV1 >> warnings [
 	<return: #(Array<String>)>
 	^ self defensiveJsonValue: warnings
-]
-
-{ #category : 'accessing' }
-KGGcPlanV1 >> applied [
-	<return: #Boolean>
-	^ self defensiveJsonValue: applied
 ]

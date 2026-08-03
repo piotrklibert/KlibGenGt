@@ -10,7 +10,8 @@ Class {
 	#name : 'KGKotlinParserTest',
 	#superclass : 'TestCase',
 	#category : 'KlibGenGt-Tests-Kotlin',
-	#package : 'KlibGenGt-Tests'
+	#package : 'KlibGenGt-Tests',
+	#tag : 'Kotlin'
 }
 
 { #category : 'private' }

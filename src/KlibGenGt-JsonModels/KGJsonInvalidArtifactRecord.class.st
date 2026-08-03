@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `InvalidArtifactRecord`.
 
@@ -15,7 +16,8 @@ Immutable JSON record generated from `InvalidArtifactRecord`.
   - {{gtMethod:KGJsonInvalidArtifactRecord>>#error}}
     Answer the immutable `error` field value.
   - {{gtMethod:KGJsonInvalidArtifactRecord>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGJsonInvalidArtifactRecord',
 	#superclass : 'KGJsonRecord',
@@ -52,25 +54,25 @@ KGJsonInvalidArtifactRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonInvalidArtifactRecord >> path [
-	<return: #String>
-	^ self defensiveJsonValue: path
-]
-
-{ #category : 'accessing' }
-KGJsonInvalidArtifactRecord >> valid [
-	<return: #Boolean>
-	^ self defensiveJsonValue: valid
-]
-
-{ #category : 'accessing' }
 KGJsonInvalidArtifactRecord >> error [
 	<return: #String>
 	^ self defensiveJsonValue: error
 ]
 
 { #category : 'accessing' }
+KGJsonInvalidArtifactRecord >> path [
+	<return: #String>
+	^ self defensiveJsonValue: path
+]
+
+{ #category : 'accessing' }
 KGJsonInvalidArtifactRecord >> storage [
 	<return: #(KGJsonStorageRecord | UndefinedObject)>
 	^ self defensiveJsonValue: storage
+]
+
+{ #category : 'accessing' }
+KGJsonInvalidArtifactRecord >> valid [
+	<return: #Boolean>
+	^ self defensiveJsonValue: valid
 ]

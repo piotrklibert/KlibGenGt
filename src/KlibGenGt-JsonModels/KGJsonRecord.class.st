@@ -1,4 +1,5 @@
-"Abstract runtime for immutable records generated from the host Pydantic catalog.
+"
+Abstract runtime for immutable records generated from the host Pydantic catalog.
 
 - Slots
   - `presentFields` (`#(Set<String>)`, `json`) - Wire fields present in the decoded record.
@@ -23,38 +24,6 @@ Class {
 	#category : 'KlibGenGt-JsonModels',
 	#package : 'KlibGenGt-JsonModels'
 }
-
-{ #category : 'instance creation' }
-KGJsonRecord class >> fromDictionary: aDictionary [
-	<arg: #aDictionary type: #(Dictionary<String, Any>)>
-	<return: #KGJsonRecord>
-	^ self new initializeFromJsonDictionary: aDictionary
-]
-
-{ #category : 'instance creation' }
-KGJsonRecord class >> fromJson: aString [
-	<arg: #aString type: #String>
-	<return: #KGJsonRecord>
-	^ self fromDictionary: (STONJSON fromString: aString)
-]
-
-{ #category : 'json schema' }
-KGJsonRecord class >> jsonAllowsExtras [
-	<return: #Boolean>
-	^ false
-]
-
-{ #category : 'json schema' }
-KGJsonRecord class >> jsonFieldSpecifications [
-	<return: #(Array<(Array<Any>)>)>
-	^ #()
-]
-
-{ #category : 'json schema' }
-KGJsonRecord class >> jsonSchemaName [
-	<return: #(String?)>
-	^ nil
-]
 
 { #category : 'private - decoding' }
 KGJsonRecord class >> decodeJsonValue: aValue type: typeSpecification path: aPath [
@@ -108,6 +77,38 @@ KGJsonRecord class >> decodeJsonValue: aValue type: typeSpecification path: aPat
 	self error: 'Unsupported generated JSON type ', kind asString
 ]
 
+{ #category : 'instance creation' }
+KGJsonRecord class >> fromDictionary: aDictionary [
+	<arg: #aDictionary type: #(Dictionary<String, Any>)>
+	<return: #KGJsonRecord>
+	^ self new initializeFromJsonDictionary: aDictionary
+]
+
+{ #category : 'instance creation' }
+KGJsonRecord class >> fromJson: aString [
+	<arg: #aString type: #String>
+	<return: #KGJsonRecord>
+	^ self fromDictionary: (STONJSON fromString: aString)
+]
+
+{ #category : 'json schema' }
+KGJsonRecord class >> jsonAllowsExtras [
+	<return: #Boolean>
+	^ false
+]
+
+{ #category : 'json schema' }
+KGJsonRecord class >> jsonFieldSpecifications [
+	<return: #(Array<(Array<Any>)>)>
+	^ #()
+]
+
+{ #category : 'json schema' }
+KGJsonRecord class >> jsonSchemaName [
+	<return: #(String?)>
+	^ nil
+]
+
 { #category : 'private - copying' }
 KGJsonRecord class >> rawJsonCopy: aValue [
 	<arg: #aValue type: #Any>
@@ -117,6 +118,47 @@ KGJsonRecord class >> rawJsonCopy: aValue [
 			result at: association key put: (self rawJsonCopy: association value); yourself ] ].
 	((aValue isCollection and: [ aValue isString not ]) and: [ aValue isDictionary not ])
 		ifTrue: [ ^ (aValue collect: [ :each | self rawJsonCopy: each ]) asArray ].
+	^ aValue
+]
+
+{ #category : 'encoding' }
+KGJsonRecord >> asDictionary [
+	<return: #(Dictionary<String, Any>)>
+	| result |
+	result := OrderedDictionary new.
+	self class jsonFieldSpecifications do: [ :specification |
+		(presentFields includes: specification first) ifTrue: [
+			result
+				at: specification first
+				put: (self encodedJsonValue: (self instVarNamed: specification second)) ] ].
+	extras keysAndValuesDo: [ :key :value | result at: key put: (self encodedJsonValue: value) ].
+	^ result
+]
+
+{ #category : 'encoding' }
+KGJsonRecord >> asJson [
+	<return: #String>
+	^ STONJSON toString: self asDictionary
+]
+
+{ #category : 'private - copying' }
+KGJsonRecord >> defensiveJsonValue: aValue [
+	<arg: #aValue type: #Any>
+	<return: #Any>
+	(aValue isKindOf: KGJsonRecord) ifTrue: [ ^ aValue ].
+	^ self class rawJsonCopy: aValue
+]
+
+{ #category : 'private - encoding' }
+KGJsonRecord >> encodedJsonValue: aValue [
+	<arg: #aValue type: #Any>
+	<return: #Any>
+	(aValue isKindOf: KGJsonRecord) ifTrue: [ ^ aValue asDictionary ].
+	aValue isDictionary ifTrue: [
+		^ aValue associations inject: OrderedDictionary new into: [ :result :association |
+			result at: association key put: (self encodedJsonValue: association value); yourself ] ].
+	((aValue isCollection and: [ aValue isString not ]) and: [ aValue isDictionary not ])
+		ifTrue: [ ^ (aValue collect: [ :each | self encodedJsonValue: each ]) asArray ].
 	^ aValue
 ]
 
@@ -150,45 +192,4 @@ KGJsonRecord >> initializeFromJsonDictionary: aDictionary [
 				ifTrue: [ extras at: key put: (self class rawJsonCopy: value) ]
 				ifFalse: [ self error: 'Unknown JSON field ', key ] ] ].
 	^ self
-]
-
-{ #category : 'private - copying' }
-KGJsonRecord >> defensiveJsonValue: aValue [
-	<arg: #aValue type: #Any>
-	<return: #Any>
-	(aValue isKindOf: KGJsonRecord) ifTrue: [ ^ aValue ].
-	^ self class rawJsonCopy: aValue
-]
-
-{ #category : 'private - encoding' }
-KGJsonRecord >> encodedJsonValue: aValue [
-	<arg: #aValue type: #Any>
-	<return: #Any>
-	(aValue isKindOf: KGJsonRecord) ifTrue: [ ^ aValue asDictionary ].
-	aValue isDictionary ifTrue: [
-		^ aValue associations inject: OrderedDictionary new into: [ :result :association |
-			result at: association key put: (self encodedJsonValue: association value); yourself ] ].
-	((aValue isCollection and: [ aValue isString not ]) and: [ aValue isDictionary not ])
-		ifTrue: [ ^ (aValue collect: [ :each | self encodedJsonValue: each ]) asArray ].
-	^ aValue
-]
-
-{ #category : 'encoding' }
-KGJsonRecord >> asDictionary [
-	<return: #(Dictionary<String, Any>)>
-	| result |
-	result := OrderedDictionary new.
-	self class jsonFieldSpecifications do: [ :specification |
-		(presentFields includes: specification first) ifTrue: [
-			result
-				at: specification first
-				put: (self encodedJsonValue: (self instVarNamed: specification second)) ] ].
-	extras keysAndValuesDo: [ :key :value | result at: key put: (self encodedJsonValue: value) ].
-	^ result
-]
-
-{ #category : 'encoding' }
-KGJsonRecord >> asJson [
-	<return: #String>
-	^ STONJSON toString: self asDictionary
 ]

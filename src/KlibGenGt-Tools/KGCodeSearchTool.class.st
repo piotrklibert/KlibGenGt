@@ -61,6 +61,23 @@ KGCodeSearchTool >> classSideFor: aRequest [
 	^ side = 'class' ifTrue: [ aClass class ] ifFalse: [ aClass ]
 ]
 
+{ #category : 'private - searching' }
+KGCodeSearchTool >> methodResultsFor: query package: packageName [
+	| methods |
+	methods := query gtSubstringMatch contents.
+	packageName ifNotNil: [
+		methods := methods select: [ :method | method package name = packageName ] ].
+	^ methods collect: [ :method |
+		OrderedDictionary new
+			at: 'kind' put: 'method';
+			at: 'class' put: method methodClass instanceSide name asString;
+			at: 'side' put: (method methodClass isMeta ifTrue: [ 'class' ] ifFalse: [ 'instance' ]);
+			at: 'selector' put: method selector asString;
+			at: 'protocol' put: method protocolName asString;
+			at: 'package' put: method package name asString;
+			yourself ]
+]
+
 { #category : 'accessing' }
 KGCodeSearchTool >> methodSource: aRequest [
 	<arg: #aRequest type: #(Dictionary<String, Any>)>
@@ -77,23 +94,6 @@ KGCodeSearchTool >> methodSource: aRequest [
 		at: 'selector' put: selector asString;
 		at: 'text' put: method sourceCode;
 		yourself
-]
-
-{ #category : 'private - searching' }
-KGCodeSearchTool >> methodResultsFor: query package: packageName [
-	| methods |
-	methods := query gtSubstringMatch contents.
-	packageName ifNotNil: [
-		methods := methods select: [ :method | method package name = packageName ] ].
-	^ methods collect: [ :method |
-		OrderedDictionary new
-			at: 'kind' put: 'method';
-			at: 'class' put: method methodClass instanceSide name asString;
-			at: 'side' put: (method methodClass isMeta ifTrue: [ 'class' ] ifFalse: [ 'instance' ]);
-			at: 'selector' put: method selector asString;
-			at: 'protocol' put: method protocolName asString;
-			at: 'package' put: method package name asString;
-			yourself ]
 ]
 
 { #category : 'searching' }

@@ -34,6 +34,7 @@ Useful development commands are:
 ```sh
 just eval '6 * 7'
 just test-one KlibGenGtTest testProjectName
+just lint-source
 just check-type-pragmas
 just test-fresh
 just gui
@@ -71,7 +72,7 @@ klibgen-build
 ├── workspace status | reset
 ├── staging list | create | rebase | reset | promote
 ├── models export-tonel
-└── doctor | status | build | test | test-one | eval | load | smoke
+└── doctor | status | build | test | test-one | eval | load | smoke | lint-source
     | check-type-pragmas | gui | agentic | inventory | build-map
     | build-map-png | gc
 ```
@@ -161,6 +162,13 @@ conflicts preserve the original overlay and refuse execution. Promotion is
 serialized, atomically applied, restricted to owned `KlibGenGt-*` package
 paths, and leaves reviewable uncommitted changes in the outer JJ working copy.
 It never creates a JJ change or commit.
+
+`just lint-source` round-trips every authoritative `.st` file through the
+pinned image's Tonel writer and requires an exact byte match. The same gate runs
+inside canonical project-source construction and after staging rebase before a
+GUI or agentic image is attached. It checks Tonel serialization only: method
+bodies are not pretty-printed. A failure leaves source and staging unchanged
+and reports the paths and bounded unified diffs that Export would introduce.
 
 The GUI workflow is deliberately singular:
 

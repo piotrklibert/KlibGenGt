@@ -101,6 +101,10 @@ This is a Glamorous Toolkit / Pharo Smalltalk project.
 
 - Always run `just check-type-pragmas` to use `KGCheckTypePragmas` to check the
   syntax of type annotations after adding or modifying them.
+
+- Run `just lint-source` after changing `.st` files. It loads source in the
+  pinned GT runtime and rejects any exact Tonel text that an immediate Iceberg
+  export would rewrite; it deliberately does not pretty-print method bodies.
   
 - Lepiter docs go under `lepiter/`.
 

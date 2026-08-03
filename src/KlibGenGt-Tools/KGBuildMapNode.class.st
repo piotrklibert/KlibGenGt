@@ -1,4 +1,5 @@
-"A typed node in a host-generated build inventory.
+"
+A typed node in a host-generated build inventory.
 
 - Slots
   - `record` (`#KGJsonInventoryNodeRecord`, `accessing`) - Typed node data produced by the host collector.
@@ -48,6 +49,66 @@ KGBuildMapNode >> buildMap: aBuildMap [
 	<arg: #aBuildMap type: #KGBuildMap>
 	<return: #KGBuildMapNode>
 	buildMap := aBuildMap
+]
+
+{ #category : 'views' }
+KGBuildMapNode >> gtCharacteristicsFor: aView [
+	<gtView>
+	<arg: #aView type: #GtPhlowView>
+	<return: #GtPhlowView>
+	^ aView textEditor
+		title: 'Characteristics';
+		priority: 20;
+		text: [ STONJSON toStringPretty: record characteristics ]
+]
+
+{ #category : 'views' }
+KGBuildMapNode >> gtComponentsFor: aView [
+	<gtView>
+	<arg: #aView type: #GtPhlowView>
+	<return: #GtPhlowView>
+	^ aView columnedList
+		title: 'Components';
+		priority: 10;
+		items: [ record asDictionary at: 'components' ifAbsent: [ #() ] ];
+		column: 'Name' text: [ :each | each at: 'name' ];
+		column: 'Logical' text: [ :each | buildMap humanBytes: (each at: 'logicalBytes') ];
+		column: 'Allocated' text: [ :each | buildMap humanBytes: (each at: 'allocatedBytes') ];
+		column: 'Files' text: [ :each | each at: 'fileCount' ];
+		column: 'Path' text: [ :each | each at: 'path' ]
+]
+
+{ #category : 'views' }
+KGBuildMapNode >> gtRelationshipsFor: aView [
+	<gtView>
+	<arg: #aView type: #GtPhlowView>
+	<return: #GtPhlowView>
+	^ aView columnedList
+		title: 'Relationships';
+		priority: 15;
+		items: [ self relationships ];
+		column: 'Kind' text: #kind;
+		column: 'From' text: #source;
+		column: 'To' text: #target
+]
+
+{ #category : 'views' }
+KGBuildMapNode >> gtSummaryFor: aView [
+	<gtView>
+	<arg: #aView type: #GtPhlowView>
+	<return: #GtPhlowView>
+	^ aView columnedList
+		title: 'Summary';
+		priority: 1;
+		items: [ {
+			'Kind' -> self kind.
+			'Status' -> self status.
+			'Logical size' -> (buildMap humanBytes: self logicalBytes).
+			'Allocated size' -> (buildMap humanBytes: self allocatedBytes).
+			'Files' -> record fileCount.
+			'Path' -> (record path ifNil: [ '' ]) } ];
+		column: 'Characteristic' text: #key;
+		column: 'Value' text: [ :each | each value asString ]
 ]
 
 { #category : 'accessing' }
@@ -111,64 +172,4 @@ KGBuildMapNode >> relationships [
 KGBuildMapNode >> status [
 	<return: #String>
 	^ record status
-]
-
-{ #category : 'views' }
-KGBuildMapNode >> gtCharacteristicsFor: aView [
-	<gtView>
-	<arg: #aView type: #GtPhlowView>
-	<return: #GtPhlowView>
-	^ aView textEditor
-		title: 'Characteristics';
-		priority: 20;
-		text: [ STONJSON toStringPretty: record characteristics ]
-]
-
-{ #category : 'views' }
-KGBuildMapNode >> gtComponentsFor: aView [
-	<gtView>
-	<arg: #aView type: #GtPhlowView>
-	<return: #GtPhlowView>
-	^ aView columnedList
-		title: 'Components';
-		priority: 10;
-		items: [ record asDictionary at: 'components' ifAbsent: [ #() ] ];
-		column: 'Name' text: [ :each | each at: 'name' ];
-		column: 'Logical' text: [ :each | buildMap humanBytes: (each at: 'logicalBytes') ];
-		column: 'Allocated' text: [ :each | buildMap humanBytes: (each at: 'allocatedBytes') ];
-		column: 'Files' text: [ :each | each at: 'fileCount' ];
-		column: 'Path' text: [ :each | each at: 'path' ]
-]
-
-{ #category : 'views' }
-KGBuildMapNode >> gtRelationshipsFor: aView [
-	<gtView>
-	<arg: #aView type: #GtPhlowView>
-	<return: #GtPhlowView>
-	^ aView columnedList
-		title: 'Relationships';
-		priority: 15;
-		items: [ self relationships ];
-		column: 'Kind' text: #kind;
-		column: 'From' text: #source;
-		column: 'To' text: #target
-]
-
-{ #category : 'views' }
-KGBuildMapNode >> gtSummaryFor: aView [
-	<gtView>
-	<arg: #aView type: #GtPhlowView>
-	<return: #GtPhlowView>
-	^ aView columnedList
-		title: 'Summary';
-		priority: 1;
-		items: [ {
-			'Kind' -> self kind.
-			'Status' -> self status.
-			'Logical size' -> (buildMap humanBytes: self logicalBytes).
-			'Allocated size' -> (buildMap humanBytes: self allocatedBytes).
-			'Files' -> record fileCount.
-			'Path' -> (record path ifNil: [ '' ]) } ];
-		column: 'Characteristic' text: #key;
-		column: 'Value' text: [ :each | each value asString ]
 ]

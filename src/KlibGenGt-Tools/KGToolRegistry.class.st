@@ -16,7 +16,18 @@ Own deterministic versioned lookup for every structured image tool.
   - {{gtMethod:KGToolRegistry>>#identifiers}}
     Answer sorted registered identifiers.
 "
-Class { #name : 'KGToolRegistry', #superclass : 'Object', #instVars : [ 'registrations' ], #classVars : [ 'Default' ], #category : 'KlibGenGt-Tools', #package : 'KlibGenGt-Tools' }
+Class {
+	#name : 'KGToolRegistry',
+	#superclass : 'Object',
+	#instVars : [
+		'registrations'
+	],
+	#classVars : [
+		'Default'
+	],
+	#category : 'KlibGenGt-Tools',
+	#package : 'KlibGenGt-Tools'
+}
 
 { #category : 'accessing' }
 KGToolRegistry class >> default [
@@ -25,7 +36,8 @@ KGToolRegistry class >> default [
 ]
 
 { #category : 'testing' }
-KGToolRegistry class >> resetDefault [ <return: #KGToolRegistry> Default := nil. ^ self ]
+KGToolRegistry class >> resetDefault [ <return: #KGToolRegistry> Default := nil. ^ self
+]
 
 { #category : 'accessing' }
 KGToolRegistry >> at: anIdentifier [
@@ -34,10 +46,12 @@ KGToolRegistry >> at: anIdentifier [
 ]
 
 { #category : 'accessing' }
-KGToolRegistry >> identifiers [ <return: #(Array<String>)> ^ registrations keys sorted asArray ]
+KGToolRegistry >> identifiers [ <return: #(Array<String>)> ^ registrations keys sorted asArray
+]
 
 { #category : 'initialization' }
-KGToolRegistry >> initialize [ <return: #KGToolRegistry> super initialize. registrations := Dictionary new. ^ self ]
+KGToolRegistry >> initialize [ <return: #KGToolRegistry> super initialize. registrations := Dictionary new. ^ self
+]
 
 { #category : 'installation' }
 KGToolRegistry >> installStandardTools [

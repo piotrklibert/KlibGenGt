@@ -757,6 +757,14 @@ reuse the same artifact.
 
 The build bridge is temporary. It MUST NOT be copied into every later session.
 
+After loading and before publication, the project-source step MUST export every
+project `.st` definition with the pinned runtime's Tonel writer and compare the
+result byte-for-byte with its input. Any difference is a build failure. This is
+a serialization canonicality check, not a method-body pretty-printer. Named
+staging attachment MUST run the same check after rebase and before launching a
+GUI or agentic image, so an immediate Export without image-side edits is an
+empty source diff.
+
 ### 15.2 Staging overlay
 
 A staging area stores source-form changes, base identity, Git head, generation,

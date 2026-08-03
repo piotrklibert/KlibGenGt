@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `RecipeCatalogTargetRecord`.
 
@@ -15,7 +16,8 @@ Immutable JSON record generated from `RecipeCatalogTargetRecord`.
   - {{gtMethod:KGJsonRecipeCatalogTargetRecord>>#preset}}
     Answer the immutable `preset` field value.
   - {{gtMethod:KGJsonRecipeCatalogTargetRecord>>#roles}}
-    Answer the immutable `roles` field value."
+    Answer the immutable `roles` field value.
+"
 Class {
 	#name : 'KGJsonRecipeCatalogTargetRecord',
 	#superclass : 'KGJsonRecord',
@@ -58,15 +60,15 @@ KGJsonRecipeCatalogTargetRecord >> name [
 ]
 
 { #category : 'accessing' }
-KGJsonRecipeCatalogTargetRecord >> recipe [
-	<return: #String>
-	^ self defensiveJsonValue: recipe
-]
-
-{ #category : 'accessing' }
 KGJsonRecipeCatalogTargetRecord >> preset [
 	<return: #KGJsonLaunchPresetRecord>
 	^ self defensiveJsonValue: preset
+]
+
+{ #category : 'accessing' }
+KGJsonRecipeCatalogTargetRecord >> recipe [
+	<return: #String>
+	^ self defensiveJsonValue: recipe
 ]
 
 { #category : 'accessing' }

@@ -1,4 +1,5 @@
-"Session hooks for one writable GUI run and its attached named-staging Iceberg repository.
+"
+Session hooks for one writable GUI run and its attached named-staging Iceberg repository.
 
 - Slots
   - `DidOpen` (`#Boolean`, class state, `system startup`) - Records whether startup already opened or reused the run world.
@@ -93,24 +94,14 @@ KGGuiSessionHooks class >> ensureQuitPolicyOn: world [
 	^ self
 ]
 
-{ #category : 'private - startup' }
-KGGuiSessionHooks class >> scheduleExportButtonInstallationOn: world replacing: staleWorld [
-	<arg: #world type: #GtWorld>
-	<arg: #staleWorld type: #(GtWorld?)>
+{ #category : 'private - events' }
+KGGuiSessionHooks class >> handleIcebergCommit: announcement [
+	<arg: #announcement type: #IceCommited>
 	<return: #KGGuiSessionHooks>
-	world root enqueueTask: (BlTaskAction new action: [
-		world markAsDefault.
-		staleWorld ifNotNil: [
-			staleWorld ~~ world ifTrue: [
-				staleWorld removeEventHandlersSuchThat: [ :eachHandler |
-					(eachHandler isKindOf: GtWorldCloseEventHandler)
-						or: [ eachHandler isKindOf: KGGuiWorldCloseEventHandler ] ].
-				"This task runs on the shared Bloc universe pulse. Close synchronously so
-				 the stale release world cannot remain registered without another pulse."
-				staleWorld universe closeSpaceSynchronously: staleWorld ] ].
-		world markAsDefault.
-		KGExportButton installOn: world ]).
-	world requestNextPulse.
+	| repositoryPath |
+	repositoryPath := announcement repository location fullName.
+	(self handlesRepositoryPath: repositoryPath) ifTrue: [
+		self emitIcebergCommittedForRepositoryPath: repositoryPath ].
 	^ self
 ]
 
@@ -122,17 +113,6 @@ KGGuiSessionHooks class >> handlesRepositoryPath: repositoryPath [
 	gitPath := (KGSession current manifest inputs at: 'sourceGit' ifAbsent: [ ^ false ]).
 	^ repositoryPath asFileReference fullName
 		= gitPath asFileReference parent fullName
-]
-
-{ #category : 'private - events' }
-KGGuiSessionHooks class >> handleIcebergCommit: announcement [
-	<arg: #announcement type: #IceCommited>
-	<return: #KGGuiSessionHooks>
-	| repositoryPath |
-	repositoryPath := announcement repository location fullName.
-	(self handlesRepositoryPath: repositoryPath) ifTrue: [
-		self emitIcebergCommittedForRepositoryPath: repositoryPath ].
-	^ self
 ]
 
 { #category : 'public - subscriptions' }
@@ -194,6 +174,27 @@ KGGuiSessionHooks class >> requestQuitIn: world [
 	cancel := BrButton new aptitude: BrGlamorousButtonWithLabelAptitude; beSmallSize; label: 'Don''t quit'; action: [ :button | prompt removeFromParent ].
 	prompt addChildren: { question. save. discard. cancel }.
 	worldElement addChild: prompt.
+	^ self
+]
+
+{ #category : 'private - startup' }
+KGGuiSessionHooks class >> scheduleExportButtonInstallationOn: world replacing: staleWorld [
+	<arg: #world type: #GtWorld>
+	<arg: #staleWorld type: #(GtWorld?)>
+	<return: #KGGuiSessionHooks>
+	world root enqueueTask: (BlTaskAction new action: [
+		world markAsDefault.
+		staleWorld ifNotNil: [
+			staleWorld ~~ world ifTrue: [
+				staleWorld removeEventHandlersSuchThat: [ :eachHandler |
+					(eachHandler isKindOf: GtWorldCloseEventHandler)
+						or: [ eachHandler isKindOf: KGGuiWorldCloseEventHandler ] ].
+				"This task runs on the shared Bloc universe pulse. Close synchronously so
+				 the stale release world cannot remain registered without another pulse."
+				staleWorld universe closeSpaceSynchronously: staleWorld ] ].
+		world markAsDefault.
+		KGExportButton installOn: world ]).
+	world requestNextPulse.
 	^ self
 ]
 

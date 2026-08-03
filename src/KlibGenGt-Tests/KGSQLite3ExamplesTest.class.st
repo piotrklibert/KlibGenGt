@@ -10,7 +10,8 @@ Class {
 	#name : 'KGSQLite3ExamplesTest',
 	#superclass : 'TestCase',
 	#category : 'KlibGenGt-Tests-DB',
-	#package : 'KlibGenGt-Tests'
+	#package : 'KlibGenGt-Tests',
+	#tag : 'DB'
 }
 
 { #category : 'tests' }

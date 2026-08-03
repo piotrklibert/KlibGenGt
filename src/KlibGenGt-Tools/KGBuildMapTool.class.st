@@ -1,4 +1,5 @@
-"Registered image-side entry point for build-map PNG export.
+"
+Registered image-side entry point for build-map PNG export.
 
 - Slots
   - none

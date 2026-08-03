@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `SessionReadyV1`.
 
@@ -15,7 +16,8 @@ Immutable JSON record generated from `SessionReadyV1`.
   - {{gtMethod:KGSessionReadyV1>>#sessionId}}
     Answer the immutable `sessionId` field value.
   - {{gtMethod:KGSessionReadyV1>>#ready}}
-    Answer the immutable `ready` field value."
+    Answer the immutable `ready` field value.
+"
 Class {
 	#name : 'KGSessionReadyV1',
 	#superclass : 'KGJsonRecord',
@@ -52,6 +54,12 @@ KGSessionReadyV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGSessionReadyV1 >> ready [
+	<return: #Boolean>
+	^ self defensiveJsonValue: ready
+]
+
+{ #category : 'accessing' }
 KGSessionReadyV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -67,10 +75,4 @@ KGSessionReadyV1 >> schemaVersion [
 KGSessionReadyV1 >> sessionId [
 	<return: #String>
 	^ self defensiveJsonValue: sessionId
-]
-
-{ #category : 'accessing' }
-KGSessionReadyV1 >> ready [
-	<return: #Boolean>
-	^ self defensiveJsonValue: ready
 ]

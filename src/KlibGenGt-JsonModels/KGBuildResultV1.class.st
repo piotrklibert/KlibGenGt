@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `BuildResultV1`.
 
@@ -24,7 +25,8 @@ Immutable JSON record generated from `BuildResultV1`.
   - {{gtMethod:KGBuildResultV1>>#artifacts}}
     Answer the immutable `artifacts` field value.
   - {{gtMethod:KGBuildResultV1>>#reference}}
-    Answer the immutable `reference` field value."
+    Answer the immutable `reference` field value.
+"
 Class {
 	#name : 'KGBuildResultV1',
 	#superclass : 'KGJsonRecord',
@@ -67,6 +69,30 @@ KGBuildResultV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGBuildResultV1 >> artifacts [
+	<return: #(Array<KGJsonPublishedArtifactRecord>)>
+	^ self defensiveJsonValue: artifacts
+]
+
+{ #category : 'accessing' }
+KGBuildResultV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
+KGBuildResultV1 >> outputKey [
+	<return: #String>
+	^ self defensiveJsonValue: outputKey
+]
+
+{ #category : 'accessing' }
+KGBuildResultV1 >> reference [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: reference
+]
+
+{ #category : 'accessing' }
 KGBuildResultV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -79,31 +105,7 @@ KGBuildResultV1 >> schemaVersion [
 ]
 
 { #category : 'accessing' }
-KGBuildResultV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
 KGBuildResultV1 >> target [
 	<return: #String>
 	^ self defensiveJsonValue: target
-]
-
-{ #category : 'accessing' }
-KGBuildResultV1 >> outputKey [
-	<return: #String>
-	^ self defensiveJsonValue: outputKey
-]
-
-{ #category : 'accessing' }
-KGBuildResultV1 >> artifacts [
-	<return: #(Array<KGJsonPublishedArtifactRecord>)>
-	^ self defensiveJsonValue: artifacts
-]
-
-{ #category : 'accessing' }
-KGBuildResultV1 >> reference [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: reference
 ]

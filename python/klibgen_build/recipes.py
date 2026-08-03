@@ -283,10 +283,10 @@ PROJECT_SOURCE_STEP = Step(
     "project-source",
     StepImplementation(
         "project-source-v2",
-        2,
+        3,
         "image-workspace",
         "image-workspace",
-        ("build/v2/scripts/load-project-source.st",),
+        ("build/v2/scripts/load-project-source.st", "python/klibgen_build/tonel_lint.py"),
     ),
     {"jjTree": {"paths": ["src"], "exclude": ["src/KlibGenGt-BuildSupport"]}},
 )

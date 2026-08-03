@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `SuffixStorageRecord`.
 
@@ -9,7 +10,8 @@ Immutable JSON record generated from `SuffixStorageRecord`.
   - {{gtMethod:KGJsonSuffixStorageRecord>>#count}}
     Answer the immutable `count` field value.
   - {{gtMethod:KGJsonSuffixStorageRecord>>#logicalBytes}}
-    Answer the immutable `logicalBytes` field value."
+    Answer the immutable `logicalBytes` field value.
+"
 Class {
 	#name : 'KGJsonSuffixStorageRecord',
 	#superclass : 'KGJsonRecord',

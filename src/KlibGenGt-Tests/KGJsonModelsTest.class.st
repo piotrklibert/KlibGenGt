@@ -1,11 +1,17 @@
-"SUnit coverage for generated v0.2 JSON records and named-schema dispatch.
+"
+SUnit coverage for generated v0.2 JSON records and named-schema dispatch.
 
 - Slots
   - none
 - Public API
   - none; test selectors document generated JSON model contracts.
 "
-Class { #name : 'KGJsonModelsTest', #superclass : 'TestCase', #category : 'KlibGenGt-Tests', #package : 'KlibGenGt-Tests' }
+Class {
+	#name : 'KGJsonModelsTest',
+	#superclass : 'TestCase',
+	#category : 'KlibGenGt-Tests',
+	#package : 'KlibGenGt-Tests'
+}
 
 { #category : 'private - fixtures' }
 KGJsonModelsTest >> inventoryDictionary [

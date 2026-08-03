@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `ResolvedStepRecord`.
 
@@ -30,7 +31,8 @@ Immutable JSON record generated from `ResolvedStepRecord`.
   - {{gtMethod:KGJsonResolvedStepRecord>>#checkpoint}}
     Answer the immutable `checkpoint` field value.
   - {{gtMethod:KGJsonResolvedStepRecord>>#origin}}
-    Answer the immutable `origin` field value."
+    Answer the immutable `origin` field value.
+"
 Class {
 	#name : 'KGJsonResolvedStepRecord',
 	#superclass : 'KGJsonRecord',
@@ -77,9 +79,9 @@ KGJsonResolvedStepRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonResolvedStepRecord >> role [
+KGJsonResolvedStepRecord >> checkpoint [
 	<return: #String>
-	^ self defensiveJsonValue: role
+	^ self defensiveJsonValue: checkpoint
 ]
 
 { #category : 'accessing' }
@@ -95,21 +97,9 @@ KGJsonResolvedStepRecord >> implementationInputs [
 ]
 
 { #category : 'accessing' }
-KGJsonResolvedStepRecord >> resolvedConfiguration [
-	<return: #(Dictionary<String, Any>)>
-	^ self defensiveJsonValue: resolvedConfiguration
-]
-
-{ #category : 'accessing' }
-KGJsonResolvedStepRecord >> parentOutputKey [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: parentOutputKey
-]
-
-{ #category : 'accessing' }
-KGJsonResolvedStepRecord >> stepKey [
+KGJsonResolvedStepRecord >> origin [
 	<return: #String>
-	^ self defensiveJsonValue: stepKey
+	^ self defensiveJsonValue: origin
 ]
 
 { #category : 'accessing' }
@@ -119,13 +109,25 @@ KGJsonResolvedStepRecord >> outputKey [
 ]
 
 { #category : 'accessing' }
-KGJsonResolvedStepRecord >> checkpoint [
-	<return: #String>
-	^ self defensiveJsonValue: checkpoint
+KGJsonResolvedStepRecord >> parentOutputKey [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: parentOutputKey
 ]
 
 { #category : 'accessing' }
-KGJsonResolvedStepRecord >> origin [
+KGJsonResolvedStepRecord >> resolvedConfiguration [
+	<return: #(Dictionary<String, Any>)>
+	^ self defensiveJsonValue: resolvedConfiguration
+]
+
+{ #category : 'accessing' }
+KGJsonResolvedStepRecord >> role [
 	<return: #String>
-	^ self defensiveJsonValue: origin
+	^ self defensiveJsonValue: role
+]
+
+{ #category : 'accessing' }
+KGJsonResolvedStepRecord >> stepKey [
+	<return: #String>
+	^ self defensiveJsonValue: stepKey
 ]

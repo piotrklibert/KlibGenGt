@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `WorkspaceV1`.
 
@@ -48,7 +49,8 @@ Immutable JSON record generated from `WorkspaceV1`.
   - {{gtMethod:KGWorkspaceV1>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGWorkspaceV1>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGWorkspaceV1',
 	#superclass : 'KGJsonRecord',
@@ -107,36 +109,6 @@ KGWorkspaceV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGWorkspaceV1 >> schemaValue [
-	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGWorkspaceV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGWorkspaceV1 >> name [
-	<return: #String>
-	^ self defensiveJsonValue: name
-]
-
-{ #category : 'accessing' }
-KGWorkspaceV1 >> state [
-	<return: #String>
-	^ self defensiveJsonValue: state
-]
-
-{ #category : 'accessing' }
-KGWorkspaceV1 >> projectKey [
-	<return: #String>
-	^ self defensiveJsonValue: projectKey
-]
-
-{ #category : 'accessing' }
 KGWorkspaceV1 >> artifactPath [
 	<return: #String>
 	^ self defensiveJsonValue: artifactPath
@@ -149,15 +121,21 @@ KGWorkspaceV1 >> baseSource [
 ]
 
 { #category : 'accessing' }
-KGWorkspaceV1 >> sourceGit [
-	<return: #String>
-	^ self defensiveJsonValue: sourceGit
-]
-
-{ #category : 'accessing' }
 KGWorkspaceV1 >> lastCompletion [
 	<return: #(KGSessionCompletionV1 | UndefinedObject)>
 	^ self defensiveJsonValue: lastCompletion
+]
+
+{ #category : 'accessing' }
+KGWorkspaceV1 >> name [
+	<return: #String>
+	^ self defensiveJsonValue: name
+]
+
+{ #category : 'accessing' }
+KGWorkspaceV1 >> path [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: path
 ]
 
 { #category : 'accessing' }
@@ -167,9 +145,33 @@ KGWorkspaceV1 >> pid [
 ]
 
 { #category : 'accessing' }
+KGWorkspaceV1 >> projectKey [
+	<return: #String>
+	^ self defensiveJsonValue: projectKey
+]
+
+{ #category : 'accessing' }
+KGWorkspaceV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
+]
+
+{ #category : 'accessing' }
+KGWorkspaceV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
+]
+
+{ #category : 'accessing' }
 KGWorkspaceV1 >> sessionId [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: sessionId
+]
+
+{ #category : 'accessing' }
+KGWorkspaceV1 >> sourceGit [
+	<return: #String>
+	^ self defensiveJsonValue: sourceGit
 ]
 
 { #category : 'accessing' }
@@ -185,9 +187,9 @@ KGWorkspaceV1 >> stagingGeneration [
 ]
 
 { #category : 'accessing' }
-KGWorkspaceV1 >> path [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: path
+KGWorkspaceV1 >> state [
+	<return: #String>
+	^ self defensiveJsonValue: state
 ]
 
 { #category : 'accessing' }

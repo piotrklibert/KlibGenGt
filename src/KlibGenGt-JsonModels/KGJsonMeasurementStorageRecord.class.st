@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `MeasurementStorageRecord`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `MeasurementStorageRecord`.
   - {{gtMethod:KGJsonMeasurementStorageRecord>>#allocatedBytes}}
     Answer the immutable `allocatedBytes` field value.
   - {{gtMethod:KGJsonMeasurementStorageRecord>>#files}}
-    Answer the immutable `files` field value."
+    Answer the immutable `files` field value.
+"
 Class {
 	#name : 'KGJsonMeasurementStorageRecord',
 	#superclass : 'KGJsonRecord',
@@ -47,12 +49,6 @@ KGJsonMeasurementStorageRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonMeasurementStorageRecord >> logicalBytes [
-	<return: #Integer>
-	^ self defensiveJsonValue: logicalBytes
-]
-
-{ #category : 'accessing' }
 KGJsonMeasurementStorageRecord >> allocatedBytes [
 	<return: #Integer>
 	^ self defensiveJsonValue: allocatedBytes
@@ -62,4 +58,10 @@ KGJsonMeasurementStorageRecord >> allocatedBytes [
 KGJsonMeasurementStorageRecord >> files [
 	<return: #(Dictionary<String, KGJsonSuffixStorageRecord>)>
 	^ self defensiveJsonValue: files
+]
+
+{ #category : 'accessing' }
+KGJsonMeasurementStorageRecord >> logicalBytes [
+	<return: #Integer>
+	^ self defensiveJsonValue: logicalBytes
 ]

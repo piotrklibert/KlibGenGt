@@ -14,22 +14,6 @@ Class {
 }
 
 { #category : 'tests' }
-KGCheckTypePragmasTest >> testRejectsLegacyReturnsPragma [
-	| results |
-	self class
-		compile: 'kgLegacyReturnsProbe
-	<returns: #String>
-	^ ''legacy'''
-		classified: 'tests'.
-	[
-		results := KGCheckTypePragmas new inClass: self class.
-		self assert: (results anySatisfy: [ :each |
-			((each at: #source) includesSubstring: 'kgLegacyReturnsProbe')
-				and: [ (each at: #valid) not ] ])
-	] ensure: [ self class removeSelector: #kgLegacyReturnsProbe ]
-]
-
-{ #category : 'tests' }
 KGCheckTypePragmasTest >> testInPackageIncludesExtensionMethods [
 	| results |
 	results := KGCheckTypePragmas new inPackage: 'KlibGenGt-Core'.
@@ -56,6 +40,22 @@ KGCheckTypePragmasTest >> testProjectTypeAnnotationsAreValid [
 				lf ] ].
 	self deny: results isEmpty.
 	self assert: invalid isEmpty description: description
+]
+
+{ #category : 'tests' }
+KGCheckTypePragmasTest >> testRejectsLegacyReturnsPragma [
+	| results |
+	self class
+		compile: 'kgLegacyReturnsProbe
+	<returns: #String>
+	^ ''legacy'''
+		classified: 'tests'.
+	[
+		results := KGCheckTypePragmas new inClass: self class.
+		self assert: (results anySatisfy: [ :each |
+			((each at: #source) includesSubstring: 'kgLegacyReturnsProbe')
+				and: [ (each at: #valid) not ] ])
+	] ensure: [ self class removeSelector: #kgLegacyReturnsProbe ]
 ]
 
 { #category : 'tests' }

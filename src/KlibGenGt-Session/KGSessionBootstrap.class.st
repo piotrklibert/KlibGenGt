@@ -11,7 +11,33 @@ Validate a session manifest, install capabilities, dispatch its entrypoint, and 
   - {{gtMethod:KGSessionBootstrap class>>#installManifest:}}
     Validate provenance and install capability variants without dispatching.
 "
-Class { #name : 'KGSessionBootstrap', #superclass : 'Object', #category : 'KlibGenGt-Session', #package : 'KlibGenGt-Session' }
+Class {
+	#name : 'KGSessionBootstrap',
+	#superclass : 'Object',
+	#category : 'KlibGenGt-Session',
+	#package : 'KlibGenGt-Session'
+}
+
+{ #category : 'installation' }
+KGSessionBootstrap class >> installManifest: manifest [
+	<arg: #manifest type: #(Dictionary<String, Any>)> <return: #KGSession>
+	| typedManifest preset source persistence |
+	typedManifest := KGJsonModelRegistry parseDictionary: manifest.
+	(typedManifest isKindOf: KGSessionV1) ifFalse: [ self error: 'Unsupported session manifest schema' ].
+	KGBuildProvenance verifyProjectKey: typedManifest projectKey.
+	preset := typedManifest preset.
+	source := self sourceChangesNamed: preset sourceChanges manifest: typedManifest.
+	persistence := self persistenceNamed: preset persistence.
+	KGSession reset.
+	^ KGSession installManifest: typedManifest sourceChanges: source persistence: persistence
+]
+
+{ #category : 'private - capabilities' }
+KGSessionBootstrap class >> persistenceNamed: aString [
+	aString = 'discard' ifTrue: [ ^ KGDiscardPersistence new ].
+	aString = 'workspace' ifTrue: [ ^ KGWorkspacePersistence new ].
+	self error: 'Unknown persistence capability: ', aString
+]
 
 { #category : 'running' }
 KGSessionBootstrap class >> runFromEnvironment [
@@ -45,27 +71,6 @@ KGSessionBootstrap class >> runManifest: manifest [
 	completion := KGSessionCompletionV1 fromDictionary: (OrderedDictionary new at: 'schema' put: 'klibgen.session-completion/1'; at: 'sessionId' put: sessionId; at: 'state' put: state; at: 'ok' put: (response at: 'ok'); at: 'sourceChangeCount' put: session sourceChanges changeCount; yourself).
 	KGAtomicJsonWriter write: completion to: paths completion.
 	^ (response at: 'ok') ifTrue: [ 0 ] ifFalse: [ 1 ]
-]
-
-{ #category : 'installation' }
-KGSessionBootstrap class >> installManifest: manifest [
-	<arg: #manifest type: #(Dictionary<String, Any>)> <return: #KGSession>
-	| typedManifest preset source persistence |
-	typedManifest := KGJsonModelRegistry parseDictionary: manifest.
-	(typedManifest isKindOf: KGSessionV1) ifFalse: [ self error: 'Unsupported session manifest schema' ].
-	KGBuildProvenance verifyProjectKey: typedManifest projectKey.
-	preset := typedManifest preset.
-	source := self sourceChangesNamed: preset sourceChanges manifest: typedManifest.
-	persistence := self persistenceNamed: preset persistence.
-	KGSession reset.
-	^ KGSession installManifest: typedManifest sourceChanges: source persistence: persistence
-]
-
-{ #category : 'private - capabilities' }
-KGSessionBootstrap class >> persistenceNamed: aString [
-	aString = 'discard' ifTrue: [ ^ KGDiscardPersistence new ].
-	aString = 'workspace' ifTrue: [ ^ KGWorkspacePersistence new ].
-	self error: 'Unknown persistence capability: ', aString
 ]
 
 { #category : 'private - capabilities' }

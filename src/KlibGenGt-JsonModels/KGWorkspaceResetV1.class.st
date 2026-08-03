@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `WorkspaceResetV1`.
 
@@ -18,7 +19,8 @@ Immutable JSON record generated from `WorkspaceResetV1`.
   - {{gtMethod:KGWorkspaceResetV1>>#name}}
     Answer the immutable `name` field value.
   - {{gtMethod:KGWorkspaceResetV1>>#removed}}
-    Answer the immutable `removed` field value."
+    Answer the immutable `removed` field value.
+"
 Class {
 	#name : 'KGWorkspaceResetV1',
 	#superclass : 'KGJsonRecord',
@@ -57,15 +59,9 @@ KGWorkspaceResetV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGWorkspaceResetV1 >> schemaValue [
+KGWorkspaceResetV1 >> name [
 	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGWorkspaceResetV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
+	^ self defensiveJsonValue: name
 ]
 
 { #category : 'accessing' }
@@ -75,13 +71,19 @@ KGWorkspaceResetV1 >> operation [
 ]
 
 { #category : 'accessing' }
-KGWorkspaceResetV1 >> name [
-	<return: #String>
-	^ self defensiveJsonValue: name
-]
-
-{ #category : 'accessing' }
 KGWorkspaceResetV1 >> removed [
 	<return: #Boolean>
 	^ self defensiveJsonValue: removed
+]
+
+{ #category : 'accessing' }
+KGWorkspaceResetV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
+]
+
+{ #category : 'accessing' }
+KGWorkspaceResetV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
 ]

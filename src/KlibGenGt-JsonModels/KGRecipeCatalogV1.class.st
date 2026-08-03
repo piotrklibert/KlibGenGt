@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `RecipeCatalogV1`.
 
@@ -15,7 +16,8 @@ Immutable JSON record generated from `RecipeCatalogV1`.
   - {{gtMethod:KGRecipeCatalogV1>>#operation}}
     Answer the immutable `operation` field value.
   - {{gtMethod:KGRecipeCatalogV1>>#targets}}
-    Answer the immutable `targets` field value."
+    Answer the immutable `targets` field value.
+"
 Class {
 	#name : 'KGRecipeCatalogV1',
 	#superclass : 'KGJsonRecord',
@@ -52,6 +54,12 @@ KGRecipeCatalogV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGRecipeCatalogV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
 KGRecipeCatalogV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -61,12 +69,6 @@ KGRecipeCatalogV1 >> schemaValue [
 KGRecipeCatalogV1 >> schemaVersion [
 	<return: #Integer>
 	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGRecipeCatalogV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
 ]
 
 { #category : 'accessing' }

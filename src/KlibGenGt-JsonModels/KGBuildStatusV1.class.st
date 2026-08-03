@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `BuildStatusV1`.
 
@@ -36,7 +37,8 @@ Immutable JSON record generated from `BuildStatusV1`.
   - {{gtMethod:KGBuildStatusV1>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGBuildStatusV1>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGBuildStatusV1',
 	#superclass : 'KGJsonRecord',
@@ -87,39 +89,15 @@ KGBuildStatusV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGBuildStatusV1 >> schemaValue [
-	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGBuildStatusV1 >> schemaVersion [
-	<return: #(Integer | UndefinedObject)>
-	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGBuildStatusV1 >> state [
-	<return: #String>
-	^ self defensiveJsonValue: state
-]
-
-{ #category : 'accessing' }
-KGBuildStatusV1 >> outputKey [
-	<return: #String>
-	^ self defensiveJsonValue: outputKey
-]
-
-{ #category : 'accessing' }
-KGBuildStatusV1 >> role [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: role
-]
-
-{ #category : 'accessing' }
 KGBuildStatusV1 >> artifactPath [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: artifactPath
+]
+
+{ #category : 'accessing' }
+KGBuildStatusV1 >> diagnosticPath [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: diagnosticPath
 ]
 
 { #category : 'accessing' }
@@ -135,15 +113,39 @@ KGBuildStatusV1 >> failedAt [
 ]
 
 { #category : 'accessing' }
-KGBuildStatusV1 >> diagnosticPath [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: diagnosticPath
+KGBuildStatusV1 >> outputKey [
+	<return: #String>
+	^ self defensiveJsonValue: outputKey
 ]
 
 { #category : 'accessing' }
 KGBuildStatusV1 >> path [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: path
+]
+
+{ #category : 'accessing' }
+KGBuildStatusV1 >> role [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: role
+]
+
+{ #category : 'accessing' }
+KGBuildStatusV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
+]
+
+{ #category : 'accessing' }
+KGBuildStatusV1 >> schemaVersion [
+	<return: #(Integer | UndefinedObject)>
+	^ self defensiveJsonValue: schemaVersion
+]
+
+{ #category : 'accessing' }
+KGBuildStatusV1 >> state [
+	<return: #String>
+	^ self defensiveJsonValue: state
 ]
 
 { #category : 'accessing' }

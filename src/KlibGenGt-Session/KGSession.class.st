@@ -25,11 +25,24 @@ Represent immutable launch-time state and installed capabilities for one process
 Class {
 	#name : 'KGSession',
 	#superclass : 'Object',
-	#instVars : [ 'manifest', 'sourceChanges', 'persistence' ],
-	#classVars : [ 'Current' ],
+	#instVars : [
+		'manifest',
+		'sourceChanges',
+		'persistence'
+	],
+	#classVars : [
+		'Current'
+	],
 	#category : 'KlibGenGt-Session',
 	#package : 'KlibGenGt-Session'
 }
+
+{ #category : 'accessing' }
+KGSession class >> current [
+	<return: #KGSession>
+	Current ifNil: [ self error: 'No KlibGen session is installed' ].
+	^ Current
+]
 
 { #category : 'installation' }
 KGSession class >> installManifest: aManifest sourceChanges: aSourceCapability persistence: aPersistenceCapability [
@@ -45,18 +58,17 @@ KGSession class >> installManifest: aManifest sourceChanges: aSourceCapability p
 	^ Current
 ]
 
-{ #category : 'accessing' }
-KGSession class >> current [
-	<return: #KGSession>
-	Current ifNil: [ self error: 'No KlibGen session is installed' ].
-	^ Current
-]
-
 { #category : 'testing' }
 KGSession class >> reset [
 	<return: #KGSession>
 	Current := nil.
 	^ self
+]
+
+{ #category : 'accessing' }
+KGSession >> id [
+	<return: #String>
+	^ manifest sessionId
 ]
 
 { #category : 'initialization' }
@@ -71,12 +83,6 @@ KGSession >> initializeManifest: aManifest sourceChanges: aSourceCapability pers
 	sourceChanges := aSourceCapability.
 	persistence := aPersistenceCapability.
 	^ self
-]
-
-{ #category : 'accessing' }
-KGSession >> id [
-	<return: #String>
-	^ manifest sessionId
 ]
 
 { #category : 'accessing' }

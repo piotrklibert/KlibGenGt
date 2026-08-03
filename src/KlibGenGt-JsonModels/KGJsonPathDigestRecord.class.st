@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `PathDigestRecord`.
 
@@ -9,7 +10,8 @@ Immutable JSON record generated from `PathDigestRecord`.
   - {{gtMethod:KGJsonPathDigestRecord>>#digest}}
     Answer the immutable `digest` field value.
   - {{gtMethod:KGJsonPathDigestRecord>>#files}}
-    Answer the immutable `files` field value."
+    Answer the immutable `files` field value.
+"
 Class {
 	#name : 'KGJsonPathDigestRecord',
 	#superclass : 'KGJsonRecord',

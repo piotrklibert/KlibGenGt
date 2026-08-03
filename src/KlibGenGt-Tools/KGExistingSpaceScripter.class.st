@@ -1,4 +1,5 @@
-"Attach Bloc Scripter actions to an already-open space without moving its root element.
+"
+Attach Bloc Scripter actions to an already-open space without moving its root element.
 
 - Slots
   - none; inherited `BlScripter` state is rebound by {{gtMethod:KGExistingSpaceScripter>>#attachToSpace:}}.
@@ -16,19 +17,6 @@ Class {
 	#category : 'KlibGenGt-Tools',
 	#package : 'KlibGenGt-Tools'
 }
-
-{ #category : 'public - attaching' }
-KGExistingSpaceScripter >> attachToSpace: aSpace [
-	<arg: #aSpace type: #BlSpace>
-	<return: #KGExistingSpaceScripter>
-	space removeEventFilter: eventHandler.
-	space root removeEventFilter: eventHandler.
-	space := aSpace.
-	element := aSpace root.
-	space addEventFilter: eventHandler.
-	space root addEventFilter: eventHandler.
-	^ self
-]
 
 { #category : 'public - actions' }
 KGExistingSpaceScripter >> act: actionName on: target request: aRequest [
@@ -74,12 +62,17 @@ KGExistingSpaceScripter >> act: actionName on: target request: aRequest [
 	^ self
 ]
 
-{ #category : 'private - actions' }
-KGExistingSpaceScripter >> dispatch: events on: target [
-	events do: [ :event | event timestamp: DateAndTime now ].
-	events do: [ :event | space dispatchEvent: event ].
-	space dispatchEvent: BlSpaceEventsProcessedEvent new.
-	space requestNextPulse
+{ #category : 'public - attaching' }
+KGExistingSpaceScripter >> attachToSpace: aSpace [
+	<arg: #aSpace type: #BlSpace>
+	<return: #KGExistingSpaceScripter>
+	space removeEventFilter: eventHandler.
+	space root removeEventFilter: eventHandler.
+	space := aSpace.
+	element := aSpace root.
+	space addEventFilter: eventHandler.
+	space root addEventFilter: eventHandler.
+	^ self
 ]
 
 { #category : 'public - attaching' }
@@ -88,4 +81,12 @@ KGExistingSpaceScripter >> detach [
 	space removeEventFilter: eventHandler.
 	space root removeEventFilter: eventHandler.
 	^ self
+]
+
+{ #category : 'private - actions' }
+KGExistingSpaceScripter >> dispatch: events on: target [
+	events do: [ :event | event timestamp: DateAndTime now ].
+	events do: [ :event | space dispatchEvent: event ].
+	space dispatchEvent: BlSpaceEventsProcessedEvent new.
+	space requestNextPulse
 ]

@@ -16,6 +16,7 @@ from .processes import decode_output, run_command, start_command
 from .source_requests import service_source_requests
 from .store import atomic_json
 from .staging import acquire_staging_lease, release_staging_lease, validate_staging_name
+from .tonel_lint import lint_git_source
 from .v2state import V2Paths
 
 
@@ -83,6 +84,11 @@ def execute_session(
         staging_record = acquire_staging_lease(
             paths, staging_name, "agentic", session_id, os.getpid(),
         )
+        try:
+            lint_git_source(paths, Path(staging_record["sourceGit"]), artifact)
+        except Exception:
+            release_staging_lease(paths, staging_name, session_id)
+            raise
         inputs["sourceGit"] = staging_record["sourceGit"]
         inputs["stagingArea"] = staging_name
         inputs["stagingGeneration"] = staging_record.get("generation", 1)

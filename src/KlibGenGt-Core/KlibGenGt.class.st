@@ -147,6 +147,16 @@ Class {
 }
 
 { #category : 'accessing' }
+KlibGenGt class >> classHierarchyChildrenFor: aClass in: classes [
+	<arg: #aClass type: #ClassDescription>
+	<arg: #classes type: #(OrderedCollection | Array | Set)>
+	<return: #OrderedCollection>
+	^ classes select: [ :each |
+		each ~~ aClass and: [
+			(self classHierarchyParentOf: each in: classes) = aClass ] ]
+]
+
+{ #category : 'accessing' }
 KlibGenGt class >> classHierarchyClasses [
 	<return: #OrderedCollection>
 	| packageClasses classes |
@@ -156,16 +166,6 @@ KlibGenGt class >> classHierarchyClasses [
 	classes := (packageClasses flattened , self classHierarchyRootClasses)
 		asSet asOrderedCollection.
 	^ classes sorted: [ :a :b | a name < b name ]
-]
-
-{ #category : 'accessing' }
-KlibGenGt class >> classHierarchyChildrenFor: aClass in: classes [
-	<arg: #aClass type: #ClassDescription>
-	<arg: #classes type: #(OrderedCollection | Array | Set)>
-	<return: #OrderedCollection>
-	^ classes select: [ :each |
-		each ~~ aClass and: [
-			(self classHierarchyParentOf: each in: classes) = aClass ] ]
 ]
 
 { #category : 'examples' }

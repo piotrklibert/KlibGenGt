@@ -105,6 +105,14 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     if as_json:
         print(json.dumps(result, indent=2, sort_keys=True))
         return
+    if not result.get("ok", True):
+        error = result.get("error")
+        if isinstance(error, dict):
+            message = error.get("message")
+        else:
+            message = None
+        print(message or result.get("message") or "operation failed")
+        return
     operation = result["operation"]
     if operation == "v2.recipe.list":
         for target in result["targets"]:
@@ -134,6 +142,8 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
             print(f"{area['name']:20} {area['state']}")
     elif operation.startswith("staging."):
         print(f"{operation}: {result['path']}")
+    elif operation == "source.lint":
+        print(f"Tonel source is canonical ({result['fileCount']} .st files)")
     elif operation == "status":
         print(f"workspace: {result['workspace'].get('workspace', {}).get('state', 'missing')}")
         for status in result["statuses"]:
@@ -159,5 +169,3 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
             print(f"{item['database']}\t{item['uid']}\t{item['title']}\t{item['preview']}")
     else:
         print(json.dumps(result, indent=2, sort_keys=True))
-
-

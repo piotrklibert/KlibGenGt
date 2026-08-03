@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `ArtifactV1`.
 
@@ -36,7 +37,8 @@ Immutable JSON record generated from `ArtifactV1`.
   - {{gtMethod:KGArtifactV1>>#valid}}
     Answer the immutable `valid` field value.
   - {{gtMethod:KGArtifactV1>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGArtifactV1',
 	#superclass : 'KGJsonRecord',
@@ -87,18 +89,6 @@ KGArtifactV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGArtifactV1 >> schemaValue [
-	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGArtifactV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
 KGArtifactV1 >> artifactType [
 	<return: #String>
 	^ self defensiveJsonValue: artifactType
@@ -111,9 +101,9 @@ KGArtifactV1 >> outputKey [
 ]
 
 { #category : 'accessing' }
-KGArtifactV1 >> producingRole [
-	<return: #String>
-	^ self defensiveJsonValue: producingRole
+KGArtifactV1 >> path [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: path
 ]
 
 { #category : 'accessing' }
@@ -129,25 +119,37 @@ KGArtifactV1 >> platform [
 ]
 
 { #category : 'accessing' }
+KGArtifactV1 >> producingRole [
+	<return: #String>
+	^ self defensiveJsonValue: producingRole
+]
+
+{ #category : 'accessing' }
 KGArtifactV1 >> resolvedRecipe [
 	<return: #(KGResolvedRecipeV1 | (Dictionary<String, Any>) | UndefinedObject)>
 	^ self defensiveJsonValue: resolvedRecipe
 ]
 
 { #category : 'accessing' }
-KGArtifactV1 >> path [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: path
+KGArtifactV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
 ]
 
 { #category : 'accessing' }
-KGArtifactV1 >> valid [
-	<return: #(Boolean | UndefinedObject)>
-	^ self defensiveJsonValue: valid
+KGArtifactV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
 ]
 
 { #category : 'accessing' }
 KGArtifactV1 >> storage [
 	<return: #(KGJsonStorageRecord | UndefinedObject)>
 	^ self defensiveJsonValue: storage
+]
+
+{ #category : 'accessing' }
+KGArtifactV1 >> valid [
+	<return: #(Boolean | UndefinedObject)>
+	^ self defensiveJsonValue: valid
 ]

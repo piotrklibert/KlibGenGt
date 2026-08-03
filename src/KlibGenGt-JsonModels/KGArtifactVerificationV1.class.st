@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `ArtifactVerificationV1`.
 
@@ -21,7 +22,8 @@ Immutable JSON record generated from `ArtifactVerificationV1`.
   - {{gtMethod:KGArtifactVerificationV1>>#manifest}}
     Answer the immutable `manifest` field value.
   - {{gtMethod:KGArtifactVerificationV1>>#valid}}
-    Answer the immutable `valid` field value."
+    Answer the immutable `valid` field value.
+"
 Class {
 	#name : 'KGArtifactVerificationV1',
 	#superclass : 'KGJsonRecord',
@@ -62,15 +64,9 @@ KGArtifactVerificationV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGArtifactVerificationV1 >> schemaValue [
-	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGArtifactVerificationV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
+KGArtifactVerificationV1 >> manifest [
+	<return: #KGArtifactV1>
+	^ self defensiveJsonValue: manifest
 ]
 
 { #category : 'accessing' }
@@ -86,9 +82,15 @@ KGArtifactVerificationV1 >> path [
 ]
 
 { #category : 'accessing' }
-KGArtifactVerificationV1 >> manifest [
-	<return: #KGArtifactV1>
-	^ self defensiveJsonValue: manifest
+KGArtifactVerificationV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
+]
+
+{ #category : 'accessing' }
+KGArtifactVerificationV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
 ]
 
 { #category : 'accessing' }

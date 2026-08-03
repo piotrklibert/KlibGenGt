@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `StagingListV1`.
 
@@ -15,7 +16,8 @@ Immutable JSON record generated from `StagingListV1`.
   - {{gtMethod:KGStagingListV1>>#operation}}
     Answer the immutable `operation` field value.
   - {{gtMethod:KGStagingListV1>>#stagingAreas}}
-    Answer the immutable `stagingAreas` field value."
+    Answer the immutable `stagingAreas` field value.
+"
 Class {
 	#name : 'KGStagingListV1',
 	#superclass : 'KGJsonRecord',
@@ -52,6 +54,12 @@ KGStagingListV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGStagingListV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
 KGStagingListV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -61,12 +69,6 @@ KGStagingListV1 >> schemaValue [
 KGStagingListV1 >> schemaVersion [
 	<return: #Integer>
 	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGStagingListV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
 ]
 
 { #category : 'accessing' }

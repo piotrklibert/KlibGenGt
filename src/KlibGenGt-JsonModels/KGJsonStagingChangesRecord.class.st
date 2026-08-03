@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `StagingChangesRecord`.
 
@@ -18,7 +19,8 @@ Immutable JSON record generated from `StagingChangesRecord`.
   - {{gtMethod:KGJsonStagingChangesRecord>>#renames}}
     Answer the immutable `renames` field value.
   - {{gtMethod:KGJsonStagingChangesRecord>>#prohibited}}
-    Answer the immutable `prohibited` field value."
+    Answer the immutable `prohibited` field value.
+"
 Class {
 	#name : 'KGJsonStagingChangesRecord',
 	#superclass : 'KGJsonRecord',
@@ -69,6 +71,12 @@ KGJsonStagingChangesRecord >> modifications [
 ]
 
 { #category : 'accessing' }
+KGJsonStagingChangesRecord >> prohibited [
+	<return: #(Array<String>)>
+	^ self defensiveJsonValue: prohibited
+]
+
+{ #category : 'accessing' }
 KGJsonStagingChangesRecord >> removals [
 	<return: #(Array<String>)>
 	^ self defensiveJsonValue: removals
@@ -78,10 +86,4 @@ KGJsonStagingChangesRecord >> removals [
 KGJsonStagingChangesRecord >> renames [
 	<return: #(Array<KGJsonRenameRecord>)>
 	^ self defensiveJsonValue: renames
-]
-
-{ #category : 'accessing' }
-KGJsonStagingChangesRecord >> prohibited [
-	<return: #(Array<String>)>
-	^ self defensiveJsonValue: prohibited
 ]

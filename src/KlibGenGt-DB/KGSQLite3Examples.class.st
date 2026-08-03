@@ -20,67 +20,21 @@ Class {
 	#package : 'KlibGenGt-DB'
 }
 
-{ #category : 'examples - diagnostics' }
-KGSQLite3Examples >> libraryDiagnostics [
-	<gtExample>
-	<return: #(OrderedDictionary<Symbol, Any>)>
-	| library |
-	library := SQLite3Library current.
-	^ OrderedDictionary new
-		at: #platform put: Smalltalk os class name;
-		at: #wordSize put: Smalltalk vm wordSize;
-		at: #libraryPath put: library libraryName;
-		at: #libraryVersion put: library libraryVersion;
-		at: #threadsafe put: SQLite3Connection isThreadsafe;
-		yourself
+{ #category : 'private - resources' }
+KGSQLite3Examples >> closeConnection: aConnection [
+	aConnection isOpen
+		ifTrue: [ aConnection forceClose ]
+		ifFalse: [ aConnection close ]
 ]
 
-{ #category : 'examples - diagnostics' }
-KGSQLite3Examples >> openAndCloseInMemory [
-	<gtExample>
-	<return: #(OrderedDictionary<Symbol, Any>)>
-	| connection result |
-	connection := SQLite3Connection memory.
+{ #category : 'private - execution' }
+KGSQLite3Examples >> execute: sqlString with: parameters on: connection [
+	| statement cursor |
+	statement := connection prepare: sqlString.
 	[
-		connection open.
-		self assert: connection isOpen.
-		result := OrderedDictionary new
-			at: #filename put: connection filename;
-			at: #opened put: connection isOpen;
-			yourself
-	] ensure: [ self closeConnection: connection ].
-	self assert: connection isOpen not.
-	result at: #closed put: connection isOpen not.
-	^ result
-]
-
-{ #category : 'examples - operations' }
-KGSQLite3Examples >> inMemoryRoundTrip [
-	<gtExample>
-	<return: #(Array<(Dictionary<String, Any>)>)>
-	| connection rows |
-	connection := SQLite3Connection memory.
-	[
-		connection open.
-		connection basicExecute:
-			'CREATE TABLE person (id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER NOT NULL)'.
-		self
-			execute: 'INSERT INTO person (id, name, age) VALUES (?, ?, ?)'
-			with: #( 1 'Ada' 36 )
-			on: connection.
-		self
-			execute: 'INSERT INTO person (id, name, age) VALUES (?, ?, ?)'
-			with: #( 2 'Grace' 42 )
-			on: connection.
-		rows := self
-			query: 'SELECT id, name, age FROM person ORDER BY id'
-			with: #()
-			on: connection
-	] ensure: [ self closeConnection: connection ].
-	self assert: rows size equals: 2.
-	self assert: (rows first at: 'name') equals: 'Ada'.
-	self assert: (rows second at: 'age') equals: 42.
-	^ rows
+		cursor := statement execute: parameters.
+		self assert: cursor rows isEmpty
+	] ensure: [ statement finalize ]
 ]
 
 { #category : 'examples - operations' }
@@ -113,21 +67,67 @@ KGSQLite3Examples >> fileRoundTrip [
 	^ rows
 ]
 
-{ #category : 'private - resources' }
-KGSQLite3Examples >> closeConnection: aConnection [
-	aConnection isOpen
-		ifTrue: [ aConnection forceClose ]
-		ifFalse: [ aConnection close ]
+{ #category : 'examples - operations' }
+KGSQLite3Examples >> inMemoryRoundTrip [
+	<gtExample>
+	<return: #(Array<(Dictionary<String, Any>)>)>
+	| connection rows |
+	connection := SQLite3Connection memory.
+	[
+		connection open.
+		connection basicExecute:
+			'CREATE TABLE person (id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER NOT NULL)'.
+		self
+			execute: 'INSERT INTO person (id, name, age) VALUES (?, ?, ?)'
+			with: #( 1 'Ada' 36 )
+			on: connection.
+		self
+			execute: 'INSERT INTO person (id, name, age) VALUES (?, ?, ?)'
+			with: #( 2 'Grace' 42 )
+			on: connection.
+		rows := self
+			query: 'SELECT id, name, age FROM person ORDER BY id'
+			with: #()
+			on: connection
+	] ensure: [ self closeConnection: connection ].
+	self assert: rows size equals: 2.
+	self assert: (rows first at: 'name') equals: 'Ada'.
+	self assert: (rows second at: 'age') equals: 42.
+	^ rows
 ]
 
-{ #category : 'private - execution' }
-KGSQLite3Examples >> execute: sqlString with: parameters on: connection [
-	| statement cursor |
-	statement := connection prepare: sqlString.
+{ #category : 'examples - diagnostics' }
+KGSQLite3Examples >> libraryDiagnostics [
+	<gtExample>
+	<return: #(OrderedDictionary<Symbol, Any>)>
+	| library |
+	library := SQLite3Library current.
+	^ OrderedDictionary new
+		at: #platform put: Smalltalk os class name;
+		at: #wordSize put: Smalltalk vm wordSize;
+		at: #libraryPath put: library libraryName;
+		at: #libraryVersion put: library libraryVersion;
+		at: #threadsafe put: SQLite3Connection isThreadsafe;
+		yourself
+]
+
+{ #category : 'examples - diagnostics' }
+KGSQLite3Examples >> openAndCloseInMemory [
+	<gtExample>
+	<return: #(OrderedDictionary<Symbol, Any>)>
+	| connection result |
+	connection := SQLite3Connection memory.
 	[
-		cursor := statement execute: parameters.
-		self assert: cursor rows isEmpty
-	] ensure: [ statement finalize ]
+		connection open.
+		self assert: connection isOpen.
+		result := OrderedDictionary new
+			at: #filename put: connection filename;
+			at: #opened put: connection isOpen;
+			yourself
+	] ensure: [ self closeConnection: connection ].
+	self assert: connection isOpen not.
+	result at: #closed put: connection isOpen not.
+	^ result
 ]
 
 { #category : 'private - execution' }

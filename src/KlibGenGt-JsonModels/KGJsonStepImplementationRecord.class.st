@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `StepImplementationRecord`.
 
@@ -18,7 +19,8 @@ Immutable JSON record generated from `StepImplementationRecord`.
   - {{gtMethod:KGJsonStepImplementationRecord>>#outputType}}
     Answer the immutable `outputType` field value.
   - {{gtMethod:KGJsonStepImplementationRecord>>#inputs}}
-    Answer the immutable `inputs` field value."
+    Answer the immutable `inputs` field value.
+"
 Class {
 	#name : 'KGJsonStepImplementationRecord',
 	#superclass : 'KGJsonRecord',
@@ -63,15 +65,15 @@ KGJsonStepImplementationRecord >> identifier [
 ]
 
 { #category : 'accessing' }
-KGJsonStepImplementationRecord >> version [
-	<return: #Integer>
-	^ self defensiveJsonValue: version
-]
-
-{ #category : 'accessing' }
 KGJsonStepImplementationRecord >> inputType [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: inputType
+]
+
+{ #category : 'accessing' }
+KGJsonStepImplementationRecord >> inputs [
+	<return: #(Array<String>)>
+	^ self defensiveJsonValue: inputs
 ]
 
 { #category : 'accessing' }
@@ -81,7 +83,7 @@ KGJsonStepImplementationRecord >> outputType [
 ]
 
 { #category : 'accessing' }
-KGJsonStepImplementationRecord >> inputs [
-	<return: #(Array<String>)>
-	^ self defensiveJsonValue: inputs
+KGJsonStepImplementationRecord >> version [
+	<return: #Integer>
+	^ self defensiveJsonValue: version
 ]

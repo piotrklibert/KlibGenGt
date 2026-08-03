@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `ReferenceV1`.
 
@@ -30,7 +31,8 @@ Immutable JSON record generated from `ReferenceV1`.
   - {{gtMethod:KGReferenceV1>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGReferenceV1>>#storage}}
-    Answer the immutable `storage` field value."
+    Answer the immutable `storage` field value.
+"
 Class {
 	#name : 'KGReferenceV1',
 	#superclass : 'KGJsonRecord',
@@ -77,21 +79,9 @@ KGReferenceV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGReferenceV1 >> schemaValue [
+KGReferenceV1 >> artifactPath [
 	<return: #String>
-	^ self defensiveJsonValue: schemaValue
-]
-
-{ #category : 'accessing' }
-KGReferenceV1 >> schemaVersion [
-	<return: #Integer>
-	^ self defensiveJsonValue: schemaVersion
-]
-
-{ #category : 'accessing' }
-KGReferenceV1 >> name [
-	<return: #String>
-	^ self defensiveJsonValue: name
+	^ self defensiveJsonValue: artifactPath
 ]
 
 { #category : 'accessing' }
@@ -101,15 +91,21 @@ KGReferenceV1 >> artifactType [
 ]
 
 { #category : 'accessing' }
+KGReferenceV1 >> name [
+	<return: #String>
+	^ self defensiveJsonValue: name
+]
+
+{ #category : 'accessing' }
 KGReferenceV1 >> outputKey [
 	<return: #String>
 	^ self defensiveJsonValue: outputKey
 ]
 
 { #category : 'accessing' }
-KGReferenceV1 >> artifactPath [
-	<return: #String>
-	^ self defensiveJsonValue: artifactPath
+KGReferenceV1 >> path [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: path
 ]
 
 { #category : 'accessing' }
@@ -119,9 +115,15 @@ KGReferenceV1 >> producingRole [
 ]
 
 { #category : 'accessing' }
-KGReferenceV1 >> path [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: path
+KGReferenceV1 >> schemaValue [
+	<return: #String>
+	^ self defensiveJsonValue: schemaValue
+]
+
+{ #category : 'accessing' }
+KGReferenceV1 >> schemaVersion [
+	<return: #Integer>
+	^ self defensiveJsonValue: schemaVersion
 ]
 
 { #category : 'accessing' }

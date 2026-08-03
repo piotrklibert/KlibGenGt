@@ -1,4 +1,5 @@
-"Commit the live image's project changes to the managed GUI export repository.
+"
+Commit the live image's project changes to the managed GUI export repository.
 
 - Public API
   - {{gtMethod:KGExportTool>>#changeCount}}

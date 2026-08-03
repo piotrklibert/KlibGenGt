@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `StagingResultV1`.
 
@@ -21,7 +22,8 @@ Immutable JSON record generated from `StagingResultV1`.
   - {{gtMethod:KGStagingResultV1>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGStagingResultV1>>#changes}}
-    Answer the immutable `changes` field value."
+    Answer the immutable `changes` field value.
+"
 Class {
 	#name : 'KGStagingResultV1',
 	#superclass : 'KGJsonRecord',
@@ -62,6 +64,24 @@ KGStagingResultV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGStagingResultV1 >> changes [
+	<return: #(KGJsonStagingChangesRecord | UndefinedObject)>
+	^ self defensiveJsonValue: changes
+]
+
+{ #category : 'accessing' }
+KGStagingResultV1 >> operation [
+	<return: #String>
+	^ self defensiveJsonValue: operation
+]
+
+{ #category : 'accessing' }
+KGStagingResultV1 >> path [
+	<return: #String>
+	^ self defensiveJsonValue: path
+]
+
+{ #category : 'accessing' }
 KGStagingResultV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -74,25 +94,7 @@ KGStagingResultV1 >> schemaVersion [
 ]
 
 { #category : 'accessing' }
-KGStagingResultV1 >> operation [
-	<return: #String>
-	^ self defensiveJsonValue: operation
-]
-
-{ #category : 'accessing' }
 KGStagingResultV1 >> staging [
 	<return: #KGStagingV1>
 	^ self defensiveJsonValue: staging
-]
-
-{ #category : 'accessing' }
-KGStagingResultV1 >> path [
-	<return: #String>
-	^ self defensiveJsonValue: path
-]
-
-{ #category : 'accessing' }
-KGStagingResultV1 >> changes [
-	<return: #(KGJsonStagingChangesRecord | UndefinedObject)>
-	^ self defensiveJsonValue: changes
 ]

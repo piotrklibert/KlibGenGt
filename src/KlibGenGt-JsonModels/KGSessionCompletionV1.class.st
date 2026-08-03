@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `SessionCompletionV1`.
 
@@ -27,7 +28,8 @@ Immutable JSON record generated from `SessionCompletionV1`.
   - {{gtMethod:KGSessionCompletionV1>>#error}}
     Answer the immutable `error` field value.
   - {{gtMethod:KGSessionCompletionV1>>#sourceChangeCount}}
-    Answer the immutable `sourceChangeCount` field value."
+    Answer the immutable `sourceChangeCount` field value.
+"
 Class {
 	#name : 'KGSessionCompletionV1',
 	#superclass : 'KGJsonRecord',
@@ -72,6 +74,24 @@ KGSessionCompletionV1 class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
+KGSessionCompletionV1 >> error [
+	<return: #(KGJsonErrorRecord | UndefinedObject)>
+	^ self defensiveJsonValue: error
+]
+
+{ #category : 'accessing' }
+KGSessionCompletionV1 >> exitCode [
+	<return: #(Integer | UndefinedObject)>
+	^ self defensiveJsonValue: exitCode
+]
+
+{ #category : 'accessing' }
+KGSessionCompletionV1 >> ok [
+	<return: #Boolean>
+	^ self defensiveJsonValue: ok
+]
+
+{ #category : 'accessing' }
 KGSessionCompletionV1 >> schemaValue [
 	<return: #String>
 	^ self defensiveJsonValue: schemaValue
@@ -90,31 +110,13 @@ KGSessionCompletionV1 >> sessionId [
 ]
 
 { #category : 'accessing' }
-KGSessionCompletionV1 >> state [
-	<return: #String>
-	^ self defensiveJsonValue: state
-]
-
-{ #category : 'accessing' }
-KGSessionCompletionV1 >> ok [
-	<return: #Boolean>
-	^ self defensiveJsonValue: ok
-]
-
-{ #category : 'accessing' }
-KGSessionCompletionV1 >> exitCode [
-	<return: #(Integer | UndefinedObject)>
-	^ self defensiveJsonValue: exitCode
-]
-
-{ #category : 'accessing' }
-KGSessionCompletionV1 >> error [
-	<return: #(KGJsonErrorRecord | UndefinedObject)>
-	^ self defensiveJsonValue: error
-]
-
-{ #category : 'accessing' }
 KGSessionCompletionV1 >> sourceChangeCount [
 	<return: #(Integer | UndefinedObject)>
 	^ self defensiveJsonValue: sourceChangeCount
+]
+
+{ #category : 'accessing' }
+KGSessionCompletionV1 >> state [
+	<return: #String>
+	^ self defensiveJsonValue: state
 ]

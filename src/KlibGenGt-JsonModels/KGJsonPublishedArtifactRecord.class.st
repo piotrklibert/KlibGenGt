@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `PublishedArtifactRecord`.
 
@@ -12,7 +13,8 @@ Immutable JSON record generated from `PublishedArtifactRecord`.
   - {{gtMethod:KGJsonPublishedArtifactRecord>>#path}}
     Answer the immutable `path` field value.
   - {{gtMethod:KGJsonPublishedArtifactRecord>>#reused}}
-    Answer the immutable `reused` field value."
+    Answer the immutable `reused` field value.
+"
 Class {
 	#name : 'KGJsonPublishedArtifactRecord',
 	#superclass : 'KGJsonRecord',
@@ -47,12 +49,6 @@ KGJsonPublishedArtifactRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonPublishedArtifactRecord >> role [
-	<return: #String>
-	^ self defensiveJsonValue: role
-]
-
-{ #category : 'accessing' }
 KGJsonPublishedArtifactRecord >> path [
 	<return: #String>
 	^ self defensiveJsonValue: path
@@ -62,4 +58,10 @@ KGJsonPublishedArtifactRecord >> path [
 KGJsonPublishedArtifactRecord >> reused [
 	<return: #Boolean>
 	^ self defensiveJsonValue: reused
+]
+
+{ #category : 'accessing' }
+KGJsonPublishedArtifactRecord >> role [
+	<return: #String>
+	^ self defensiveJsonValue: role
 ]

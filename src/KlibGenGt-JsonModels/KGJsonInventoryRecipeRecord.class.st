@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `InventoryRecipeRecord`.
 
@@ -9,7 +10,8 @@ Immutable JSON record generated from `InventoryRecipeRecord`.
   - {{gtMethod:KGJsonInventoryRecipeRecord>>#name}}
     Answer the immutable `name` field value.
   - {{gtMethod:KGJsonInventoryRecipeRecord>>#roles}}
-    Answer the immutable `roles` field value."
+    Answer the immutable `roles` field value.
+"
 Class {
 	#name : 'KGJsonInventoryRecipeRecord',
 	#superclass : 'KGJsonRecord',

@@ -1,4 +1,5 @@
-"A world-toolbar button that displays and commits live KlibGenGt changes.
+"
+A world-toolbar button that displays and commits live KlibGenGt changes.
 
 - Slots
   - `tool` (`#KGExportTool`, `model`) - Resolves, counts, and commits changes in the managed export repository.
@@ -126,6 +127,15 @@ KGExportButton >> refresh [
 	^ self updateCount: ([ tool changeCount ] on: Error do: [ 0 ])
 ]
 
+{ #category : 'public - accessing' }
+KGExportButton >> tool: anExportTool [
+	<arg: #anExportTool type: #KGExportTool>
+	<return: #KGExportButton>
+	tool := anExportTool.
+	self refresh.
+	^ self
+]
+
 { #category : 'private - updating' }
 KGExportButton >> updateCount: count [
 	<arg: #count type: #Integer>
@@ -133,14 +143,5 @@ KGExportButton >> updateCount: count [
 	self
 		label: 'Export (' , count printString , ')';
 		disabled: count = 0.
-	^ self
-]
-
-{ #category : 'public - accessing' }
-KGExportButton >> tool: anExportTool [
-	<arg: #anExportTool type: #KGExportTool>
-	<return: #KGExportButton>
-	tool := anExportTool.
-	self refresh.
 	^ self
 ]

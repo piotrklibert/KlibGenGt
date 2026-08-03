@@ -20,7 +20,8 @@ Class {
 		'targetType'
 	],
 	#category : 'KlibGenGt-Kotlin-Model',
-	#package : 'KlibGenGt-Kotlin'
+	#package : 'KlibGenGt-Kotlin',
+	#tag : 'Model'
 }
 
 { #category : 'instance creation' }

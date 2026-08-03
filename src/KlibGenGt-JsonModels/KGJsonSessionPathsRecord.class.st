@@ -1,4 +1,5 @@
-"Generated from klibgen_build.json_models; DO NOT EDIT.
+"
+Generated from klibgen_build.json_models; DO NOT EDIT.
 
 Immutable JSON record generated from `SessionPathsRecord`.
 
@@ -24,7 +25,8 @@ Immutable JSON record generated from `SessionPathsRecord`.
   - {{gtMethod:KGJsonSessionPathsRecord>>#sourceRequests}}
     Answer the immutable `sourceRequests` field value.
   - {{gtMethod:KGJsonSessionPathsRecord>>#sourceResponses}}
-    Answer the immutable `sourceResponses` field value."
+    Answer the immutable `sourceResponses` field value.
+"
 Class {
 	#name : 'KGJsonSessionPathsRecord',
 	#superclass : 'KGJsonRecord',
@@ -67,9 +69,15 @@ KGJsonSessionPathsRecord class >> jsonSchemaName [
 ]
 
 { #category : 'accessing' }
-KGJsonSessionPathsRecord >> request [
+KGJsonSessionPathsRecord >> completion [
+	<return: #String>
+	^ self defensiveJsonValue: completion
+]
+
+{ #category : 'accessing' }
+KGJsonSessionPathsRecord >> eventJournal [
 	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: request
+	^ self defensiveJsonValue: eventJournal
 ]
 
 { #category : 'accessing' }
@@ -79,21 +87,15 @@ KGJsonSessionPathsRecord >> ready [
 ]
 
 { #category : 'accessing' }
-KGJsonSessionPathsRecord >> completion [
-	<return: #String>
-	^ self defensiveJsonValue: completion
+KGJsonSessionPathsRecord >> request [
+	<return: #(String | UndefinedObject)>
+	^ self defensiveJsonValue: request
 ]
 
 { #category : 'accessing' }
 KGJsonSessionPathsRecord >> result [
 	<return: #(String | UndefinedObject)>
 	^ self defensiveJsonValue: result
-]
-
-{ #category : 'accessing' }
-KGJsonSessionPathsRecord >> eventJournal [
-	<return: #(String | UndefinedObject)>
-	^ self defensiveJsonValue: eventJournal
 ]
 
 { #category : 'accessing' }
