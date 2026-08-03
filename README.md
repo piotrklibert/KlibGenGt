@@ -241,14 +241,28 @@ schema-version-one response envelope:
 just code-search KGBuildMap class
 just code-class KGBuildMap
 just code-method KGBuildMap initializeFromInventory:
+just code-class-methods KGCodeSearchTool
+just code-analyze KGCodeSearchTool search: instance 2
+just code-implementors search:
+just code-senders search:
+just code-package-sets direct
 just lepiter-search session title
 just lepiter-export <page-uid>
 ```
 
+Code navigation is package-aware. Named universes cover project packages,
+direct or transitive dependencies, GT framework packages, Pharo core, tests,
+or the complete image. Search supports field selection and substring, exact,
+or regex matching. Additional commands expose normalized class methods,
+class/package metadata, bounded AST and static send-graph analysis,
+implementors, AST-confirmed senders, references, and pragmas. Exact class and
+method roots remain retrievable outside the selected universe.
+
 Evaluation, profiling, test, code, Lepiter, and build-map PNG operations
 declare identifiers, versions, accepted inputs, frontend support,
 and required capabilities. The filesystem UI connector is the default live-GUI
-transport; TCP is available through the connector API for programmatic use.
+transport; loopback TCP remains an internal injectable connector for
+programmatic use and is not exposed as a CLI transport selection.
 
 ## Inventory and retention
 

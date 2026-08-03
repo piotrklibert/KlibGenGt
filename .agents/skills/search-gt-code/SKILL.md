@@ -26,7 +26,7 @@ Use the complete CLI for package restriction, limits, or JSON processing:
 
 ```sh
 env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image code search 'projectName' \
-  --kind method --package KlibGenGt-Core --limit 25 --json
+  --kind method --package-set project --in selector --limit 25 --json
 ```
 
 Choose `--kind class`, `method`, or `all`. Treat search results as candidates; retrieve exact source before drawing conclusions.
@@ -48,6 +48,30 @@ env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image code method KlibGenGt
 ```
 
 Specify `--side instance` or `--side class`; do not infer the side when the search result already reports it.
+
+## Navigate and analyze
+
+Prefer the structured relationship and AST commands over filter evaluation:
+
+```sh
+just code-class-methods KGCodeSearchTool
+just code-analyze KGCodeSearchTool search: instance 2
+just code-implementors search:
+just code-senders search:
+just code-package-sets direct
+
+env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image code references KGCodeSearchTool \
+  --kind class --package-set all --json
+env UV_CACHE_DIR=./tmp/uv-cache uv run klibgen-build image code pragmas return: \
+  --package-set project --json
+```
+
+Every package-aware command defaults to the project and its direct loaded
+dependencies. Use `--package-set all` only when image-wide materialization is
+needed. Repeat `--include-package` and `--exclude-package` for exact loaded
+package overrides; comma-separated values are accepted. Exact class, method,
+class-info, and package-info roots remain available outside the set, while
+recursive candidates and nonlocal class-method origins are filtered.
 
 ## Handle searches the tool does not cover
 

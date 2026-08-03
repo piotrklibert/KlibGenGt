@@ -102,6 +102,23 @@ def source_options(function: Callable[..., Any]) -> Callable[..., Any]:
     function = click.option("--stdin", is_flag=True, help="Read the expression or request from standard input.")(function)
     return function
 
+
+def _emit_code_scope(data: dict[str, Any]) -> None:
+    scope = data.get("scope")
+    if scope is None:
+        return
+    print(
+        f"scope: {scope['set']} "
+        f"({scope['effectivePackageCount']} packages; {scope['fingerprint']})"
+    )
+    counts = data.get("counts")
+    if counts:
+        print(
+            f"matches: total={counts['total']} in-scope={counts['inScope']} "
+            f"out-of-scope={counts['outOfScope']} displayed={counts['displayed']} "
+            f"truncated={counts['inScopeTruncated']}"
+        )
+
 def emit(result: dict[str, Any], as_json: bool) -> None:
     """Format one structured result without performing any CLI dispatch."""
     if "schema" in result:
@@ -166,8 +183,55 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     elif operation in {"code.class", "code.method", "lepiter.export"}:
         print(result["data"]["text"], end="")
     elif operation == "code.search":
+        _emit_code_scope(result["data"])
         for item in result["data"]["results"]:
             print(json.dumps(item, sort_keys=True))
+    elif operation == "code.class-methods":
+        _emit_code_scope(result["data"])
+        for item in result["data"]["methods"]:
+            print(
+                f"\n--- {item['class']} {item['side']}>>#{item['selector']} "
+                f"[{item['classification']}; {item['package']}] ---"
+            )
+            source = item.get("source", "")
+            print(source, end="" if source.endswith("\n") else "\n")
+    elif operation == "code.analyze":
+        data = result["data"]
+        _emit_code_scope(data)
+        root = data["root"]
+        print(f"root: {root['identity']}")
+        analysis = root["analysis"]
+        if "source" in analysis:
+            print("\n--- root source ---")
+            print(analysis["source"])
+        graph = data["graph"]
+        print(
+            f"\ngraph: {len(graph['nodes'])} methods, {len(graph['edges'])} edges; "
+            f"excluded candidates: {data['excludedCandidateCount']}"
+        )
+        for edge in graph["edges"]:
+            cycle = " (cycle)" if edge["cycle"] else ""
+            print(
+                f"{edge['from']} --{edge['selector']} [{edge['resolution']}]--> "
+                f"{edge['to']}{cycle}"
+            )
+    elif operation == "code.package-sets":
+        for item in result["data"]["sets"]:
+            print(f"{item['name']}\t{item['count']}\t{item['description']}")
+            for package in item["packages"]:
+                distance = item.get("distances", {}).get(package)
+                print(f"  {package}" + (f"\tdepth={distance}" if distance is not None else ""))
+    elif operation in {"code.class-info", "code.package-info"}:
+        _emit_code_scope(result["data"])
+        print(json.dumps(
+            {key: value for key, value in result["data"].items() if key != "scope"},
+            indent=2,
+            sort_keys=True,
+        ))
+    elif operation in {"code.implementors", "code.senders", "code.references", "code.pragmas"}:
+        _emit_code_scope(result["data"])
+        for item in result["data"]["results"]:
+            print(f"{item['class']}\t{item['side']}\t{item['selector']}\t{item['package']}")
     elif operation == "lepiter.search":
         for item in result["data"]["results"]:
             print(f"{item['database']}\t{item['uid']}\t{item['title']}\t{item['preview']}")

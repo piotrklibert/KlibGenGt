@@ -184,7 +184,56 @@ KGToolsTest >> testClassAndMethodDefinitionsAreExactText [
 		at: 'selector' put: 'projectName';
 		at: 'side' put: 'class';
 		yourself).
-	self assert: ((methodResult at: 'text') includesSubstring: 'projectName')
+	self assert: ((methodResult at: 'text') includesSubstring: 'projectName').
+	self assert: (methodResult includesKey: 'sha256')
+]
+
+{ #category : 'tests - code navigation' }
+KGToolsTest >> testClassMethodDumpAndMetadata [
+	| dump info packageInfo |
+	dump := KGCodeSearchTool new classMethods: (Dictionary new
+		at: 'class' put: 'KGCodeSearchTool';
+		at: 'packageSet' put: 'project';
+		at: 'limit' put: 500;
+		yourself).
+	self assert: (dump at: 'methods') isNotEmpty.
+	self assert: ((dump at: 'methods') allSatisfy: [ :each |
+		(each at: 'classification') = 'local' and: [ each includesKey: 'source' ] ]).
+	info := KGCodeSearchTool new classInfo: (Dictionary new
+		at: 'class' put: 'KGCodeSearchTool';
+		at: 'packageSet' put: 'project';
+		yourself).
+	self assert: ((info at: 'superclasses') includes: 'Object').
+	packageInfo := KGCodeSearchTool new packageInfo: (Dictionary new
+		at: 'packageName' put: 'KlibGenGt-Tools';
+		at: 'packageSet' put: 'project';
+		yourself).
+	self assert: ((packageInfo at: 'classes') includes: 'KGCodePackageScope').
+	self assert: (packageInfo at: 'outgoingDependencies') isNotEmpty
+]
+
+{ #category : 'tests - code navigation' }
+KGToolsTest >> testCodePackageScopeNamedSetsAndOverrides [
+	| first second summary |
+	first := KGCodePackageScope forRequest: (Dictionary new
+		at: 'packageSet' put: 'project';
+		at: 'includePackages' put: #('Kernel' 'Kernel');
+		at: 'excludePackages' put: #('KlibGenGt-Core' 'Kernel');
+		yourself).
+	second := KGCodePackageScope forRequest: (Dictionary new
+		at: 'packageSet' put: 'project';
+		at: 'includePackages' put: #('Kernel');
+		at: 'excludePackages' put: #('Kernel' 'KlibGenGt-Core');
+		yourself).
+	summary := first summary.
+	self assert: (summary at: 'set') equals: 'project'.
+	self deny: ((summary at: 'packages') includes: 'Kernel').
+	self deny: ((summary at: 'packages') includes: 'KlibGenGt-Core').
+	self assert: (summary at: 'fingerprint') equals: (second summary at: 'fingerprint').
+	self should: [ KGCodePackageScope forRequest: (Dictionary new
+		at: 'packageSet' put: 'project';
+		at: 'includePackages' put: #('Definitely-Unknown-Package');
+		yourself) ] raise: Error
 ]
 
 { #category : 'tests' }
@@ -439,6 +488,47 @@ KGToolsTest >> testGuiQuitPromptIsFrontmost [
 		ensure: [ prompt ifNotNil: [ prompt removeFromParent ] ]
 ]
 
+{ #category : 'tests - code navigation' }
+KGToolsTest >> testMethodAnalysisReturnsAstFactsAndBoundedGraph [
+	| result root analysis |
+	result := KGMethodAnalysisTool new analyze: (Dictionary new
+		at: 'class' put: 'KGCodeSearchTool';
+		at: 'selector' put: 'search:';
+		at: 'side' put: 'instance';
+		at: 'packageSet' put: 'project';
+		at: 'depth' put: 0;
+		at: 'maxMethods' put: 5;
+		at: 'maxCandidates' put: 1;
+		at: 'includeSource' put: false;
+		yourself).
+	root := result at: 'root'.
+	analysis := root at: 'analysis'.
+	self assert: (root at: 'identity') equals: 'KGCodeSearchTool>>#search:'.
+	self assert: (analysis at: 'arguments') equals: #('aRequest').
+	self assert: (analysis at: 'variables') isNotEmpty.
+	self assert: (analysis at: 'sends') isNotEmpty.
+	self deny: (analysis includesKey: 'source').
+	self assert: (((result at: 'graph') at: 'nodes') size) equals: 1
+]
+
+{ #category : 'tests - code navigation' }
+KGToolsTest >> testPackageAwareSearchAccountsBeforeLimit [
+	| result counts |
+	result := KGCodeSearchTool new search: (Dictionary new
+		at: 'query' put: 'search:';
+		at: 'kind' put: 'method';
+		at: 'in' put: 'selector';
+		at: 'match' put: 'exact';
+		at: 'packageSet' put: 'project';
+		at: 'limit' put: 1;
+		yourself).
+	counts := result at: 'counts'.
+	self assert: (counts at: 'total') > (counts at: 'displayed').
+	self assert: (counts at: 'displayed') equals: 1.
+	self assert: (counts at: 'inScopeTruncated') > 0.
+	self assert: ((result at: 'results') first at: 'package') equals: 'KlibGenGt-Tools'
+]
+
 { #category : 'tests - refactoring' }
 KGToolsTest >> testRefactoringASTPatternBlocksRequireExplicitOptIn [
 	| request adapter refactoring |
@@ -601,6 +691,30 @@ KGToolsTest >> testRefactoringToolDiscoveryResponsesAreJsonSerializable [
 		tool describe: (Dictionary new at: 'refactoring' put: 'parameter.add'; yourself) }.
 	responses do: [ :response |
 		self shouldnt: [ STONJSON toString: response ] raise: STONWriterError ]
+]
+
+{ #category : 'tests - code navigation' }
+KGToolsTest >> testRelationshipQueriesReturnNormalizedMethods [
+	| implementors senders pragmas |
+	implementors := KGCodeSearchTool new implementors: (Dictionary new
+		at: 'selector' put: 'search:';
+		at: 'packageSet' put: 'project';
+		at: 'limit' put: 20;
+		yourself).
+	self assert: ((implementors at: 'results') anySatisfy: [ :each |
+		(each at: 'class') = 'KGCodeSearchTool' ]).
+	senders := KGCodeSearchTool new senders: (Dictionary new
+		at: 'selector' put: 'search:';
+		at: 'packageSet' put: 'project';
+		at: 'limit' put: 20;
+		yourself).
+	self assert: ((senders at: 'counts') includesKey: 'outOfScope').
+	pragmas := KGCodeSearchTool new pragmas: (Dictionary new
+		at: 'pragma' put: 'return:';
+		at: 'packageSet' put: 'project';
+		at: 'limit' put: 1;
+		yourself).
+	self assert: ((pragmas at: 'counts') at: 'total') > 0
 ]
 
 { #category : 'tests - UI control' }

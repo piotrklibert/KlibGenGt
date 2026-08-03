@@ -139,7 +139,9 @@ KlibGenGt package map:
   - {{gtClass:KGBuildMapNode}} - Represents one clickable build entity with size, status, metadata, and relationship views.
   - {{gtClass:KGBuildMapTool}} - Opens disposable build-map sessions and renders overview and full-graph PNGs.
   - {{gtClass:KGToolRunner}} - Dispatches structured CLI requests and normalizes image-tool responses.
-  - {{gtClass:KGCodeSearchTool}} - Searches loaded code and returns exact class or method definitions.
+  - {{gtClass:KGCodePackageScope}} - Resolves deterministic named package universes and accounts for filtered code results.
+  - {{gtClass:KGCodeSearchTool}} - Searches and navigates loaded code within package scopes and returns exact definitions and metadata.
+  - {{gtClass:KGMethodAnalysisTool}} - Extracts bounded AST facts and method-send graphs from loaded methods.
   - {{gtClass:KGLepiterTool}} - Searches loaded Lepiter databases and exports pages as Markdown.
   - {{gtClass:KGEvaluationTool}} - Evaluates Smalltalk expressions with structured errors and optional profiling.
 - Tests

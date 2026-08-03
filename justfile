@@ -160,6 +160,21 @@ code-class class_name:
 code-method class_name selector side="instance":
     uv run klibgen-build image code method {{quote(class_name)}} {{quote(selector)}} --side {{quote(side)}}
 
+code-class-methods class_name:
+    uv run klibgen-build image code class-methods {{quote(class_name)}}
+
+code-analyze class_name selector side="instance" depth="1":
+    uv run klibgen-build image code analyze {{quote(class_name)}} {{quote(selector)}} --side {{quote(side)}} --depth {{quote(depth)}}
+
+code-implementors selector:
+    uv run klibgen-build image code implementors {{quote(selector)}}
+
+code-senders selector:
+    uv run klibgen-build image code senders {{quote(selector)}}
+
+code-package-sets set_name="default":
+    uv run klibgen-build image code package-sets {{quote(set_name)}}
+
 lepiter-search query search_in="text":
     uv run klibgen-build image lepiter search {{quote(query)}} --in {{quote(search_in)}}
 

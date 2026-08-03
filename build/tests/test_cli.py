@@ -63,6 +63,65 @@ class ClickCliTest(unittest.TestCase):
         request = execute.call_args.args[1]
         self.assertEqual(request, {"operation": "lepiter.search", "query": "needle", "in": "title", "databases": ["one", "two"], "limit": 7})
 
+    def test_package_aware_code_request_mapping(self):
+        response = {"schemaVersion": 1, "ok": True, "operation": "code.search", "data": {"results": []}}
+        with patch("klibgen_build.cli.image.execute_session", return_value=response) as execute:
+            result = self.runner.invoke(cli, [
+                "image", "code", "search", "search:", "--kind", "method",
+                "--in", "selector", "--match", "exact", "--package-set", "project",
+                "--include-package", "Kernel, Collections-Strings",
+                "--include-package", "Kernel", "--exclude-package", "Kernel", "--json",
+            ])
+        self.assertEqual(result.exit_code, 0, result.output)
+        request = execute.call_args.args[1]
+        self.assertEqual(request["operation"], "code.search")
+        self.assertEqual(request["in"], "selector")
+        self.assertEqual(request["match"], "exact")
+        self.assertEqual(request["packageSet"], "project")
+        self.assertEqual(request["includePackages"], ["Collections-Strings", "Kernel"])
+        self.assertEqual(request["excludePackages"], ["Kernel"])
+
+        response["operation"] = "code.analyze"
+        with patch("klibgen_build.cli.image.execute_session", return_value=response) as execute:
+            result = self.runner.invoke(cli, [
+                "image", "code", "analyze", "KGCodeSearchTool", "search:",
+                "--depth", "2", "--max-methods", "12", "--no-source", "--json",
+            ])
+        self.assertEqual(result.exit_code, 0, result.output)
+        request = execute.call_args.args[1]
+        self.assertEqual(request["operation"], "code.analyze")
+        self.assertEqual(request["depth"], 2)
+        self.assertEqual(request["maxMethods"], 12)
+        self.assertFalse(request["includeSource"])
+
+    def test_deprecated_exact_package_scope_rejects_new_overrides(self):
+        with patch("klibgen_build.cli.image.execute_session") as execute:
+            result = self.runner.invoke(cli, [
+                "image", "code", "search", "x", "--package", "Kernel",
+                "--package-set", "all",
+            ])
+        self.assertEqual(result.exit_code, 2, result.output)
+        self.assertIn("cannot be combined", result.output)
+        execute.assert_not_called()
+
+    def test_every_advanced_code_command_maps_to_its_operation(self):
+        cases = (
+            (["class-methods", "KGCodeSearchTool"], "code.class-methods"),
+            (["class-info", "KGCodeSearchTool"], "code.class-info"),
+            (["package-info", "KlibGenGt-Tools"], "code.package-info"),
+            (["package-sets", "project"], "code.package-sets"),
+            (["implementors", "search:"], "code.implementors"),
+            (["senders", "search:"], "code.senders"),
+            (["references", "KGCodeSearchTool", "--kind", "class"], "code.references"),
+            (["pragmas", "return:"], "code.pragmas"),
+        )
+        for arguments, operation in cases:
+            response = {"schemaVersion": 1, "ok": True, "operation": operation, "data": {}}
+            with patch("klibgen_build.cli.image.execute_session", return_value=response) as execute:
+                result = self.runner.invoke(cli, ["image", "code", *arguments, "--json"])
+            self.assertEqual(result.exit_code, 0, f"{arguments}: {result.output}")
+            self.assertEqual(execute.call_args.args[1]["operation"], operation)
+
     def test_expression_sources_and_mutual_exclusions(self):
         response = {"schemaVersion": 1, "ok": True, "operation": "eval", "data": {"result": "ok"}}
         with self.runner.isolated_filesystem():

@@ -82,6 +82,7 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
   - replace bodies of blocks with calls to respective methods
   - inline blocks
 
+- [ ] jj changes: lrtvwumw and nqukswqs - are these merged?
 
 # Q & A
 

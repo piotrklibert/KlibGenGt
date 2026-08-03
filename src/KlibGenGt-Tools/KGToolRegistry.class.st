@@ -60,6 +60,15 @@ KGToolRegistry >> installStandardTools [
 		registerIdentifier: 'code.search' handler: [ :request | KGCodeSearchTool new search: request ];
 		registerIdentifier: 'code.class' handler: [ :request | KGCodeSearchTool new classDefinition: request ];
 		registerIdentifier: 'code.method' handler: [ :request | KGCodeSearchTool new methodSource: request ];
+		registerIdentifier: 'code.class-methods' handler: [ :request | KGCodeSearchTool new classMethods: request ];
+		registerIdentifier: 'code.class-info' handler: [ :request | KGCodeSearchTool new classInfo: request ];
+		registerIdentifier: 'code.package-info' handler: [ :request | KGCodeSearchTool new packageInfo: request ];
+		registerIdentifier: 'code.package-sets' handler: [ :request | KGCodeSearchTool new packageSets: request ];
+		registerIdentifier: 'code.analyze' handler: [ :request | KGMethodAnalysisTool new analyze: request ];
+		registerIdentifier: 'code.implementors' handler: [ :request | KGCodeSearchTool new implementors: request ];
+		registerIdentifier: 'code.senders' handler: [ :request | KGCodeSearchTool new senders: request ];
+		registerIdentifier: 'code.references' handler: [ :request | KGCodeSearchTool new references: request ];
+		registerIdentifier: 'code.pragmas' handler: [ :request | KGCodeSearchTool new pragmas: request ];
 		registerIdentifier: 'lepiter.search' handler: [ :request | KGLepiterTool new search: request ];
 		registerIdentifier: 'lepiter.export' handler: [ :request | KGLepiterTool new export: request ];
 		registerIdentifier: 'eval' handler: [ :request | KGEvaluationTool new evaluate: request ];
