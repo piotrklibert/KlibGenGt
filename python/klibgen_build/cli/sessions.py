@@ -87,11 +87,12 @@ def load(ctx: click.Context, as_json: bool) -> None:
 
 
 @cli.command("lint-source")
+@click.option("--fix", is_flag=True, help="Apply the pinned Tonel export to authoritative `.st` files.")
 @JSON_OPTION
 @click.pass_context
-def lint_source(ctx: click.Context, as_json: bool) -> None:
+def lint_source(ctx: click.Context, fix: bool, as_json: bool) -> None:
     """Reject `.st` source that the pinned Tonel exporter would rewrite."""
-    _run(ctx, as_json, lambda: lint_authoritative_source(_paths()))
+    _run(ctx, as_json, lambda: lint_authoritative_source(_paths(), fix=fix))
 
 
 session_command("smoke", "Check that the project loads and answers its name in a fresh image.", {"operation": "eval", "expression": "KlibGenGt projectName", "profile": False}, "smoke")

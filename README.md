@@ -212,6 +212,9 @@ inside canonical project-source construction and after staging rebase before a
 GUI or agentic image is attached. It checks Tonel serialization only: method
 bodies are not pretty-printed. A failure leaves source and staging unchanged
 and reports the paths and bounded unified diffs that Export would introduce.
+Use `just lint-source-fix` to apply those exact exporter additions, rewrites,
+and removals directly to authoritative `src/`; it verifies the result through
+the same source gate before returning.
 
 The GUI workflow is deliberately singular:
 

@@ -172,6 +172,11 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
     elif operation.startswith("staging."):
         print(f"{operation}: {result['path']}")
     elif operation == "source.lint":
+        fixed = result.get("fixedFileCount", 0)
+        if fixed:
+            print(f"Applied canonical Tonel export to {fixed} .st files")
+            for path in result.get("fixedPaths", []):
+                print(f"  {path}")
         print(f"Tonel source is canonical ({result['fileCount']} .st files)")
     elif operation == "status":
         print(f"workspace: {result['workspace'].get('workspace', {}).get('state', 'missing')}")

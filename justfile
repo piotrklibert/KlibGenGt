@@ -60,6 +60,9 @@ check-type-pragmas:
 lint-source:
     uv run klibgen-build lint-source
 
+lint-source-fix:
+    uv run klibgen-build lint-source --fix
+
 smoke:
     uv run klibgen-build smoke
 

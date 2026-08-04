@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import json
 import logging
+import os
 import shutil
 import uuid
 from pathlib import Path
@@ -73,6 +74,53 @@ def verify_tonel_roundtrip(source_root: Path, exported_root: Path) -> int:
     return count
 
 
+def apply_tonel_roundtrip(
+    source_root: Path,
+    exported_root: Path,
+    *,
+    expected_source_root: Path | None = None,
+) -> list[dict[str, str]]:
+    """Apply exact exported `.st` additions, changes, and removals with rollback."""
+    if expected_source_root is not None and _sources(source_root) != _sources(expected_source_root):
+        raise RuntimeError("authoritative Tonel source changed while its fix was being prepared; retry")
+    drift = tonel_drift(source_root, exported_root)
+    originals = {
+        item["path"]: (source_root / item["path"]).read_bytes()
+        if (source_root / item["path"]).is_file() else None
+        for item in drift
+    }
+    temporaries: list[Path] = []
+    try:
+        for item in drift:
+            relative = item["path"]
+            target = source_root / relative
+            exported = exported_root / relative
+            if item["kind"] == "missing-from-export":
+                target.unlink()
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+            temporaries.append(temporary)
+            temporary.write_bytes(exported.read_bytes())
+            os.replace(temporary, target)
+    except Exception:
+        logger.error("rolling back Tonel source fix source=%s", source_root)
+        logger.debug("Tonel source fix exception", exc_info=True)
+        for relative, contents in originals.items():
+            target = source_root / relative
+            if contents is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(contents)
+        raise
+    finally:
+        for temporary in temporaries:
+            temporary.unlink(missing_ok=True)
+    logger.info("applied canonical Tonel export files=%d source=%s", len(drift), source_root)
+    return drift
+
+
 def export_tonel_source(
     paths: BuildPaths, source_git: Path, artifact: Path, exported: Path,
 ) -> None:
@@ -133,21 +181,41 @@ def lint_git_source(paths: BuildPaths, source_git: Path, artifact: Path) -> dict
         shutil.rmtree(exported, ignore_errors=True)
 
 
-def lint_authoritative_source(paths: BuildPaths) -> dict[str, Any]:
+def lint_authoritative_source(paths: BuildPaths, *, fix: bool = False) -> dict[str, Any]:
     """Build through the source gate and report the checked authoritative tree."""
-    from .canonical import build_canonical
+    from .canonical import _git_bridge, build_canonical
 
-    logger.info("checking authoritative Tonel source")
+    logger.info("checking authoritative Tonel source fix=%s", fix)
+    if fix:
+        setup = build_canonical(paths, "cli", through="project-setup")
+        artifact = Path(setup["artifacts"][-1]["path"])
+        temporary = paths.root / "tmp" / f"tonel-fix-{uuid.uuid4().hex}"
+        exported = temporary / "exported"
+        bridge: Path | None = None
+        try:
+            temporary.mkdir(parents=True)
+            bridge = _git_bridge(paths, temporary, ("src",))
+            export_tonel_source(paths, bridge / ".git", artifact, exported)
+            drift = apply_tonel_roundtrip(
+                paths.root / "src", exported, expected_source_root=bridge / "src",
+            )
+            verify_tonel_roundtrip(paths.root / "src", exported)
+        finally:
+            shutil.rmtree(temporary, ignore_errors=True)
+    else:
+        drift = []
     build = build_canonical(paths, "cli")
     return {
         "schemaVersion": 1, "ok": True, "operation": "source.lint",
         "sourceRoot": str(paths.root / "src"),
         "fileCount": len(_sources(paths.root / "src")),
+        "fixedFileCount": len(drift),
+        "fixedPaths": [item["path"] for item in drift],
         "outputKey": build["outputKey"],
     }
 
 
 __all__ = [
-    "export_tonel_source", "lint_authoritative_source", "lint_git_source", "tonel_drift",
-    "verify_tonel_roundtrip",
+    "apply_tonel_roundtrip", "export_tonel_source", "lint_authoritative_source",
+    "lint_git_source", "tonel_drift", "verify_tonel_roundtrip",
 ]

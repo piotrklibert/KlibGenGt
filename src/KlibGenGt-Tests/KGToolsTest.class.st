@@ -212,30 +212,6 @@ KGToolsTest >> testClassMethodDumpAndMetadata [
 	self assert: (packageInfo at: 'outgoingDependencies') isNotEmpty
 ]
 
-{ #category : 'tests - code navigation' }
-KGToolsTest >> testCodePackageScopeNamedSetsAndOverrides [
-	| first second summary |
-	first := KGCodePackageScope forRequest: (Dictionary new
-		at: 'packageSet' put: 'project';
-		at: 'includePackages' put: #('Kernel' 'Kernel');
-		at: 'excludePackages' put: #('KlibGenGt-Core' 'Kernel');
-		yourself).
-	second := KGCodePackageScope forRequest: (Dictionary new
-		at: 'packageSet' put: 'project';
-		at: 'includePackages' put: #('Kernel');
-		at: 'excludePackages' put: #('Kernel' 'KlibGenGt-Core');
-		yourself).
-	summary := first summary.
-	self assert: (summary at: 'set') equals: 'project'.
-	self deny: ((summary at: 'packages') includes: 'Kernel').
-	self deny: ((summary at: 'packages') includes: 'KlibGenGt-Core').
-	self assert: (summary at: 'fingerprint') equals: (second summary at: 'fingerprint').
-	self should: [ KGCodePackageScope forRequest: (Dictionary new
-		at: 'packageSet' put: 'project';
-		at: 'includePackages' put: #('Definitely-Unknown-Package');
-		yourself) ] raise: Error
-]
-
 { #category : 'tests' }
 KGToolsTest >> testCodeFormatterFormatsMethodBodyAndIsIdempotent [
 	| tool result secondResult expected |
@@ -269,6 +245,30 @@ KGToolsTest >> testCodeFormatterIsRegisteredAndReportsParseErrors [
 		yourself).
 	self deny: (errorResponse at: 'ok').
 	self assert: ((errorResponse at: 'error') at: 'class') equals: 'CodeError'
+]
+
+{ #category : 'tests - code navigation' }
+KGToolsTest >> testCodePackageScopeNamedSetsAndOverrides [
+	| first second summary |
+	first := KGCodePackageScope forRequest: (Dictionary new
+		at: 'packageSet' put: 'project';
+		at: 'includePackages' put: #('Kernel' 'Kernel');
+		at: 'excludePackages' put: #('KlibGenGt-Core' 'Kernel');
+		yourself).
+	second := KGCodePackageScope forRequest: (Dictionary new
+		at: 'packageSet' put: 'project';
+		at: 'includePackages' put: #('Kernel');
+		at: 'excludePackages' put: #('Kernel' 'KlibGenGt-Core');
+		yourself).
+	summary := first summary.
+	self assert: (summary at: 'set') equals: 'project'.
+	self deny: ((summary at: 'packages') includes: 'Kernel').
+	self deny: ((summary at: 'packages') includes: 'KlibGenGt-Core').
+	self assert: (summary at: 'fingerprint') equals: (second summary at: 'fingerprint').
+	self should: [ KGCodePackageScope forRequest: (Dictionary new
+		at: 'packageSet' put: 'project';
+		at: 'includePackages' put: #('Definitely-Unknown-Package');
+		yourself) ] raise: Error
 ]
 
 { #category : 'tests' }

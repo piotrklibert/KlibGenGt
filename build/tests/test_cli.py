@@ -203,6 +203,20 @@ class ClickCliTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("Tonel source is canonical (12 .st files)", result.output)
 
+    def test_lint_source_fix_maps_flag_and_reports_applied_paths(self):
+        response = {
+            "schemaVersion": 1, "ok": True, "operation": "source.lint",
+            "sourceRoot": "/fixture/src", "fileCount": 12, "outputKey": "a" * 64,
+            "fixedFileCount": 1, "fixedPaths": ["Package/Fixture.class.st"],
+        }
+        with patch("klibgen_build.cli.sessions.lint_authoritative_source", return_value=response) as lint:
+            result = self.runner.invoke(cli, ["lint-source", "--fix"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        lint.assert_called_once()
+        self.assertTrue(lint.call_args.kwargs["fix"])
+        self.assertIn("Applied canonical Tonel export to 1 .st files", result.output)
+        self.assertIn("Package/Fixture.class.st", result.output)
+
     def test_prune_maps_to_complete_state_service_and_reports_removed_storage(self):
         response = {
             "operation": "prune", "path": "/fixture/.klibgen", "removed": True,
