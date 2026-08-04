@@ -64,8 +64,7 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 
 - [ ] depth in tree ui query
 
-- [X] `#(Dictionary<String, Any> | nil)` and `#(Dictionary<String, Any>?)`
-      support in pragma checker
+- [X] `#(Dictionary<String, Any> | nil)` and `#(Dictionary<String, Any>?)` support in pragma checker
       
 - [ ] flag for opening the image window in background - for tests
 
@@ -83,6 +82,12 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
   - inline blocks
 
 - [ ] jj changes: lrtvwumw and nqukswqs - are these merged?
+
+- [ ] live-update protocol of code onto a living image; for quick external
+      iteration on selected method bodies. We mostly need:
+      - symbolic pointers to code in Tonel
+      - scripted loading (with undo) from selected Tonel definitons
+      - additional block of code run with the selected bodies/definitions replaced
 
 # Q & A
 

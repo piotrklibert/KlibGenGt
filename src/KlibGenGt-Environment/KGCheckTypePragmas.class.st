@@ -150,6 +150,20 @@ KGCheckTypePragmas >> methodsDefinedBy: aClass do: aBlock [
 	^ aClass
 ]
 
+{ #category : 'private - parsing' }
+KGCheckTypePragmas >> normalizeNullableSuffixIn: tokens [
+	<arg: #tokens type: #Array>
+	<return: #Array>
+	| last suffix |
+	tokens isEmpty ifTrue: [ ^ tokens ].
+	last := tokens last.
+	(last isSymbol
+		and: [ last size > 1
+		and: [ last asString endsWith: '?' ] ]) ifFalse: [ ^ tokens ].
+	suffix := last asString allButLast asSymbol.
+	^ tokens allButLast , { suffix. #? }
+]
+
 { #category : 'private - results' }
 KGCheckTypePragmas >> resultFor: aClass source: sourceString type: typeString valid: aBoolean message: messageString [
 	<arg: #aClass type: #ClassDescription>
@@ -347,17 +361,20 @@ KGCheckTypePragmas >> validateParametricTypeArray: tokens [
 KGCheckTypePragmas >> validateTypeArray: tokens [
 	<arg: #tokens type: #Array>
 	<return: #Boolean>
-	tokens isEmpty ifTrue: [ ^ false ].
-	(tokens includes: #'->') ifTrue: [ ^ self validateBlockTypeArray: tokens ].
-	(tokens includes: #|) ifTrue: [
-		^ (self typePartsFrom: tokens separatedBy: #|) allSatisfy: [ :each |
+	| normalizedTokens |
+	normalizedTokens := self normalizeNullableSuffixIn: tokens.
+	normalizedTokens isEmpty ifTrue: [ ^ false ].
+	(normalizedTokens size > 1 and: [ normalizedTokens last = #? ])
+		ifTrue: [ ^ self validateTypeArray: normalizedTokens allButLast ].
+	(normalizedTokens includes: #'->') ifTrue: [ ^ self validateBlockTypeArray: normalizedTokens ].
+	(normalizedTokens includes: #|) ifTrue: [
+		^ (self typePartsFrom: normalizedTokens separatedBy: #|) allSatisfy: [ :each |
 			self validateTypeArray: each ] ].
-	(tokens includes: #<) ifTrue: [ ^ self validateParametricTypeArray: tokens ].
-	(tokens size = 2 and: [ tokens second = #? and: [ tokens first isSymbol ] ])
-		ifTrue: [ ^ self isNominalTypeSymbol: tokens first ].
-	tokens size = 1 ifTrue: [
+	(normalizedTokens includes: #<) ifTrue: [ ^ self validateParametricTypeArray: normalizedTokens ].
+	normalizedTokens size = 1 ifTrue: [
 		| token |
-		token := tokens first.
+		token := normalizedTokens first.
+		token ifNil: [ ^ true ].
 		token isSymbol ifTrue: [ ^ self isNominalTypeSymbol: token ].
 		token isArray ifTrue: [ ^ self validateTypeArray: token ].
 		^ false ].

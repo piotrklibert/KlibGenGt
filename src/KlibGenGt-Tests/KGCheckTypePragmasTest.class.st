@@ -64,6 +64,8 @@ KGCheckTypePragmasTest >> testValidateTypeLiteral [
 	checker := KGCheckTypePragmas new.
 	self assert: (checker validateTypeLiteral: #String).
 	self assert: (checker validateTypeLiteral: #(String?)).
+	self assert: (checker validateTypeLiteral: #(Dictionary<String, Any> | nil)).
+	self assert: (checker validateTypeLiteral: #(Dictionary<String, Any>?)).
 	self assert: (checker validateTypeLiteral: #(OrderedCollection < (Number | String) >)).
 	self assert: (checker validateTypeLiteral: #(String -> Boolean)).
 	self deny: (checker validateTypeLiteral: #(String Boolean)).
@@ -77,6 +79,8 @@ KGCheckTypePragmasTest >> testValidateTypeString [
 	self assert: (checker validateTypeString: '#String').
 	self assert: (checker validateTypeString: '#(String?)').
 	self assert: (checker validateTypeString: '#(Dictionary<String,Integer>)').
+	self assert: (checker validateTypeString: '#(Dictionary<String, Any> | nil)').
+	self assert: (checker validateTypeString: '#(Dictionary<String, Any>?)').
 	self assert: (checker validateTypeString: '#(Array<(Array<String>)>)').
 	self deny: (checker validateTypeString: 'String').
 	self deny: (checker validateTypeString: '#(String Boolean)')
