@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
+import shutil
+import stat
+import tempfile
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -17,6 +22,95 @@ from .v2state import V2Paths
 
 
 logger = logging.getLogger(__name__)
+
+
+def _project_state_root(paths: BuildPaths) -> Path:
+    state = paths.state.absolute()
+    expected = paths.root.resolve() / ".klibgen"
+    if state != expected:
+        raise ValueError(
+            f"refusing to prune anything except the project-local .klibgen root: {state}"
+        )
+    if state.is_symlink():
+        raise ValueError(f"refusing to prune a symbolic-link state root: {state}")
+    return state
+
+
+def _make_tree_writable(root: Path) -> None:
+    for target in (root, *root.rglob("*")):
+        if target.is_symlink():
+            continue
+        mode = stat.S_IWUSR | (stat.S_IXUSR if target.is_dir() else 0)
+        target.chmod(target.stat().st_mode | mode)
+
+
+def _preserve_lepiter(paths: BuildPaths, state: Path) -> tuple[Path | None, list[Path]]:
+    relative_roots = sorted(
+        path.relative_to(state)
+        for path in (state / "v2/workspaces").glob("*/home/Documents/lepiter")
+        if path.is_dir() and not path.is_symlink()
+    )
+    if not relative_roots:
+        return None, []
+    temporary_parent = paths.root / "tmp"
+    temporary_parent.mkdir(exist_ok=True)
+    backup = Path(tempfile.mkdtemp(prefix="prune-lepiter-", dir=temporary_parent))
+    for relative in relative_roots:
+        source = state / relative
+        target = backup / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source, target, symlinks=True)
+    logger.info("preserved Lepiter trees before prune count=%d path=%s", len(relative_roots), backup)
+    return backup, relative_roots
+
+
+def _restore_lepiter(state: Path, backup: Path, relative_roots: list[Path]) -> None:
+    for relative in relative_roots:
+        source = backup / relative
+        target = state / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(source, target)
+    shutil.rmtree(backup)
+    logger.info("restored Lepiter trees after prune count=%d", len(relative_roots))
+
+
+def prune(paths: BuildPaths) -> dict[str, Any]:
+    """Remove the complete project-local generated state after checking its locks."""
+    state = _project_state_root(paths)
+    if not state.exists():
+        logger.info("build state is already absent path=%s", state)
+        return {
+            "operation": "prune", "path": str(state), "removed": False,
+            "lockCount": 0, "storage": _size(state),
+        }
+    lock_paths = sorted((state / "v2/locks").rglob("*.lock"))
+    logger.info("pruning complete build state path=%s locks=%d", state, len(lock_paths))
+    before = _size(state)
+    lepiter_backup: Path | None = None
+    lepiter_roots: list[Path] = []
+    with ExitStack() as streams:
+        for lock_path in lock_paths:
+            stream = streams.enter_context(lock_path.open("a"))
+            try:
+                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as error:
+                raise RuntimeError(
+                    f"build state is active; lock is held: {lock_path}"
+                ) from error
+        lepiter_backup, lepiter_roots = _preserve_lepiter(paths, state)
+        _make_tree_writable(state)
+        shutil.rmtree(state)
+        if lepiter_backup is not None:
+            _restore_lepiter(state, lepiter_backup, lepiter_roots)
+    logger.info(
+        "pruned complete build state path=%s allocatedBytes=%d",
+        state, before["allocatedBytes"],
+    )
+    return {
+        "operation": "prune", "path": str(state), "removed": True,
+        "lockCount": len(lock_paths), "preservedLepiterCount": len(lepiter_roots),
+        "storage": before,
+    }
 
 
 def _size(path: Path) -> dict[str, int]:
@@ -188,4 +282,4 @@ def garbage_collect(paths: BuildPaths, apply: bool = False) -> dict[str, Any]:
     })
 
 
-__all__ = ["garbage_collect", "inventory"]
+__all__ = ["garbage_collect", "inventory", "prune"]

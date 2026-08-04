@@ -158,6 +158,14 @@ def emit(result: dict[str, Any], as_json: bool) -> None:
         print(f"{result['mode']}: {len(result['remove'])} paths, {len(result['warnings'])} warnings")
         for item in result["remove"]:
             print(f"  {item['path']}")
+    elif operation == "prune":
+        action = "removed" if result["removed"] else "already absent"
+        print(
+            f"{action}: {result['path']} "
+            f"({result['storage']['allocatedBytes']} allocated bytes, "
+            f"{result['lockCount']} lock files, "
+            f"{result.get('preservedLepiterCount', 0)} Lepiter trees preserved)"
+        )
     elif operation == "staging.list":
         for area in result["stagingAreas"]:
             print(f"{area['name']:20} {area['state']}")

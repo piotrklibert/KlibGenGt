@@ -127,6 +127,10 @@ gc-dry-run:
 gc-apply:
     uv run klibgen-build gc --apply
 
+# Delete all project-local generated build state so the next operation rebuilds from scratch.
+prune:
+    uv run klibgen-build prune
+
 ui-status:
     uv run klibgen-build ui status
 

@@ -10,7 +10,7 @@ import click
 from . import cli
 from .common import JSON_OPTION, _paths, _run
 from ..core import BuildPaths, platform_id
-from ..inventory_v2 import garbage_collect, inventory
+from ..inventory_v2 import garbage_collect, inventory, prune
 from ..registered_tools import export_build_map_pngs
 from ..v2state import V2Paths
 from ..workspaces import workspace_status
@@ -55,6 +55,14 @@ def gc(ctx: click.Context, dry_run: bool, apply: bool, as_json: bool) -> None:
     _run(ctx, as_json, operation)
 
 
+@cli.command("prune")
+@JSON_OPTION
+@click.pass_context
+def prune_command(ctx: click.Context, as_json: bool) -> None:
+    """Delete all generated state under the project-local .klibgen directory."""
+    _run(ctx, as_json, lambda: prune(_paths()))
+
+
 @cli.command("build-map-png")
 @click.argument("output", required=False, type=click.Path(path_type=Path, file_okay=False), metavar="OUTPUT_DIR")
 @click.option("--force", is_flag=True, help="Overwrite existing generated PNG exports.")
@@ -63,4 +71,3 @@ def gc(ctx: click.Context, dry_run: bool, apply: bool, as_json: bool) -> None:
 def build_map_png(ctx: click.Context, output: Path | None, force: bool, as_json: bool) -> None:
     """Render overview and full-graph PNG files in OUTPUT_DIR."""
     _run(ctx, as_json, lambda: export_build_map_pngs(_paths(), output, force))
-

@@ -203,6 +203,20 @@ class ClickCliTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("Tonel source is canonical (12 .st files)", result.output)
 
+    def test_prune_maps_to_complete_state_service_and_reports_removed_storage(self):
+        response = {
+            "operation": "prune", "path": "/fixture/.klibgen", "removed": True,
+            "lockCount": 9, "preservedLepiterCount": 1,
+            "storage": {"logicalBytes": 20, "allocatedBytes": 4096, "fileCount": 2},
+        }
+        with patch("klibgen_build.cli.maintenance.prune", return_value=response) as service:
+            result = self.runner.invoke(cli, ["prune"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        service.assert_called_once()
+        self.assertIn("removed: /fixture/.klibgen", result.output)
+        self.assertIn("9 lock files", result.output)
+        self.assertIn("1 Lepiter trees preserved", result.output)
+
     def test_main_is_an_integer_returning_wrapper_and_parser_api_is_absent(self):
         self.assertEqual(main(["--help"]), 0)
         import klibgen_build.cli as module

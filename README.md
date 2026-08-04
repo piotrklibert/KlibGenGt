@@ -270,6 +270,7 @@ programmatic use and is not exposed as a CLI transport selection.
 just inventory
 just gc-dry-run
 just gc-apply
+just prune
 ```
 
 Inventory schema `klibgen.inventory/2` covers recipes, resolved steps,
@@ -278,6 +279,15 @@ locks, and storage. GC roots artifacts from target refs, workspaces, staging,
 active operations, and explicit pins. It may remove abandoned transient state,
 unreferenced artifacts, and rotated diagnostics; it never removes a workspace
 or staging area.
+
+`just prune` is the explicit clean-slate operation. It removes the complete
+project-local `.klibgen/` state, including immutable artifacts, saved GUI state,
+named staging areas, sessions, diagnostics, references, temporary files, and
+persistent advisory lock files. It refuses to run while an existing lock is
+held. As a temporary personal-data safeguard, workspace-local
+`home/Documents/lepiter` trees are preserved in place. The next build
+reconstructs all other state from committed inputs and the shared `vendor/`
+acquisition cache.
 
 ## JSON models
 

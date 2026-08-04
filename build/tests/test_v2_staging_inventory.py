@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import tempfile
@@ -8,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from klibgen_build.core import BuildPaths, digest_json
-from klibgen_build.inventory_v2 import garbage_collect
+from klibgen_build.inventory_v2 import garbage_collect, prune
 from klibgen_build.source_requests import service_source_requests
 from klibgen_build.staging import (
     acquire_staging_lease,
@@ -231,6 +232,72 @@ class V2StagingInventoryTest(unittest.TestCase):
         plan = garbage_collect(self.paths)
         removed = {Path(item["path"]).name for item in plan["remove"]}
         self.assertEqual(removed, {keys[2]})
+
+    def test_prune_removes_complete_project_state_including_read_only_artifacts_and_locks(self):
+        state = self.paths.state
+        artifact = state / "v2/store/image-workspace/linux-x86_64" / ("1" * 64)
+        artifact.mkdir(parents=True)
+        payload = artifact / "payload.image"
+        payload.write_bytes(b"image")
+        payload.chmod(0o444)
+        artifact.chmod(0o555)
+        lock = state / "v2/locks/artifacts/example.lock"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("")
+        (state / "legacy/cache").mkdir(parents=True)
+        (state / "legacy/cache/value").write_text("legacy")
+
+        result = prune(self.paths)
+
+        self.assertTrue(result["removed"])
+        self.assertEqual(result["lockCount"], 1)
+        self.assertGreater(result["storage"]["allocatedBytes"], 0)
+        self.assertFalse(state.exists())
+        self.assertTrue((self.paths.root / "src").is_dir())
+
+        rebuilt_store = ArtifactStore(self.paths)
+        rebuilt = rebuilt_store.artifact("fixture", "2" * 64)
+        (rebuilt / "payload").mkdir(parents=True)
+        self.assertTrue((state / "v2/store").is_dir())
+        self.assertTrue(rebuilt.is_dir())
+
+    def test_prune_refuses_non_project_local_or_symbolic_link_state_root(self):
+        outside = self.paths.root / "state"
+        with self.assertRaisesRegex(ValueError, "project-local .klibgen"):
+            prune(BuildPaths(self.paths.root, outside))
+
+        target = self.paths.root / "state-target"
+        target.mkdir()
+        self.paths.state.symlink_to(target, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "symbolic-link state root"):
+            prune(self.paths)
+        self.assertTrue(target.exists())
+
+    def test_prune_preserves_workspace_lepiter_database_and_removes_its_other_state(self):
+        workspace = self.paths.state / "v2/workspaces/gui-default"
+        database = workspace / "home/Documents/lepiter/default"
+        database.mkdir(parents=True)
+        page = database / "page.lepiter"
+        page.write_text('{"title":"Class definition string"}')
+        (workspace / "image").mkdir()
+        (workspace / "image/GlamorousToolkit.image").write_bytes(b"generated")
+        (workspace / "workspace.json").write_text("generated")
+
+        result = prune(self.paths)
+
+        self.assertEqual(result["preservedLepiterCount"], 1)
+        self.assertEqual(page.read_text(), '{"title":"Class definition string"}')
+        self.assertFalse((workspace / "image").exists())
+        self.assertFalse((workspace / "workspace.json").exists())
+
+    def test_prune_refuses_while_an_existing_build_lock_is_held(self):
+        lock = self.paths.state / "v2/locks/artifacts/example.lock"
+        lock.parent.mkdir(parents=True)
+        with lock.open("w") as stream:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaisesRegex(RuntimeError, "lock is held"):
+                prune(self.paths)
+        self.assertTrue(self.paths.state.exists())
 
 
 if __name__ == "__main__":

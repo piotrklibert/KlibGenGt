@@ -73,13 +73,13 @@ def _initialize(
 ) -> dict[str, Any]:
     logger.info("initializing GUI workspace name=%s staging=%s", WORKSPACE_NAME, staging["name"])
     artifact = Path(build["artifacts"][-1]["path"])
-    workspace.mkdir(parents=True)
+    workspace.mkdir(parents=True, exist_ok=True)
     run_command(["cp", "-a", "--reflink=auto", artifact / "payload/image", workspace / "image"])
     for path in (workspace / "image", *(workspace / "image").rglob("*")):
         if not path.is_symlink():
             path.chmod(path.stat().st_mode | 0o200)
     for name in ("home", "config", "cache", "data-home", "tmp", "logs"):
-        (workspace / name).mkdir()
+        (workspace / name).mkdir(exist_ok=True)
     record = {
         "schema": "klibgen.workspace/1", "schemaVersion": 1, "name": WORKSPACE_NAME,
         "state": "ready", "projectKey": build["outputKey"], "artifactPath": str(artifact),

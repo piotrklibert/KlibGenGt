@@ -7,10 +7,46 @@ from unittest.mock import patch
 
 from klibgen_build.core import BuildPaths
 from klibgen_build.processes import run_command
-from klibgen_build.workspaces import _current_source_for_build, _staging_for_workspace, _workspace_start_mode
+from klibgen_build.v2state import V2Paths
+from klibgen_build.workspaces import (
+    _current_source_for_build,
+    _initialize,
+    _staging_for_workspace,
+    _workspace_start_mode,
+)
 
 
 class WorkspaceLifecycleTest(unittest.TestCase):
+    def test_initialization_accepts_a_prune_preserved_lepiter_skeleton(self):
+        root_parent = Path(__file__).resolve().parents[2] / "tmp"
+        root_parent.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root_parent) as directory:
+            root = Path(directory)
+            paths = BuildPaths(root, root / ".klibgen")
+            v2 = V2Paths.for_build(paths)
+            workspace = v2.root / "workspaces/gui-default"
+            page = workspace / "home/Documents/lepiter/default/page.lepiter"
+            page.parent.mkdir(parents=True)
+            page.write_text('{"title":"Class definition string"}')
+            artifact = root / "artifact"
+            (artifact / "payload/image").mkdir(parents=True)
+            (artifact / "payload/image/GlamorousToolkit.image").write_bytes(b"image")
+            build = {"outputKey": "a" * 64, "artifacts": [{"path": str(artifact)}]}
+            source = {
+                "vcs": "jj", "commitId": "fixture", "changeId": "fixture",
+                "treeDigest": "a" * 64, "paths": ["src"], "exclude": [],
+            }
+            staging = {
+                "name": "gui-default", "sourceGit": str(root / "source/.git"),
+                "generation": 1,
+            }
+
+            _initialize(paths, v2, workspace, build, source, staging)
+
+            self.assertEqual(page.read_text(), '{"title":"Class definition string"}')
+            self.assertTrue((workspace / "image/GlamorousToolkit.image").is_file())
+            self.assertTrue((workspace / "workspace.json").is_file())
+
     def test_legacy_private_repository_migrates_without_removing_it(self):
         root_parent = Path(__file__).resolve().parents[2] / "tmp"
         root_parent.mkdir(exist_ok=True)
