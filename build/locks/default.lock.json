@@ -23,6 +23,22 @@
       "requested": {"branch": "master"},
       "resolved": {"commit": "44dee155676f9ac9be1c7ffac8caef90024968c4"},
       "integrity": {"treeHash": "44dee155676f9ac9be1c7ffac8caef90024968c4"}
+    },
+    {
+      "sourceId": "neojson",
+      "sourceType": "git",
+      "source": "https://github.com/svenvc/NeoJSON.git",
+      "requested": {"branch": "master"},
+      "resolved": {"commit": "11e274dd96dc9636cab90929937b7cd09719de7c"},
+      "integrity": {"treeHash": "11e274dd96dc9636cab90929937b7cd09719de7c"}
+    },
+    {
+      "sourceId": "jsonschema",
+      "sourceType": "git",
+      "source": "https://github.com/ApptiveGrid/JSONSchema.git",
+      "requested": {"branch": "master"},
+      "resolved": {"commit": "d6ac78c12ad66d582adc88d5f2c4f5ee6b0d78a7"},
+      "integrity": {"treeHash": "d6ac78c12ad66d582adc88d5f2c4f5ee6b0d78a7"}
     }
   ]
 }

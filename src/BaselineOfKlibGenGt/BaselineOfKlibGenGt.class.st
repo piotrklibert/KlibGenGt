@@ -8,10 +8,16 @@ Class {
 { #category : 'baselines' }
 BaselineOfKlibGenGt >> baseline: spec [
     <baseline>
-	| sqliteRepository |
+	| sqliteRepository neoJSONRepository jsonSchemaRepository |
 	sqliteRepository := Smalltalk os environment
 		at: 'KLIBGEN_SQLITE_REPOSITORY'
 		ifAbsent: [ 'github://pharo-rdbms/Pharo-SQLite3:44dee155676f9ac9be1c7ffac8caef90024968c4/src' ].
+	neoJSONRepository := Smalltalk os environment
+		at: 'KLIBGEN_NEOJSON_REPOSITORY'
+		ifAbsent: [ 'github://svenvc/NeoJSON:11e274dd96dc9636cab90929937b7cd09719de7c/repository' ].
+	jsonSchemaRepository := Smalltalk os environment
+		at: 'KLIBGEN_JSONSCHEMA_REPOSITORY'
+		ifAbsent: [ 'github://ApptiveGrid/JSONSchema:d6ac78c12ad66d582adc88d5f2c4f5ee6b0d78a7/source' ].
 
     spec for: #common do: [
         spec
@@ -19,6 +25,16 @@ BaselineOfKlibGenGt >> baseline: spec [
                 spec
 				repository: sqliteRepository;
                     loads: 'Core' ].
+		spec
+			baseline: 'NeoJSON' with: [
+				spec
+					repository: neoJSONRepository;
+					loads: 'core' ].
+		spec
+			baseline: 'JSONSchema' with: [
+				spec
+					repository: jsonSchemaRepository;
+					loads: 'Core' ].
 
         spec
             package: 'KlibGenGt-BuildSupport';
@@ -29,7 +45,8 @@ BaselineOfKlibGenGt >> baseline: spec [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Environment' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
-            package: 'KlibGenGt-JsonModels';
+            package: 'KlibGenGt-JsonModels' with: [
+				spec requires: #( 'NeoJSON' 'JSONSchema' ) ];
             package: 'KlibGenGt-Kotlin' with: [
                 spec requires: #( 'KlibGenGt-Core' ) ];
             package: 'KlibGenGt-Session' with: [

@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from .canonical import _dependency_repository, build_canonical
+from .canonical import _dependency_environment, build_canonical
 from .core import BuildPaths
 from .json_models import SessionCompletionV1, SessionReadyV1
 from .processes import decode_output, run_command, start_command
@@ -114,11 +114,11 @@ def execute_session(
     manifest_path = session / "session.json"
     atomic_json(manifest_path, manifest)
     environment = os.environ.copy()
+    environment.update(_dependency_environment(paths, dependency_step))
     environment.update({
         "HOME": str(session / "home"), "XDG_CONFIG_HOME": str(session / "config"),
         "XDG_CACHE_HOME": str(session / "cache"), "XDG_DATA_HOME": str(session / "data-home"),
         "TMPDIR": str(session / "tmp"), "KLIBGEN_SESSION_MANIFEST": str(manifest_path),
-        "KLIBGEN_SQLITE_REPOSITORY": _dependency_repository(paths, dependency_step),
     })
     if staging_name is not None:
         environment["KLIBGEN_STAGING_GIT"] = inputs["sourceGit"]

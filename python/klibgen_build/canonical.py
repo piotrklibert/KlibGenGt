@@ -102,16 +102,42 @@ def _git_bridge(paths: BuildPaths, workspace: Path, relative_paths: Iterable[str
     return bridge
 
 
-def _dependency_repository(paths: BuildPaths, step: dict[str, Any]) -> str:
-    source = next(item for item in step["resolvedConfiguration"]["sources"] if item["sourceId"] == "sqlite3")
+_DEPENDENCY_LAYOUTS = {
+    "sqlite3": "src",
+    "neojson": "repository",
+    "jsonschema": "source",
+}
+
+_DEPENDENCY_ENVIRONMENT = {
+    "sqlite3": "KLIBGEN_SQLITE_REPOSITORY",
+    "neojson": "KLIBGEN_NEOJSON_REPOSITORY",
+    "jsonschema": "KLIBGEN_JSONSCHEMA_REPOSITORY",
+}
+
+
+def _dependency_repository(paths: BuildPaths, step: dict[str, Any], source_id: str = "sqlite3") -> str:
+    source = next(
+        item for item in step["resolvedConfiguration"]["sources"]
+        if item["sourceId"] == source_id
+    )
     commit = source["resolved"]["commit"]
-    worktree = paths.vendor / "gt-build/dependencies/sqlite3"
+    worktree = paths.vendor / f"gt-build/dependencies/{source_id}"
     if not (worktree / ".git").is_dir():
-        raise RuntimeError(f"pinned SQLite source cache is missing: {worktree}; clone {source['source']} at {commit}")
+        raise RuntimeError(
+            f"pinned {source_id} source cache is missing: {worktree}; "
+            f"clone {source['source']} at {commit}"
+        )
     actual = run_command(["git", "-C", worktree, "rev-parse", "HEAD"]).stdout.strip()
     if actual != commit:
-        raise RuntimeError(f"SQLite source cache is at {actual}, expected {commit}")
-    return f"gitlocal://{worktree / '.git'}:{commit}/src"
+        raise RuntimeError(f"{source_id} source cache is at {actual}, expected {commit}")
+    return f"gitlocal://{worktree / '.git'}:{commit}/{_DEPENDENCY_LAYOUTS[source_id]}"
+
+
+def _dependency_environment(paths: BuildPaths, step: dict[str, Any]) -> dict[str, str]:
+    return {
+        environment: _dependency_repository(paths, step, source_id)
+        for source_id, environment in _DEPENDENCY_ENVIRONMENT.items()
+    }
 
 
 class CanonicalExecutor:
@@ -141,8 +167,8 @@ class CanonicalExecutor:
             shutil.rmtree(bridge)
             _run_image(self.paths, payload, self.paths.root / "build/v2/tests/build-support-contract.st", "build-support-contract")
         elif role == "project-dependencies":
-            repository = _dependency_repository(self.paths, step)
-            _run_image(self.paths, payload, self.paths.root / "build/v2/scripts/load-project-dependencies.st", "project-dependencies", {"KLIBGEN_SQLITE_REPOSITORY": repository})
+            repositories = _dependency_environment(self.paths, step)
+            _run_image(self.paths, payload, self.paths.root / "build/v2/scripts/load-project-dependencies.st", "project-dependencies", repositories)
             _run_image(self.paths, payload, self.paths.root / "build/v2/tests/project-dependencies-contract.st", "project-dependencies-contract")
         elif role == "project-setup":
             return
@@ -152,7 +178,9 @@ class CanonicalExecutor:
             exported = workspace / f"tonel-{uuid.uuid4().hex}/src"
             dependency_step = next(item for item in self.resolved["steps"] if item["role"] == "project-dependencies")
             try:
-                _run_image(self.paths, payload, self.paths.root / "build/v2/scripts/load-project-source.st", "project-source", {"KLIBGEN_EXPORT_GIT": str(bridge / ".git"), "KLIBGEN_TONEL_OUTPUT": str(exported), "KLIBGEN_SQLITE_REPOSITORY": _dependency_repository(self.paths, dependency_step)})
+                environment = _dependency_environment(self.paths, dependency_step)
+                environment.update({"KLIBGEN_EXPORT_GIT": str(bridge / ".git"), "KLIBGEN_TONEL_OUTPUT": str(exported)})
+                _run_image(self.paths, payload, self.paths.root / "build/v2/scripts/load-project-source.st", "project-source", environment)
                 verify_tonel_roundtrip(bridge / "src", exported)
             finally:
                 shutil.rmtree(bridge, ignore_errors=True)

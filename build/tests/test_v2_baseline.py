@@ -9,8 +9,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from klibgen_build.canonical import _dependency_environment
 from klibgen_build.core import BuildPaths
 from klibgen_build.measurements import storage_metrics
+from klibgen_build.processes import CommandResult
 from klibgen_build.v2state import V2Paths
 
 
@@ -70,6 +72,41 @@ class V2BaselineTest(unittest.TestCase):
         paths = BuildPaths(self.root, self.root / ".klibgen")
         with patch.dict(os.environ, {"KLIBGEN_VENDOR_ROOT": "cache/vendor"}):
             self.assertEqual(paths.vendor, (self.root / "cache/vendor").resolve())
+
+    def test_dependency_environment_uses_pinned_local_checkout_layouts(self):
+        commits = {"sqlite3": "a" * 40, "neojson": "b" * 40, "jsonschema": "c" * 40}
+        for source_id in commits:
+            (self.root / f"vendor/gt-build/dependencies/{source_id}/.git").mkdir(parents=True)
+        step = {"resolvedConfiguration": {"sources": [
+            {
+                "sourceId": source_id,
+                "source": f"https://example.invalid/{source_id}.git",
+                "resolved": {"commit": commit},
+            }
+            for source_id, commit in commits.items()
+        ]}}
+
+        def revision(arguments, **_kwargs):
+            source_id = Path(arguments[2]).name
+            return CommandResult(0, commits[source_id] + "\n", "")
+
+        with patch("klibgen_build.canonical.run_command", side_effect=revision):
+            environment = _dependency_environment(
+                BuildPaths(self.root, self.root / ".klibgen"), step,
+            )
+
+        self.assertEqual(
+            environment["KLIBGEN_SQLITE_REPOSITORY"],
+            f"gitlocal://{self.root}/vendor/gt-build/dependencies/sqlite3/.git:{commits['sqlite3']}/src",
+        )
+        self.assertEqual(
+            environment["KLIBGEN_NEOJSON_REPOSITORY"],
+            f"gitlocal://{self.root}/vendor/gt-build/dependencies/neojson/.git:{commits['neojson']}/repository",
+        )
+        self.assertEqual(
+            environment["KLIBGEN_JSONSCHEMA_REPOSITORY"],
+            f"gitlocal://{self.root}/vendor/gt-build/dependencies/jsonschema/.git:{commits['jsonschema']}/source",
+        )
 
     def test_storage_measurement_counts_images_and_allocated_bytes(self):
         (self.root / "one.image").write_bytes(b"image")

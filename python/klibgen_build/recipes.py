@@ -271,8 +271,11 @@ BUILD_SUPPORT_STEP = Step(
 )
 PROJECT_DEPENDENCIES_STEP = Step(
     "project-dependencies",
-    _implementation("project-dependencies", "image-workspace", "image-workspace", "build/v2/scripts/load-project-dependencies.st", "build/v2/tests/project-dependencies-contract.st"),
-    {"sourceLocks": ["sqlite3"]},
+    StepImplementation(
+        "project-dependencies-v2", 2, "image-workspace", "image-workspace",
+        ("build/v2/scripts/load-project-dependencies.st", "build/v2/tests/project-dependencies-contract.st"),
+    ),
+    {"sourceLocks": ["sqlite3", "neojson", "jsonschema"]},
 )
 PROJECT_SETUP_STEP = Step(
     "project-setup",

@@ -50,6 +50,14 @@ class RecipeModelTest(unittest.TestCase):
         project_source = next(step for step in PROJECT.steps if step.role == "project-source")
         self.assertEqual(project_source.implementation.version, 3)
         self.assertIn("python/klibgen_build/tonel_lint.py", project_source.implementation.inputs)
+        project_dependencies = next(
+            step for step in PROJECT.steps if step.role == "project-dependencies"
+        )
+        self.assertEqual(project_dependencies.implementation.version, 2)
+        self.assertEqual(
+            list(project_dependencies.config["sourceLocks"]),
+            ["sqlite3", "neojson", "jsonschema"],
+        )
 
     def test_composition_returns_new_values_and_reports_precise_errors(self):
         replacement = Step(

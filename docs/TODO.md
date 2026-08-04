@@ -64,7 +64,7 @@ piątek, 31 lipca 2026 07/31/26 -- 10:54
 
 - [ ] depth in tree ui query
 
-- [ ] `#(Dictionary<String, Any> | nil)` and `#(Dictionary<String, Any)?)`
+- [ ] `#(Dictionary<String, Any> | nil)` and `#(Dictionary<String, Any>?)`
       support in pragma checker
       
 - [ ] flag for opening the image window in background - for tests

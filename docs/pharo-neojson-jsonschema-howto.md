@@ -115,6 +115,15 @@ guide was written, and its repository explicitly documents incomplete coverage
 of the full JSON Schema specification. Maintain project-level tests for every
 keyword and format on which the application depends.
 
+KlibGenGt pins the revisions verified by this guide in
+`build/locks/default.lock.json`. The canonical build reads NeoJSON from
+`vendor/gt-build/dependencies/neojson` and JSONSchema from
+`vendor/gt-build/dependencies/jsonschema`, verifies each checkout's `HEAD`, and
+passes local `gitlocal://` repository URLs to Metacello. The project baseline
+declares both dependencies through `KlibGenGt-JsonModels`, so canonical CLI,
+agentic, and GUI images contain the same versions without fetching them while
+an image is being built or launched.
+
 ## 3. Running example
 
 The examples use a build-inventory document:

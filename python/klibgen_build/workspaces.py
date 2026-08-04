@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from .canonical import _dependency_repository, build_canonical
+from .canonical import _dependency_environment, build_canonical
 from .core import BuildPaths
 from .json_models import StagingV1, WorkspaceV1, validate_named_record
 from .processes import run_command, start_command
@@ -212,11 +212,11 @@ def launch_gui_workspace(
         session_manifest = workspace / "session.json"
         atomic_json(session_manifest, manifest)
         environment = os.environ.copy()
+        environment.update(_dependency_environment(paths, dependency_step))
         environment.update({
             "HOME": str(workspace / "home"), "XDG_CONFIG_HOME": str(workspace / "config"),
             "XDG_CACHE_HOME": str(workspace / "cache"), "XDG_DATA_HOME": str(workspace / "data-home"),
             "TMPDIR": str(workspace / "tmp"), "KLIBGEN_SESSION_MANIFEST": str(session_manifest),
-            "KLIBGEN_SQLITE_REPOSITORY": _dependency_repository(paths, dependency_step),
         })
         cli = artifact / "payload/runtime/bin/GlamorousToolkit-cli"
         image = workspace / "image/GlamorousToolkit.image"

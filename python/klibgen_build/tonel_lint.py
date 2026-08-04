@@ -135,7 +135,7 @@ def export_tonel_source(
     try:
         temporary_root.mkdir(parents=True)
         run_command(["cp", "-a", "--reflink=auto", artifact / "payload", payload])
-        from .canonical import _dependency_repository, _run_image, _set_writable
+        from .canonical import _dependency_environment, _run_image, _set_writable
 
         artifact_manifest = json.loads(
             (artifact / "manifest.json").read_text(encoding="utf-8")
@@ -147,14 +147,14 @@ def export_tonel_source(
 
         _set_writable(payload)
         try:
+            environment = _dependency_environment(paths, dependency_step)
+            environment.update({
+                "KLIBGEN_EXPORT_GIT": str(source_git),
+                "KLIBGEN_TONEL_OUTPUT": str(exported),
+            })
             _run_image(
                 paths, payload, paths.root / "build/v2/scripts/load-project-source.st",
-                "source-lint",
-                {
-                    "KLIBGEN_EXPORT_GIT": str(source_git),
-                    "KLIBGEN_TONEL_OUTPUT": str(exported),
-                    "KLIBGEN_SQLITE_REPOSITORY": _dependency_repository(paths, dependency_step),
-                },
+                "source-lint", environment,
             )
         except RuntimeError as error:
             log = temporary_root / "logs/source-lint.log"
