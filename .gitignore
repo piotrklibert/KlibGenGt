@@ -1,4 +1,7 @@
-**/.?#*#
+# Emacs temporary files
+*~
+\#*\#
+.\#*
 vendor/*
 !vendor/.gitkeep
 artifacts/*
