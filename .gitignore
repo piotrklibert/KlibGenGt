@@ -25,6 +25,7 @@ private/
 tmp/
 export/
 .klibgen/
+.worktrees/
 data/*
 !data/kotlin-samples/
 data/kotlin-samples/*
