@@ -1,5 +1,7 @@
 .git
 .jj
+.worktrees
+.klibgen
 artifacts
 gt-local
 pharo-local

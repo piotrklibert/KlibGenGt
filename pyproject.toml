@@ -19,4 +19,4 @@ klibgen-build = "klibgen_build.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "python"}
-packages = ["klibgen_build", "klibgen_build.cli"]
+packages = ["klibgen_build", "klibgen_build.cli", "klibgen_build.v3"]
